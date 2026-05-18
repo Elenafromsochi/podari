@@ -14,7 +14,218 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chats: {
+        Row: {
+          created_at: string
+          gift_id: string | null
+          id: string
+          user_a: string | null
+          user_b: string | null
+        }
+        Insert: {
+          created_at?: string
+          gift_id?: string | null
+          id?: string
+          user_a?: string | null
+          user_b?: string | null
+        }
+        Update: {
+          created_at?: string
+          gift_id?: string | null
+          id?: string
+          user_a?: string | null
+          user_b?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chats_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "gifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gifts: {
+        Row: {
+          category: string
+          cost: number
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          owner_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          cost?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          owner_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cost?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          owner_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          id: string
+          sender_id: string | null
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          balance: number
+          created_at: string
+          display_name: string
+          id: string
+          level: number
+          updated_at: string
+          user_id: string | null
+          xp: number
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          level?: number
+          updated_at?: string
+          user_id?: string | null
+          xp?: number
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          display_name?: string
+          id?: string
+          level?: number
+          updated_at?: string
+          user_id?: string | null
+          xp?: number
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          author_id: string | null
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          target_id: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          target_id?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          target_id?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          gift_id: string | null
+          id: string
+          receiver_id: string | null
+          sender_id: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          gift_id?: string | null
+          id?: string
+          receiver_id?: string | null
+          sender_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          gift_id?: string | null
+          id?: string
+          receiver_id?: string | null
+          sender_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "gifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
