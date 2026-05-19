@@ -5,6 +5,7 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { DemoResetButton } from "@/components/DemoResetButton";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
+import { ChatScreen } from "@/components/ChatScreen";
 import {
   loadState,
   saveState,
@@ -12,6 +13,8 @@ import {
   type GameState,
   type GamePath,
 } from "@/lib/game-state";
+
+const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
 
 export const Route = createFileRoute("/")({
   component: Index,
