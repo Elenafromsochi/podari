@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { DemoResetButton } from "@/components/DemoResetButton";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
+import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import {
   loadState,
   saveState,
@@ -80,22 +81,32 @@ function Index() {
         </div>
       )}
 
-      {state.step !== "welcome" &&
-        state.step !== "give_form" &&
-        state.step !== "give_done" && (
-          <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-10 text-center">
-            <h2 className="text-2xl font-semibold">Путь получателя ✨</h2>
-            <p className="text-muted-foreground">
-              Этот шаг появится на следующем этапе.
-            </p>
-            <button
-              onClick={backToWelcome}
-              className="text-sm text-primary underline-offset-4 hover:underline"
-            >
-              ← Вернуться к началу
-            </button>
-          </div>
-        )}
+      {(state.step === "receive_categories" || state.step === "receive_feed") && (
+        <ReceiveGiftFlow
+          onBack={backToWelcome}
+          onPick={(giftId) => {
+            addGift("received", giftId);
+            toast.success("Подарок выбран ✨", {
+              description: "Скоро откроется чат с дарителем",
+            });
+            update({ step: "chat" });
+          }}
+        />
+      )}
+
+      {(state.step === "chat" || state.step === "done") && (
+        <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+          <div className="text-5xl">💬</div>
+          <h2 className="text-2xl font-semibold">Чат с дарителем</h2>
+          <p className="text-muted-foreground">Этот шаг появится на следующем этапе.</p>
+          <button
+            onClick={backToWelcome}
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            ← Вернуться к началу
+          </button>
+        </div>
+      )}
     </div>
   );
 }
