@@ -46,6 +46,17 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
 
   const effectiveCategory = autoCategory ? guessCategory(`${title} ${description}`) : category;
 
+  const recognitionRef = useRef<any>(null);
+  const baseTextRef = useRef<string>("");
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.stop?.();
+      } catch {}
+    };
+  }, []);
+
   const simulateMic = (target: "title" | "description") => {
     if (recording) return;
     setRecording(target);
@@ -62,6 +73,56 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
         setRecording(null);
       }
     }, 35);
+  };
+
+  const startRealMic = () => {
+    const SR =
+      (typeof window !== "undefined" &&
+        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
+      null;
+    if (!SR) {
+      // Fallback to simulation if API unavailable
+      simulateMic("description");
+      return;
+    }
+    if (recording === "description") {
+      try {
+        recognitionRef.current?.stop?.();
+      } catch {}
+      setRecording(null);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "ru-RU";
+    rec.continuous = true;
+    rec.interimResults = true;
+    baseTextRef.current = description ? description.trim() + " " : "";
+    rec.onresult = (event: any) => {
+      let interim = "";
+      let finalText = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalText += res[0].transcript;
+        else interim += res[0].transcript;
+      }
+      if (finalText) {
+        baseTextRef.current += finalText + " ";
+      }
+      setDescription((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
+    };
+    rec.onerror = () => {
+      setRecording(null);
+    };
+    rec.onend = () => {
+      setRecording((r) => (r === "description" ? null : r));
+    };
+    recognitionRef.current = rec;
+    setRecording("description");
+    try {
+      rec.start();
+    } catch {
+      setRecording(null);
+    }
   };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
