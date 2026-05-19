@@ -2,6 +2,24 @@ import { createServerFn } from "@tanstack/react-start";
 
 const CATEGORIES = ["книги", "медитации", "кофе", "музыка", "еда", "разное"];
 
+async function callGateway(body: any) {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY не настроен");
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`AI ошибка ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
 export const generateGiftMeta = createServerFn({ method: "POST" })
   .inputValidator((input: { description: string; hasImage?: boolean }) => {
     const d = String(input?.description ?? "").trim();
@@ -10,54 +28,38 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
     return { description: d, hasImage: Boolean(input?.hasImage) };
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("LOVABLE_API_KEY не настроен");
-
     const system = `Ты помощник в сервисе обмена подарками. По описанию подарка придумай короткое уютное название (3–6 слов, без кавычек) и подбери категорию строго из списка: ${CATEGORIES.join(", ")}. Отвечай только JSON.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: system },
-          {
-            role: "user",
-            content: `Описание подарка${data.hasImage ? " (с фото)" : ""}:\n${data.description}`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "set_gift_meta",
-              description: "Сохранить название и категорию подарка",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string", minLength: 2, maxLength: 80 },
-                  category: { type: "string", enum: CATEGORIES },
-                },
-                required: ["title", "category"],
-                additionalProperties: false,
+    const json = await callGateway({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: `Описание подарка${data.hasImage ? " (с фото)" : ""}:\n${data.description}`,
+        },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "set_gift_meta",
+            description: "Сохранить название и категорию подарка",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", minLength: 2, maxLength: 80 },
+                category: { type: "string", enum: CATEGORIES },
               },
+              required: ["title", "category"],
+              additionalProperties: false,
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "set_gift_meta" } },
-      }),
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "set_gift_meta" } },
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`AI ошибка ${res.status}: ${text.slice(0, 200)}`);
-    }
-
-    const json = await res.json();
     const call = json?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     let parsed: { title?: string; category?: string } = {};
     try {
@@ -70,4 +72,36 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
       ? (parsed.category as string)
       : "разное";
     return { title, category };
+  });
+
+export const describeGiftImage = createServerFn({ method: "POST" })
+  .inputValidator((input: { imageDataUrl: string }) => {
+    const url = String(input?.imageDataUrl ?? "");
+    if (!url.startsWith("data:image/")) throw new Error("Нужно изображение");
+    if (url.length > 8_000_000) throw new Error("Изображение слишком большое");
+    return { imageDataUrl: url };
+  })
+  .handler(async ({ data }) => {
+    const system =
+      "Ты помощник сервиса обмена подарками. Посмотри на фото и напиши тёплое, конкретное описание подарка на русском: что это, в каком состоянии, кому подойдёт. 2–4 предложения, без markdown и без кавычек.";
+
+    const json = await callGateway({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Опиши этот подарок." },
+            { type: "image_url", image_url: { url: data.imageDataUrl } },
+          ],
+        },
+      ],
+    });
+
+    const description = String(json?.choices?.[0]?.message?.content ?? "")
+      .trim()
+      .slice(0, 600);
+    if (!description) throw new Error("Не удалось распознать изображение");
+    return { description };
   });
