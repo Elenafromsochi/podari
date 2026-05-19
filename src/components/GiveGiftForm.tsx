@@ -120,27 +120,44 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
         <CardContent className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="title">Название</Label>
-            <Input
-              id="title"
-              placeholder="Например, «Уютная книга на вечер»"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={80}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="title"
+                placeholder="Например, «Уютная книга на вечер»"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={80}
+              />
+              <MicButton
+                active={recording === "title"}
+                disabled={recording !== null && recording !== "title"}
+                onClick={() => simulateMic("title")}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="desc">Игровое описание</Label>
-            <Textarea
-              id="desc"
-              placeholder="Что это, в каком состоянии, кому подойдёт..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              maxLength={600}
-            />
+            <div className="flex gap-2">
+              <Textarea
+                id="desc"
+                placeholder="Что это, в каком состоянии, кому подойдёт..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                maxLength={600}
+                className="flex-1"
+              />
+              <MicButton
+                active={recording === "description"}
+                disabled={recording !== null && recording !== "description"}
+                onClick={() => simulateMic("description")}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Голосовой ввод и ИИ-улучшение — на следующем этапе.
+              {recording
+                ? "🎙️ Идёт запись... ИИ расшифровывает речь"
+                : "Нажмите 🎙️ — симуляция голосового ввода с ИИ-расшифровкой."}
             </p>
           </div>
 
