@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { generateGiftMeta } from "@/lib/gift-ai.functions";
+import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 
 interface Props {
   onDone: (giftId: string) => void;
@@ -23,6 +23,7 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
   const recognitionRef = useRef<any>(null);
   const baseTextRef = useRef<string>("");
   const generateMeta = useServerFn(generateGiftMeta);
+  const describeImage = useServerFn(describeGiftImage);
 
   useEffect(() => {
     return () => {
@@ -79,7 +80,20 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(String(reader.result));
+    reader.onload = async () => {
+      const dataUrl = String(reader.result);
+      setPhotoPreview(dataUrl);
+      setError(null);
+      setStatus("✨ ИИ рассматривает фото и пишет описание...");
+      try {
+        const { description: aiDesc } = await describeImage({ data: { imageDataUrl: dataUrl } });
+        setDescription((prev) => (prev.trim() ? prev.trim() + "\n\n" + aiDesc : aiDesc));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Не удалось описать фото");
+      } finally {
+        setStatus(null);
+      }
+    };
     reader.readAsDataURL(f);
   };
 
