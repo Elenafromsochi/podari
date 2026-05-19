@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +46,17 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
 
   const effectiveCategory = autoCategory ? guessCategory(`${title} ${description}`) : category;
 
+  const recognitionRef = useRef<any>(null);
+  const baseTextRef = useRef<string>("");
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.stop?.();
+      } catch {}
+    };
+  }, []);
+
   const simulateMic = (target: "title" | "description") => {
     if (recording) return;
     setRecording(target);
@@ -62,6 +73,56 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
         setRecording(null);
       }
     }, 35);
+  };
+
+  const startRealMic = () => {
+    const SR =
+      (typeof window !== "undefined" &&
+        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
+      null;
+    if (!SR) {
+      // Fallback to simulation if API unavailable
+      simulateMic("description");
+      return;
+    }
+    if (recording === "description") {
+      try {
+        recognitionRef.current?.stop?.();
+      } catch {}
+      setRecording(null);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "ru-RU";
+    rec.continuous = true;
+    rec.interimResults = true;
+    baseTextRef.current = description ? description.trim() + " " : "";
+    rec.onresult = (event: any) => {
+      let interim = "";
+      let finalText = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalText += res[0].transcript;
+        else interim += res[0].transcript;
+      }
+      if (finalText) {
+        baseTextRef.current += finalText + " ";
+      }
+      setDescription((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
+    };
+    rec.onerror = () => {
+      setRecording(null);
+    };
+    rec.onend = () => {
+      setRecording((r) => (r === "description" ? null : r));
+    };
+    recognitionRef.current = rec;
+    setRecording("description");
+    try {
+      rec.start();
+    } catch {
+      setRecording(null);
+    }
   };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +198,7 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="desc">Игровое описание</Label>
+            <Label htmlFor="desc">Описание</Label>
             <div className="flex gap-2">
               <Textarea
                 id="desc"
@@ -151,13 +212,13 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
               <MicButton
                 active={recording === "description"}
                 disabled={recording !== null && recording !== "description"}
-                onClick={() => simulateMic("description")}
+                onClick={startRealMic}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {recording
-                ? "🎙️ Идёт запись... ИИ расшифровывает речь"
-                : "Нажмите 🎙️ — симуляция голосового ввода с ИИ-расшифровкой."}
+              {recording === "description"
+                ? "🎙️ Говорите — текст появится в поле. Нажмите ещё раз, чтобы остановить."
+                : "Нажмите 🎙️ и продиктуйте описание голосом."}
             </p>
           </div>
 
@@ -199,8 +260,23 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="photo">Фото (по желанию)</Label>
-            <Input id="photo" type="file" accept="image/*" onChange={onPhoto} />
+            <Label>Фото (по желанию)</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                📁 Выбрать файл
+                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
+              </label>
+              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                📷 Сделать фото
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={onPhoto}
+                  className="hidden"
+                />
+              </label>
+            </div>
             {photoPreview && (
               <img
                 src={photoPreview}
