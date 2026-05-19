@@ -23,6 +23,17 @@ function guessCategory(text: string): string {
   return "разное";
 }
 
+const TITLE_SAMPLES = [
+  "Уютная книга на вечер",
+  "Свежемолотый кофе для друга",
+  "Гид по медитациям для начинающих",
+];
+const DESC_SAMPLES = [
+  "Почти новая, читал пару раз. Мягкая обложка, приятно держать в руках. Отдам тому, кто любит вдумчивые истории.",
+  "Зерно средней обжарки, открыл вчера. Хватит на пару недель утренних чашек. Заберите, если рядом с центром.",
+  "Подборка коротких практик на 10 минут. Помогает выдохнуть после рабочего дня. Поделюсь PDF и парой советов.",
+];
+
 export function GiveGiftForm({ onDone, onBack }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -31,8 +42,27 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState<null | "title" | "description">(null);
 
   const effectiveCategory = autoCategory ? guessCategory(`${title} ${description}`) : category;
+
+  const simulateMic = (target: "title" | "description") => {
+    if (recording) return;
+    setRecording(target);
+    const pool = target === "title" ? TITLE_SAMPLES : DESC_SAMPLES;
+    const phrase = pool[Math.floor(Math.random() * pool.length)];
+    const setter = target === "title" ? setTitle : setDescription;
+    setter("");
+    let i = 0;
+    const interval = setInterval(() => {
+      i += 2;
+      setter(phrase.slice(0, Math.min(i, phrase.length)));
+      if (i >= phrase.length) {
+        clearInterval(interval);
+        setRecording(null);
+      }
+    }, 35);
+  };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
