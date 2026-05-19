@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { DemoResetButton } from "@/components/DemoResetButton";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
+import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import {
   loadState,
   saveState,
