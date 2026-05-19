@@ -1,10 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { DemoResetButton } from "@/components/DemoResetButton";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
-import { loadState, saveState, type GameState, type GamePath } from "@/lib/game-state";
+import {
+  loadState,
+  saveState,
+  addGift,
+  type GameState,
+  type GamePath,
+} from "@/lib/game-state";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -39,7 +45,8 @@ function Index() {
       {state.step === "give_form" && (
         <GiveGiftForm
           onBack={backToWelcome}
-          onDone={() => {
+          onDone={(giftId) => {
+            addGift("posted", giftId);
             toast.success("+20 XP начислено ✨", {
               description: "Подарок опубликован",
             });

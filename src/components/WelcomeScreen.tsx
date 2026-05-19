@@ -1,4 +1,5 @@
-import { Gift, HandHeart, Sparkles } from "lucide-react";
+import { Gift, HandHeart, Sparkles, User } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import type { GamePath } from "@/lib/game-state";
 
@@ -47,6 +48,13 @@ export function WelcomeScreen({ onChoose }: Props) {
           </div>
         </Button>
       </div>
+
+      <Link
+        to="/cabinet"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        <User className="h-4 w-4" /> Личный кабинет
+      </Link>
 
       <p className="text-center text-xs text-muted-foreground">
         +100 баллов уже на твоём балансе ✨
