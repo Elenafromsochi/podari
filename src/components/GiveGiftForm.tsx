@@ -23,6 +23,17 @@ function guessCategory(text: string): string {
   return "разное";
 }
 
+const TITLE_SAMPLES = [
+  "Уютная книга на вечер",
+  "Свежемолотый кофе для друга",
+  "Гид по медитациям для начинающих",
+];
+const DESC_SAMPLES = [
+  "Почти новая, читал пару раз. Мягкая обложка, приятно держать в руках. Отдам тому, кто любит вдумчивые истории.",
+  "Зерно средней обжарки, открыл вчера. Хватит на пару недель утренних чашек. Заберите, если рядом с центром.",
+  "Подборка коротких практик на 10 минут. Помогает выдохнуть после рабочего дня. Поделюсь PDF и парой советов.",
+];
+
 export function GiveGiftForm({ onDone, onBack }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -31,8 +42,27 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState<null | "title" | "description">(null);
 
   const effectiveCategory = autoCategory ? guessCategory(`${title} ${description}`) : category;
+
+  const simulateMic = (target: "title" | "description") => {
+    if (recording) return;
+    setRecording(target);
+    const pool = target === "title" ? TITLE_SAMPLES : DESC_SAMPLES;
+    const phrase = pool[Math.floor(Math.random() * pool.length)];
+    const setter = target === "title" ? setTitle : setDescription;
+    setter("");
+    let i = 0;
+    const interval = setInterval(() => {
+      i += 2;
+      setter(phrase.slice(0, Math.min(i, phrase.length)));
+      if (i >= phrase.length) {
+        clearInterval(interval);
+        setRecording(null);
+      }
+    }, 35);
+  };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -90,27 +120,44 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
         <CardContent className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="title">Название</Label>
-            <Input
-              id="title"
-              placeholder="Например, «Уютная книга на вечер»"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={80}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="title"
+                placeholder="Например, «Уютная книга на вечер»"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={80}
+              />
+              <MicButton
+                active={recording === "title"}
+                disabled={recording !== null && recording !== "title"}
+                onClick={() => simulateMic("title")}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="desc">Игровое описание</Label>
-            <Textarea
-              id="desc"
-              placeholder="Что это, в каком состоянии, кому подойдёт..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              maxLength={600}
-            />
+            <div className="flex gap-2">
+              <Textarea
+                id="desc"
+                placeholder="Что это, в каком состоянии, кому подойдёт..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                maxLength={600}
+                className="flex-1"
+              />
+              <MicButton
+                active={recording === "description"}
+                disabled={recording !== null && recording !== "description"}
+                onClick={() => simulateMic("description")}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Голосовой ввод и ИИ-улучшение — на следующем этапе.
+              {recording
+                ? "🎙️ Идёт запись... ИИ расшифровывает речь"
+                : "Нажмите 🎙️ — симуляция голосового ввода с ИИ-расшифровкой."}
             </p>
           </div>
 
@@ -180,5 +227,31 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function MicButton({
+  active,
+  disabled,
+  onClick,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={active ? "Идёт запись" : "Голосовой ввод"}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border text-lg transition-all ${
+        active
+          ? "animate-pulse border-primary bg-primary text-primary-foreground shadow-md"
+          : "border-input bg-background hover:bg-accent disabled:opacity-40"
+      }`}
+    >
+      🎙️
+    </button>
   );
 }
