@@ -5,6 +5,7 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { DemoResetButton } from "@/components/DemoResetButton";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
+import { ChatScreen } from "@/components/ChatScreen";
 import {
   loadState,
   saveState,
@@ -13,15 +14,21 @@ import {
   type GamePath,
 } from "@/lib/game-state";
 
+const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
+
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
 function Index() {
   const [state, setState] = useState<GameState | null>(null);
+  const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
+    if (typeof window !== "undefined") {
+      setActiveChatGift(localStorage.getItem(ACTIVE_CHAT_KEY));
+    }
   }, []);
 
   if (!state) return null;
@@ -86,8 +93,10 @@ function Index() {
           onBack={backToWelcome}
           onPick={(giftId) => {
             addGift("received", giftId);
+            localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
+            setActiveChatGift(giftId);
             toast.success("Подарок выбран ✨", {
-              description: "Скоро откроется чат с дарителем",
+              description: "Открываем чат с дарителем",
             });
             update({ step: "chat" });
           }}
@@ -95,17 +104,26 @@ function Index() {
       )}
 
       {(state.step === "chat" || state.step === "done") && (
-        <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-10 text-center">
-          <div className="text-5xl">💬</div>
-          <h2 className="text-2xl font-semibold">Чат с дарителем</h2>
-          <p className="text-muted-foreground">Этот шаг появится на следующем этапе.</p>
-          <button
-            onClick={backToWelcome}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            ← Вернуться к началу
-          </button>
-        </div>
+        activeChatGift ? (
+          <ChatScreen
+            giftId={activeChatGift}
+            onBack={() => {
+              localStorage.removeItem(ACTIVE_CHAT_KEY);
+              setActiveChatGift(null);
+              backToWelcome();
+            }}
+          />
+        ) : (
+          <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+            <p className="text-muted-foreground">Нет активного чата</p>
+            <button
+              onClick={backToWelcome}
+              className="text-sm text-primary underline-offset-4 hover:underline"
+            >
+              ← Вернуться к началу
+            </button>
+          </div>
+        )
       )}
     </div>
   );
