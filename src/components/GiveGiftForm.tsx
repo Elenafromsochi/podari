@@ -80,7 +80,20 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(String(reader.result));
+    reader.onload = async () => {
+      const dataUrl = String(reader.result);
+      setPhotoPreview(dataUrl);
+      setError(null);
+      setStatus("✨ ИИ рассматривает фото и пишет описание...");
+      try {
+        const { description: aiDesc } = await describeImage({ data: { imageDataUrl: dataUrl } });
+        setDescription((prev) => (prev.trim() ? prev.trim() + "\n\n" + aiDesc : aiDesc));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Не удалось описать фото");
+      } finally {
+        setStatus(null);
+      }
+    };
     reader.readAsDataURL(f);
   };
 
