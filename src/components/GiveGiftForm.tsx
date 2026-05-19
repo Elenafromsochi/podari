@@ -23,6 +23,7 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
   const recognitionRef = useRef<any>(null);
   const baseTextRef = useRef<string>("");
   const generateMeta = useServerFn(generateGiftMeta);
+  const describeImage = useServerFn(describeGiftImage);
 
   useEffect(() => {
     return () => {
