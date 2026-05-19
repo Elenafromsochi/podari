@@ -260,8 +260,23 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="photo">Фото (по желанию)</Label>
-            <Input id="photo" type="file" accept="image/*" onChange={onPhoto} />
+            <Label>Фото (по желанию)</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                📁 Выбрать файл
+                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
+              </label>
+              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                📷 Сделать фото
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={onPhoto}
+                  className="hidden"
+                />
+              </label>
+            </div>
             {photoPreview && (
               <img
                 src={photoPreview}
