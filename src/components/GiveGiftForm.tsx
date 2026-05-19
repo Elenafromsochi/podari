@@ -229,3 +229,29 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
     </div>
   );
 }
+
+function MicButton({
+  active,
+  disabled,
+  onClick,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={active ? "Идёт запись" : "Голосовой ввод"}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border text-lg transition-all ${
+        active
+          ? "animate-pulse border-primary bg-primary text-primary-foreground shadow-md"
+          : "border-input bg-background hover:bg-accent disabled:opacity-40"
+      }`}
+    >
+      🎙️
+    </button>
+  );
+}
