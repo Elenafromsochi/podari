@@ -198,7 +198,7 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="desc">Игровое описание</Label>
+            <Label htmlFor="desc">Описание</Label>
             <div className="flex gap-2">
               <Textarea
                 id="desc"
@@ -212,13 +212,13 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
               <MicButton
                 active={recording === "description"}
                 disabled={recording !== null && recording !== "description"}
-                onClick={() => simulateMic("description")}
+                onClick={startRealMic}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {recording
-                ? "🎙️ Идёт запись... ИИ расшифровывает речь"
-                : "Нажмите 🎙️ — симуляция голосового ввода с ИИ-расшифровкой."}
+              {recording === "description"
+                ? "🎙️ Говорите — текст появится в поле. Нажмите ещё раз, чтобы остановить."
+                : "Нажмите 🎙️ и продиктуйте описание голосом."}
             </p>
           </div>
 
