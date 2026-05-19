@@ -17,6 +17,9 @@ export interface GameState {
   balance: number;
   xp: number;
   level: number;
+  giftsPosted: string[];
+  giftsGifted: string[];
+  giftsReceived: string[];
 }
 
 export const initialState: GameState = {
@@ -25,7 +28,20 @@ export const initialState: GameState = {
   balance: 100,
   xp: 0,
   level: 1,
+  giftsPosted: [],
+  giftsGifted: [],
+  giftsReceived: [],
 };
+
+export function addGift(kind: "posted" | "gifted" | "received", id: string) {
+  const s = loadState();
+  const key =
+    kind === "posted" ? "giftsPosted" : kind === "gifted" ? "giftsGifted" : "giftsReceived";
+  const list = s[key] ?? [];
+  if (!list.includes(id)) {
+    saveState({ ...s, [key]: [...list, id] });
+  }
+}
 
 export function loadState(): GameState {
   if (typeof window === "undefined") return initialState;
