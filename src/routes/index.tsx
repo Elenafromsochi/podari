@@ -22,9 +22,13 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [state, setState] = useState<GameState | null>(null);
+  const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
+    if (typeof window !== "undefined") {
+      setActiveChatGift(localStorage.getItem(ACTIVE_CHAT_KEY));
+    }
   }, []);
 
   if (!state) return null;
