@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { generateGiftMeta } from "@/lib/gift-ai.functions";
+import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 
 interface Props {
   onDone: (giftId: string) => void;
