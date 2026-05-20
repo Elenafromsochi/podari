@@ -12,6 +12,8 @@ type Gift = {
   category: string;
   image_url: string | null;
   cost: number;
+  owner_id: string | null;
+  owner_name?: string;
 };
 
 type Step = "categories" | "feed" | "search";
@@ -26,13 +28,6 @@ type SR = {
   continuous: boolean;
   interimResults: boolean;
 };
-
-// Псевдо-имена дарителей для демо
-const GIVER_NAMES = ["Анна", "Михаил", "Дарья", "Иван", "Ольга", "Сергей", "Мария", "Алексей"];
-const giverFor = (id: string) =>
-  GIVER_NAMES[
-    Math.abs([...id].reduce((a, c) => a + c.charCodeAt(0), 0)) % GIVER_NAMES.length
-  ];
 
 export function ReceiveGiftFlow({
   onBack,
