@@ -124,6 +124,12 @@ function Index() {
             🎁 Получить подарок
           </button>
           <button
+            onClick={() => update({ path: "give", step: "give_chip" })}
+            className="w-full rounded-2xl border border-mint/60 bg-background px-5 py-4 text-base font-semibold text-foreground transition hover:bg-mint/10"
+          >
+            ➕ Разместить ещё подарок
+          </button>
+          <button
             onClick={backToWelcome}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
