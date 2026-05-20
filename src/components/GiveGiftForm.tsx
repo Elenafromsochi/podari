@@ -85,10 +85,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
       const dataUrl = String(reader.result);
       setPhotoPreview(dataUrl);
       setError(null);
+      setDescription("");
       setStatus("✨ ИИ рассматривает фото и пишет описание...");
       try {
         const { description: aiDesc } = await describeImage({ data: { imageDataUrl: dataUrl } });
-        setDescription((prev) => (prev.trim() ? prev.trim() + "\n\n" + aiDesc : aiDesc));
+        setDescription(aiDesc);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Не удалось описать фото");
       } finally {
