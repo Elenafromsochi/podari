@@ -1,8 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadState, type GameState } from "@/lib/game-state";
+import { loadUser, type UserProfile } from "@/lib/auth-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const Route = createFileRoute("/cabinet")({
   head: () => ({
