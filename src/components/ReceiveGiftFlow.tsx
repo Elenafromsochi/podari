@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Mic, MicOff, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 type Gift = {
   id: string;
@@ -9,9 +11,28 @@ type Gift = {
   description: string | null;
   category: string;
   image_url: string | null;
+  cost: number;
 };
 
-type Step = "categories" | "feed";
+type Step = "categories" | "feed" | "search";
+
+type SR = {
+  start: () => void;
+  stop: () => void;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+};
+
+// Псевдо-имена дарителей для демо
+const GIVER_NAMES = ["Анна", "Михаил", "Дарья", "Иван", "Ольга", "Сергей", "Мария", "Алексей"];
+const giverFor = (id: string) =>
+  GIVER_NAMES[
+    Math.abs([...id].reduce((a, c) => a + c.charCodeAt(0), 0)) % GIVER_NAMES.length
+  ];
 
 export function ReceiveGiftFlow({
   onBack,
@@ -23,17 +44,49 @@ export function ReceiveGiftFlow({
   const [step, setStep] = useState<Step>("categories");
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [category, setCategory] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<SR | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url")
+        .select("id,title,description,category,image_url,cost")
         .eq("status", "available")
         .order("created_at", { ascending: false });
       setGifts((data as Gift[]) ?? []);
     })();
   }, []);
+
+  const toggleMic = () => {
+    const W = window as unknown as {
+      SpeechRecognition?: new () => SR;
+      webkitSpeechRecognition?: new () => SR;
+    };
+    const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
+    if (!Ctor) return;
+    if (listening) {
+      recRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const r = new Ctor();
+    r.lang = "ru-RU";
+    r.continuous = false;
+    r.interimResults = true;
+    r.onresult = (e) => {
+      let t = "";
+      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      setQuery(t);
+      setStep("search");
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    recRef.current = r;
+    r.start();
+    setListening(true);
+  };
 
   if (!gifts) {
     return (
@@ -41,6 +94,90 @@ export function ReceiveGiftFlow({
         <Skeleton className="h-8 w-2/3" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  const renderCard = (g: Gift) => (
+    <Card key={g.id} className="overflow-hidden p-3">
+      <div className="flex gap-3">
+        {g.image_url ? (
+          <img
+            src={g.image_url}
+            alt={g.title}
+            className="h-20 w-20 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+            🎁
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium">{g.title}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground capitalize">{g.category}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Даритель: <span className="font-medium text-foreground">{giverFor(g.id)}</span>
+          </div>
+          {g.description && (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description}</p>
+          )}
+        </div>
+      </div>
+      <Button
+        onClick={() => onPick(g.id)}
+        className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+        size="lg"
+      >
+        🎁 Забрать за {g.cost ?? 100} баллов
+      </Button>
+    </Card>
+  );
+
+  // Search step
+  if (step === "search") {
+    const q = query.trim().toLowerCase();
+    const results = q
+      ? gifts.filter(
+          (g) =>
+            g.title.toLowerCase().includes(q) ||
+            g.category.toLowerCase().includes(q) ||
+            (g.description ?? "").toLowerCase().includes(q),
+        )
+      : gifts;
+    return (
+      <div className="mx-auto w-full max-w-md px-5 py-8">
+        <button
+          onClick={() => setStep("categories")}
+          className="mb-4 text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          ← К категориям
+        </button>
+        <h2 className="mb-3 text-2xl font-semibold">Умный поиск</h2>
+        <div className="mb-5 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Что бы тебе хотелось получить?"
+            className="flex-1 bg-transparent text-sm outline-none"
+          />
+          <button
+            onClick={toggleMic}
+            className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+              listening ? "bg-destructive text-destructive-foreground" : "bg-background"
+            }`}
+            aria-label="Голос"
+          >
+            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </button>
+        </div>
+        <div className="space-y-3">
+          {results.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ничего не нашлось 🌿 Попробуй иначе.</p>
+          ) : (
+            results.map(renderCard)
+          )}
+        </div>
       </div>
     );
   }
@@ -58,11 +195,35 @@ export function ReceiveGiftFlow({
         >
           ← Назад
         </button>
+
+        <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm">
+          🎉 Поздравляем! Тебе начислены подарочные <b>100 баллов</b> — на них можно выбрать любой подарок. Что бы тебе хотелось получить прямо сейчас?
+        </div>
+
         <h2 className="mb-1 text-2xl font-semibold">Выбери категорию</h2>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Что бы ты хотел получить? Доступно {gifts.length}{" "}
-          {gifts.length === 1 ? "подарок" : "подарков"}.
+        <p className="mb-4 text-sm text-muted-foreground">
+          Доступно {gifts.length} {gifts.length === 1 ? "подарок" : "подарков"}.
         </p>
+
+        <div className="mb-5 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => query && setStep("search")}
+            placeholder="Или опиши голосом, что тебе нужно…"
+            className="flex-1 bg-transparent text-sm outline-none"
+          />
+          <button
+            onClick={toggleMic}
+            className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+              listening ? "bg-destructive text-destructive-foreground" : "bg-background"
+            }`}
+            aria-label="Голос"
+          >
+            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </button>
+        </div>
 
         {cats.length === 0 ? (
           <p className="text-muted-foreground">Пока нет активных подарков 💚</p>
@@ -104,35 +265,7 @@ export function ReceiveGiftFlow({
         {filtered.length} {filtered.length === 1 ? "подарок" : "подарков"} доступно
       </p>
 
-      <div className="space-y-3">
-        {filtered.map((g) => (
-          <Card
-            key={g.id}
-            className="flex cursor-pointer gap-3 overflow-hidden p-3 transition hover:bg-accent"
-            onClick={() => onPick(g.id)}
-          >
-            {g.image_url ? (
-              <img
-                src={g.image_url}
-                alt={g.title}
-                className="h-20 w-20 shrink-0 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
-                🎁
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">{g.title}</div>
-              {g.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {g.description}
-                </p>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
+      <div className="space-y-3">{filtered.map(renderCard)}</div>
     </div>
   );
 }
