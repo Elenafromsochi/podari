@@ -189,7 +189,7 @@ export function ChatScreen({
           className="rounded-full"
         >
           <GiftIcon className="h-4 w-4" />
-          {handedOver ? "Передано" : "Подарено"}
+          {handedOver ? "Получено" : "Подтвердить получение"}
         </Button>
       </div>
 
