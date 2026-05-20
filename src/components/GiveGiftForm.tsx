@@ -25,6 +25,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
   const baseTextRef = useRef<string>("");
   const generateMeta = useServerFn(generateGiftMeta);
   const describeImage = useServerFn(describeGiftImage);
+  const publishGiftFn = useServerFn(publishGift);
 
   useEffect(() => {
     return () => {
