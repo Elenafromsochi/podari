@@ -130,7 +130,7 @@ export function ReceiveGiftFlow({
           <div className="truncate font-medium">{g.title}</div>
           <div className="mt-0.5 text-xs text-muted-foreground capitalize">{g.category}</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            Даритель: <span className="font-medium text-foreground">{giverFor(g.id)}</span>
+            Даритель: <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
           </div>
           {g.description && (
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description}</p>
