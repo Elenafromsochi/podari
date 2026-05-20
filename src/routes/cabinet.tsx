@@ -33,12 +33,14 @@ type Gift = {
 
 function CabinetPage() {
   const [state, setState] = useState<GameState | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [gifts, setGifts] = useState<Record<string, Gift>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const s = loadState();
     setState(s);
+    setUser(loadUser());
     const ids = Array.from(
       new Set([...s.giftsPosted, ...s.giftsGifted, ...s.giftsReceived]),
     );
