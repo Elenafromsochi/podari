@@ -145,10 +145,13 @@ function Index() {
             addGift("received", giftId);
             localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
             setActiveChatGift(giftId);
-            toast.success("Баллы заморожены • Безопасная сделка 🔒", {
+            const newBalance = Math.max(0, (user?.l_points_balance ?? state.balance) - 100);
+            const u = updateUser({ l_points_balance: newBalance });
+            if (u) setUser(u);
+            toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
               description: "Открываем чат с дарителем",
             });
-            update({ step: "chat", balance: Math.max(0, state.balance - 100) });
+            update({ step: "chat", balance: newBalance });
           }}
         />
       )}
