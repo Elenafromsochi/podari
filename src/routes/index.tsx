@@ -171,6 +171,8 @@ function Index() {
               const next = { ...fresh, xp: fresh.xp + 20 };
               saveState(next);
               setState(next);
+              const u = updateUser({ xp_balance: (loadUser()?.xp_balance ?? 0) + 20 });
+              if (u) setUser(u);
             }}
             onReview={() => {
               burstConfetti();
@@ -179,6 +181,8 @@ function Index() {
               const next = { ...fresh, xp: fresh.xp + 20, path: null, step: "welcome" as const };
               saveState(next);
               setState(next);
+              const u = updateUser({ xp_balance: (loadUser()?.xp_balance ?? 0) + 20 });
+              if (u) setUser(u);
               localStorage.removeItem(ACTIVE_CHAT_KEY);
               setActiveChatGift(null);
             }}
