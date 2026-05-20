@@ -1,8 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { DemoResetButton } from "@/components/DemoResetButton";
+import { GiveGiftChips } from "@/components/GiveGiftChips";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
@@ -20,9 +22,20 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+const burstConfetti = () => {
+  const opts = { spread: 80, ticks: 200, gravity: 0.9, scalar: 1.1 } as const;
+  confetti({ ...opts, particleCount: 80, origin: { x: 0.2, y: 0.7 } });
+  confetti({ ...opts, particleCount: 80, origin: { x: 0.8, y: 0.7 } });
+  setTimeout(
+    () => confetti({ ...opts, particleCount: 120, origin: { x: 0.5, y: 0.4 } }),
+    250,
+  );
+};
+
 function Index() {
   const [state, setState] = useState<GameState | null>(null);
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
+  const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
@@ -40,7 +53,7 @@ function Index() {
   };
 
   const choose = (path: GamePath) =>
-    update({ path, step: path === "give" ? "give_form" : "receive_categories" });
+    update({ path, step: path === "give" ? "give_chip" : "receive_categories" });
 
   const backToWelcome = () => update({ path: null, step: "welcome" });
 
@@ -50,13 +63,25 @@ function Index() {
 
       {state.step === "welcome" && <WelcomeScreen onChoose={choose} />}
 
+      {state.step === "give_chip" && (
+        <GiveGiftChips
+          onBack={backToWelcome}
+          onPick={(label) => {
+            setGivePresetHint(label);
+            update({ step: "give_form" });
+          }}
+        />
+      )}
+
       {state.step === "give_form" && (
         <GiveGiftForm
-          onBack={backToWelcome}
+          onBack={() => update({ step: "give_chip" })}
+          presetHint={givePresetHint}
           onDone={(giftId) => {
             addGift("posted", giftId);
+            burstConfetti();
             toast.success("+20 XP начислено ✨", {
-              description: "Подарок опубликован",
+              description: "Подарок размещён в игровом мире",
             });
             update({ step: "give_done", xp: state.xp + 20 });
           }}
@@ -66,9 +91,12 @@ function Index() {
       {state.step === "give_done" && (
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-5 px-5 py-10 text-center">
           <div className="text-5xl">🎉</div>
-          <h2 className="text-2xl font-semibold">Подарок опубликован!</h2>
+          <h2 className="text-2xl font-semibold">Подарок размещён!</h2>
           <p className="rounded-xl bg-mint/40 px-4 py-3 text-sm text-foreground">
-            +20 XP начислено ✨
+            +20 XP начислено ✨ <br />
+            <span className="text-xs text-muted-foreground">
+              +80 XP и баллы — после вручения
+            </span>
           </p>
           <p className="text-balance text-muted-foreground">
             Для равновесия системы — выбери себе подарок. Дарить и получать одинаково важно 💚
@@ -95,10 +123,10 @@ function Index() {
             addGift("received", giftId);
             localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
             setActiveChatGift(giftId);
-            toast.success("Подарок выбран ✨", {
+            toast.success("Баллы заморожены • Безопасная сделка 🔒", {
               description: "Открываем чат с дарителем",
             });
-            update({ step: "chat" });
+            update({ step: "chat", balance: Math.max(0, state.balance - 100) });
           }}
         />
       )}
@@ -111,6 +139,18 @@ function Index() {
               localStorage.removeItem(ACTIVE_CHAT_KEY);
               setActiveChatGift(null);
               backToWelcome();
+            }}
+            onHandover={() => {
+              addGift("gifted", activeChatGift);
+              update({ xp: state.xp + 80 });
+            }}
+            onReview={() => {
+              burstConfetti();
+              toast.success("Спасибо за отзыв • +40 XP 💚");
+              update({ xp: state.xp + 40 });
+              localStorage.removeItem(ACTIVE_CHAT_KEY);
+              setActiveChatGift(null);
+              setTimeout(backToWelcome, 600);
             }}
           />
         ) : (
