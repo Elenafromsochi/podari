@@ -271,6 +271,16 @@ export function ChatScreen({
           <Send className="h-4 w-4" />
         </Button>
       </div>
+
+      {showReview && (
+        <ReviewModal
+          giftId={giftId}
+          onSubmit={() => {
+            setShowReview(false);
+            toast.success("Спасибо за отзыв 💚");
+          }}
+        />
+      )}
     </div>
   );
 }
