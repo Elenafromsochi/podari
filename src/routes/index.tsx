@@ -10,6 +10,14 @@ import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
 import { AuthFlow } from "@/components/AuthFlow";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   loadState,
   saveState,
   addGift,
@@ -19,6 +27,7 @@ import {
 import { loadUser, updateUser, type UserProfile } from "@/lib/auth-state";
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
+const GIFT_COST = 100;
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -40,6 +49,7 @@ function Index() {
   const [authChecked, setAuthChecked] = useState(false);
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
   const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
+  const [insufficientOpen, setInsufficientOpen] = useState(false);
 
   useEffect(() => {
     setState(loadState());
@@ -142,10 +152,15 @@ function Index() {
         <ReceiveGiftFlow
           onBack={backToWelcome}
           onPick={(giftId) => {
+            const balance = user?.l_points_balance ?? state.balance;
+            if (balance < GIFT_COST) {
+              setInsufficientOpen(true);
+              return;
+            }
             addGift("received", giftId);
             localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
             setActiveChatGift(giftId);
-            const newBalance = Math.max(0, (user?.l_points_balance ?? state.balance) - 100);
+            const newBalance = Math.max(0, balance - GIFT_COST);
             const u = updateUser({ l_points_balance: newBalance });
             if (u) setUser(u);
             toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
@@ -199,6 +214,36 @@ function Index() {
           </div>
         )
       )}
+
+      <Dialog open={insufficientOpen} onOpenChange={setInsufficientOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Недостаточно подарочных баллов 🎁</DialogTitle>
+            <DialogDescription className="pt-2 text-left">
+              Чтобы выбрать новый подарок, нужно <b>100 баллов</b>. Сейчас твои баллы заморожены или потрачены.
+              <br /><br />
+              Размести свой подарок и дождись, когда кто-то его заберёт — тебе вернётся <b>+100 баллов</b>, и ты снова сможешь получать подарки. Дарить и получать — одинаково важно 💚
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <button
+              onClick={() => {
+                setInsufficientOpen(false);
+                update({ path: "give", step: "give_chip" });
+              }}
+              className="w-full rounded-2xl bg-mint px-5 py-3 text-base font-semibold text-mint-foreground transition hover:bg-mint/90"
+            >
+              ➕ Разместить подарок
+            </button>
+            <button
+              onClick={() => setInsufficientOpen(false)}
+              className="w-full rounded-2xl border px-5 py-3 text-sm text-muted-foreground transition hover:bg-accent"
+            >
+              Понятно
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
