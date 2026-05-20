@@ -142,15 +142,20 @@ function Index() {
             }}
             onHandover={() => {
               addGift("gifted", activeChatGift);
-              update({ xp: state.xp + 80 });
+              const fresh = loadState();
+              const next = { ...fresh, xp: fresh.xp + 80 };
+              saveState(next);
+              setState(next);
             }}
             onReview={() => {
               burstConfetti();
               toast.success("Спасибо за отзыв • +40 XP 💚");
-              update({ xp: state.xp + 40 });
+              const fresh = loadState();
+              const next = { ...fresh, xp: fresh.xp + 40, path: null, step: "welcome" as const };
+              saveState(next);
+              setState(next);
               localStorage.removeItem(ACTIVE_CHAT_KEY);
               setActiveChatGift(null);
-              setTimeout(backToWelcome, 600);
             }}
           />
         ) : (
