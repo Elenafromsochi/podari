@@ -91,9 +91,10 @@ export function ChatScreen({
         ts: Date.now(),
       },
     ]);
-    toast.success("Получатель уведомлён", {
+    toast.success("Получатель уведомлён • +80 XP дарителю", {
       description: "Откроется окно отзыва о подарке",
     });
+    onHandover?.();
     setTimeout(() => setShowReview(true), 600);
   };
 
