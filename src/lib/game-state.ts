@@ -1,4 +1,5 @@
-// Локальное состояние игры (онбординг). Этап 1.
+// Локальный UX-стейт онбординга. Бизнес-данные (баланс, опыт, уровень,
+// история подарков) хранятся в базе и читаются через server functions.
 const KEY = "cozygift_game_state_v1";
 
 export type GamePath = "give" | "receive" | null;
@@ -15,34 +16,12 @@ export type GameStep =
 export interface GameState {
   path: GamePath;
   step: GameStep;
-  balance: number;
-  xp: number;
-  level: number;
-  giftsPosted: string[];
-  giftsGifted: string[];
-  giftsReceived: string[];
 }
 
 export const initialState: GameState = {
   path: null,
   step: "welcome",
-  balance: 100,
-  xp: 0,
-  level: 1,
-  giftsPosted: [],
-  giftsGifted: [],
-  giftsReceived: [],
 };
-
-export function addGift(kind: "posted" | "gifted" | "received", id: string) {
-  const s = loadState();
-  const key =
-    kind === "posted" ? "giftsPosted" : kind === "gifted" ? "giftsGifted" : "giftsReceived";
-  const list = s[key] ?? [];
-  if (!list.includes(id)) {
-    saveState({ ...s, [key]: [...list, id] });
-  }
-}
 
 export function loadState(): GameState {
   if (typeof window === "undefined") return initialState;
