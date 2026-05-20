@@ -47,10 +47,29 @@ export function ReceiveGiftFlow({
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost")
+        .select("id,title,description,category,image_url,cost,owner_id")
         .eq("status", "available")
         .order("created_at", { ascending: false });
-      setGifts((data as Gift[]) ?? []);
+      const rows = (data as Gift[]) ?? [];
+      const ownerIds = Array.from(
+        new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)),
+      );
+      let nameMap = new Map<string, string>();
+      if (ownerIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id,display_name")
+          .in("user_id", ownerIds);
+        nameMap = new Map(
+          (profs ?? []).map((p) => [p.user_id as string, (p.display_name as string) || "Гость"]),
+        );
+      }
+      setGifts(
+        rows.map((g) => ({
+          ...g,
+          owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
+        })),
+      );
     })();
   }, []);
 
