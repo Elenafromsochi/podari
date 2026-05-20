@@ -100,6 +100,8 @@ function Index() {
             toast.success("+20 Опыта начислено ✨", {
               description: "Подарок размещён в игровом мире",
             });
+            const u = updateUser({ xp_balance: (user?.xp_balance ?? 0) + 20 });
+            if (u) setUser(u);
             update({ step: "give_done", xp: state.xp + 20 });
           }}
         />
