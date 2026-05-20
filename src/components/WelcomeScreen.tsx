@@ -1,5 +1,6 @@
 import { Gift, HandHeart, Sparkles, User } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { GamePath } from "@/lib/game-state";
 
@@ -7,14 +8,37 @@ interface Props {
   onChoose: (path: GamePath) => void;
 }
 
+const GREETING_KEY = "cozygift_greeted_session";
+
+const MOTIVATIONAL_PHRASES = [
+  "Сегодня отличный день, чтобы поделиться ✨",
+  "Чей-то подарок уже ждёт тебя 🎁",
+  "Подари — и мир станет чуть теплее 💚",
+  "Маленький жест — большая радость 🌿",
+  "Что подаришь миру сегодня? 💌",
+  "Получать — тоже искусство 🤍",
+  "Доброта возвращается бумерангом 🌀",
+  "Поделись тем, что больше не нужно 🎀",
+];
+
 export function WelcomeScreen({ onChoose }: Props) {
+  const heading = useMemo(() => {
+    if (typeof window === "undefined") return "Привет 👋";
+    const greeted = sessionStorage.getItem(GREETING_KEY);
+    if (!greeted) {
+      sessionStorage.setItem(GREETING_KEY, "1");
+      return "Привет 👋";
+    }
+    return MOTIVATIONAL_PHRASES[Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length)];
+  }, []);
+
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-8 px-5 py-10">
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-peach shadow-sm">
           <Sparkles className="h-10 w-10 text-peach-foreground" />
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">Привет 👋</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{heading}</h1>
         <p className="text-balance text-muted-foreground">
           Это уютное место, где люди дарят друг другу время, вещи и заботу.
           С чего начнём твоё приключение?
