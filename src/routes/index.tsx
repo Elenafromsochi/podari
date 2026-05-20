@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
@@ -17,17 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  loadState,
-  saveState,
-  addGift,
-  type GameState,
-  type GamePath,
-} from "@/lib/game-state";
-import { loadUser, updateUser, type UserProfile } from "@/lib/auth-state";
+import { loadState, saveState, type GameState, type GamePath } from "@/lib/game-state";
+import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { claimGift } from "@/lib/cozy.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
-const GIFT_COST = 100;
+const ACTIVE_TX_KEY = "cozygift_active_tx";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -48,16 +45,42 @@ function Index() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
+  const [activeTxId, setActiveTxId] = useState<string | null>(null);
   const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
   const [insufficientOpen, setInsufficientOpen] = useState(false);
 
+  const claim = useServerFn(claimGift);
+
+  const refreshUser = async () => {
+    const u = await loadUser();
+    setUser(u);
+    return u;
+  };
+
   useEffect(() => {
+    let mounted = true;
     setState(loadState());
-    setUser(loadUser());
-    setAuthChecked(true);
+    (async () => {
+      const u = await loadUser();
+      if (!mounted) return;
+      setUser(u);
+      setAuthChecked(true);
+    })();
     if (typeof window !== "undefined") {
       setActiveChatGift(localStorage.getItem(ACTIVE_CHAT_KEY));
+      setActiveTxId(localStorage.getItem(ACTIVE_TX_KEY));
     }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setUser(null);
+      } else {
+        loadUser().then(setUser);
+      }
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   if (!authChecked || !state) return null;
@@ -104,15 +127,13 @@ function Index() {
         <GiveGiftForm
           onBack={() => update({ step: "give_chip" })}
           presetHint={givePresetHint}
-          onDone={(giftId) => {
-            addGift("posted", giftId);
+          onDone={async () => {
             burstConfetti();
             toast.success("+20 Опыта начислено ✨", {
               description: "Подарок размещён в игровом мире",
             });
-            const u = updateUser({ xp_balance: (user?.xp_balance ?? 0) + 20 });
-            if (u) setUser(u);
-            update({ step: "give_done", xp: state.xp + 20 });
+            await refreshUser();
+            update({ step: "give_done" });
           }}
         />
       )}
@@ -151,55 +172,60 @@ function Index() {
       {(state.step === "receive_categories" || state.step === "receive_feed") && (
         <ReceiveGiftFlow
           onBack={backToWelcome}
-          onPick={(giftId) => {
-            const balance = user?.l_points_balance ?? state.balance;
-            if (balance < GIFT_COST) {
-              setInsufficientOpen(true);
-              return;
+          onPick={async (giftId) => {
+            try {
+              const res = await claim({ data: { gift_id: giftId } });
+              localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
+              localStorage.setItem(ACTIVE_TX_KEY, res.transaction_id);
+              setActiveChatGift(giftId);
+              setActiveTxId(res.transaction_id);
+              await refreshUser();
+              toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
+                description: "Открываем чат с дарителем",
+              });
+              update({ step: "chat" });
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              if (msg.includes("INSUFFICIENT_BALANCE")) {
+                setInsufficientOpen(true);
+              } else if (msg.includes("ALREADY_TAKEN")) {
+                toast.error("Подарок уже забрали", { description: "Выбери другой 💚" });
+              } else if (msg.includes("OWN_GIFT")) {
+                toast.error("Это твой подарок", {
+                  description: "Своё забрать нельзя — выбери чужой 🙂",
+                });
+              } else {
+                toast.error("Не получилось забрать подарок", { description: msg });
+              }
             }
-            addGift("received", giftId);
-            localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
-            setActiveChatGift(giftId);
-            const newBalance = Math.max(0, balance - GIFT_COST);
-            const u = updateUser({ l_points_balance: newBalance });
-            if (u) setUser(u);
-            toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
-              description: "Открываем чат с дарителем",
-            });
-            update({ step: "chat", balance: newBalance });
           }}
         />
       )}
 
       {(state.step === "chat" || state.step === "done") && (
-        activeChatGift ? (
+        activeChatGift && activeTxId ? (
           <ChatScreen
             giftId={activeChatGift}
+            transactionId={activeTxId}
             onBack={() => {
               localStorage.removeItem(ACTIVE_CHAT_KEY);
+              localStorage.removeItem(ACTIVE_TX_KEY);
               setActiveChatGift(null);
+              setActiveTxId(null);
               backToWelcome();
             }}
-            onHandover={() => {
-              // Получатель подтвердил получение
-              const fresh = loadState();
-              const next = { ...fresh, xp: fresh.xp + 20 };
-              saveState(next);
-              setState(next);
-              const u = updateUser({ xp_balance: (loadUser()?.xp_balance ?? 0) + 20 });
-              if (u) setUser(u);
+            onHandover={async () => {
+              await refreshUser();
             }}
-            onReview={() => {
+            onReview={async () => {
               burstConfetti();
               toast.success("Спасибо за отзыв • +20 Опыта 💚");
-              const fresh = loadState();
-              const next = { ...fresh, xp: fresh.xp + 20, path: null, step: "welcome" as const };
-              saveState(next);
-              setState(next);
-              const u = updateUser({ xp_balance: (loadUser()?.xp_balance ?? 0) + 20 });
-              if (u) setUser(u);
+              await refreshUser();
               localStorage.removeItem(ACTIVE_CHAT_KEY);
+              localStorage.removeItem(ACTIVE_TX_KEY);
               setActiveChatGift(null);
+              setActiveTxId(null);
+              backToWelcome();
             }}
           />
         ) : (

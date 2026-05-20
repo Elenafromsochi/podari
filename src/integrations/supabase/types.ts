@@ -231,7 +231,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calc_level: { Args: { _xp: number }; Returns: number }
+      claim_gift: {
+        Args: { _gift_id: string }
+        Returns: {
+          chat_id: string
+          transaction_id: string
+        }[]
+      }
+      confirm_handover: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
