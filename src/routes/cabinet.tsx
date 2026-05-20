@@ -1,8 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadState, type GameState } from "@/lib/game-state";
+import { loadUser, type UserProfile } from "@/lib/auth-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const Route = createFileRoute("/cabinet")({
   head: () => ({
@@ -26,12 +33,14 @@ type Gift = {
 
 function CabinetPage() {
   const [state, setState] = useState<GameState | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [gifts, setGifts] = useState<Record<string, Gift>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const s = loadState();
     setState(s);
+    setUser(loadUser());
     const ids = Array.from(
       new Set([...s.giftsPosted, ...s.giftsGifted, ...s.giftsReceived]),
     );
@@ -86,12 +95,27 @@ function CabinetPage() {
       <Card className="mb-6 border-primary/20 bg-card/80">
         <CardHeader>
           <CardTitle className="text-2xl">✨ Личный кабинет</CardTitle>
+          {user?.name && (
+            <p className="text-sm text-muted-foreground">Привет, {user.name}!</p>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="XP" value={state.xp} />
-            <Stat label="Уровень" value={state.level} />
-            <Stat label="Баланс" value={state.balance} />
+            <Stat
+              label="XP"
+              value={state.xp}
+              hint="XP — опыт в игре. Начисляется за каждое действие: +20 за публикацию подарка, +40 за подтверждение получения, +80 за вручённый подарок, +40 за отзыв. По мере накопления XP растёт ваш уровень."
+            />
+            <Stat
+              label="Уровень"
+              value={state.level}
+              hint="Уровень растёт по мере накопления XP. Каждые 200 XP — новый уровень. На новых уровнях открываются особые категории подарков и бонусы."
+            />
+            <Stat
+              label="L-баллы"
+              value={user?.l_points_balance ?? state.balance}
+              hint="L-баллы — внутренняя валюта мира подарков. 100 баллов начислены при регистрации в подарок. Тратятся, когда вы выбираете подарок (резервируются на безопасной сделке), и возвращаются как награда за активность."
+            />
           </div>
         </CardContent>
       </Card>
@@ -152,9 +176,22 @@ function CabinetPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
-    <div className="rounded-xl bg-mint/30 px-2 py-3">
+    <div className="relative rounded-xl bg-mint/30 px-2 py-3">
+      {hint && (
+        <Popover>
+          <PopoverTrigger
+            aria-label={`Подробнее: ${label}`}
+            className="absolute right-1.5 top-1.5 text-muted-foreground transition hover:text-foreground"
+          >
+            <HelpCircle className="h-3.5 w-3.5" />
+          </PopoverTrigger>
+          <PopoverContent side="bottom" className="w-64 text-xs leading-relaxed">
+            {hint}
+          </PopoverContent>
+        </Popover>
+      )}
       <div className="text-xl font-semibold">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
