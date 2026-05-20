@@ -176,9 +176,22 @@ function CabinetPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
-    <div className="rounded-xl bg-mint/30 px-2 py-3">
+    <div className="relative rounded-xl bg-mint/30 px-2 py-3">
+      {hint && (
+        <Popover>
+          <PopoverTrigger
+            aria-label={`Подробнее: ${label}`}
+            className="absolute right-1.5 top-1.5 text-muted-foreground transition hover:text-foreground"
+          >
+            <HelpCircle className="h-3.5 w-3.5" />
+          </PopoverTrigger>
+          <PopoverContent side="bottom" className="w-64 text-xs leading-relaxed">
+            {hint}
+          </PopoverContent>
+        </Popover>
+      )}
       <div className="text-xl font-semibold">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
