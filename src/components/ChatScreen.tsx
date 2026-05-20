@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Send, Bell } from "lucide-react";
+import { Mic, MicOff, Send, Bell, Gift as GiftIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { ReviewModal } from "@/components/ReviewModal";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null };
