@@ -9,10 +9,8 @@ type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null };
 
 const AUTO_MESSAGES = [
-  "Здравствуйте! Спасибо за подарок 💚",
-  "Подскажите, когда удобно забрать?",
-  "Очень рад(а), что нашёл(ла) ваш подарок ✨",
-  "Можно уточнить детали?",
+  "Мне понравился ваш подарок. Как могу его забрать? 😊",
+  "Расскажите подробнее про ваш подарок, а именно… 💬",
 ];
 
 const STORAGE_KEY = (giftId: string) => `cozygift_chat_${giftId}`;
@@ -32,9 +30,13 @@ type SpeechRecognitionLike = {
 export function ChatScreen({
   giftId,
   onBack,
+  onHandover,
+  onReview,
 }: {
   giftId: string;
   onBack: () => void;
+  onHandover?: () => void;
+  onReview?: () => void;
 }) {
   const [gift, setGift] = useState<Gift | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -89,9 +91,10 @@ export function ChatScreen({
         ts: Date.now(),
       },
     ]);
-    toast.success("Получатель уведомлён", {
+    toast.success("Получатель уведомлён • +80 XP дарителю", {
       description: "Откроется окно отзыва о подарке",
     });
+    onHandover?.();
     setTimeout(() => setShowReview(true), 600);
   };
 
@@ -277,7 +280,7 @@ export function ChatScreen({
           giftId={giftId}
           onSubmit={() => {
             setShowReview(false);
-            toast.success("Спасибо за отзыв 💚");
+            onReview?.();
           }}
         />
       )}

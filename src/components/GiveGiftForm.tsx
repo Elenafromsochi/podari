@@ -10,10 +10,11 @@ import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 interface Props {
   onDone: (giftId: string) => void;
   onBack: () => void;
+  presetHint?: string | null;
 }
 
-export function GiveGiftForm({ onDone, onBack }: Props) {
-  const [description, setDescription] = useState("");
+export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
+  const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -222,7 +223,7 @@ export function GiveGiftForm({ onDone, onBack }: Props) {
           )}
 
           <Button onClick={submit} disabled={loading} className="w-full" size="lg">
-            {loading ? "Готовим..." : "🎁 Опубликовать подарок"}
+            {loading ? "Готовим..." : "🎁 Разместить в игровом мире (+20 XP сейчас, +80 XP и баллы после вручения)"}
           </Button>
         </CardContent>
       </Card>

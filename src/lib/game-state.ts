@@ -4,6 +4,7 @@ const KEY = "cozygift_game_state_v1";
 export type GamePath = "give" | "receive" | null;
 export type GameStep =
   | "welcome"
+  | "give_chip"
   | "give_form"
   | "give_done"
   | "receive_categories"
