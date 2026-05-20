@@ -85,16 +85,16 @@ function Index() {
 
   // Уведомление дарителю: кто-то забрал его подарок
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.user_id) return;
     const channel = supabase
-      .channel(`tx-for-${user.id}`)
+      .channel(`tx-for-${user.user_id}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "transactions",
-          filter: `sender_id=eq.${user.id}`,
+          filter: `sender_id=eq.${user.user_id}`,
         },
         async (payload) => {
           const tx = payload.new as { id: string; gift_id: string };
@@ -124,7 +124,7 @@ function Index() {
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.user_id]);
 
   if (!authChecked || !state) return null;
 
