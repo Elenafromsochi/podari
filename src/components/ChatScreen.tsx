@@ -280,7 +280,7 @@ export function ChatScreen({
           giftId={giftId}
           onSubmit={() => {
             setShowReview(false);
-            toast.success("Спасибо за отзыв 💚");
+            onReview?.();
           }}
         />
       )}
