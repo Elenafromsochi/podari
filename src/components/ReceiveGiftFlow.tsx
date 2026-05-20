@@ -12,6 +12,8 @@ type Gift = {
   category: string;
   image_url: string | null;
   cost: number;
+  owner_id: string | null;
+  owner_name?: string;
 };
 
 type Step = "categories" | "feed" | "search";
@@ -26,13 +28,6 @@ type SR = {
   continuous: boolean;
   interimResults: boolean;
 };
-
-// Псевдо-имена дарителей для демо
-const GIVER_NAMES = ["Анна", "Михаил", "Дарья", "Иван", "Ольга", "Сергей", "Мария", "Алексей"];
-const giverFor = (id: string) =>
-  GIVER_NAMES[
-    Math.abs([...id].reduce((a, c) => a + c.charCodeAt(0), 0)) % GIVER_NAMES.length
-  ];
 
 export function ReceiveGiftFlow({
   onBack,
@@ -52,10 +47,29 @@ export function ReceiveGiftFlow({
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost")
+        .select("id,title,description,category,image_url,cost,owner_id")
         .eq("status", "available")
         .order("created_at", { ascending: false });
-      setGifts((data as Gift[]) ?? []);
+      const rows = (data as Gift[]) ?? [];
+      const ownerIds = Array.from(
+        new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)),
+      );
+      let nameMap = new Map<string, string>();
+      if (ownerIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id,display_name")
+          .in("user_id", ownerIds);
+        nameMap = new Map(
+          (profs ?? []).map((p) => [p.user_id as string, (p.display_name as string) || "Гость"]),
+        );
+      }
+      setGifts(
+        rows.map((g) => ({
+          ...g,
+          owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
+        })),
+      );
     })();
   }, []);
 
@@ -116,7 +130,7 @@ export function ReceiveGiftFlow({
           <div className="truncate font-medium">{g.title}</div>
           <div className="mt-0.5 text-xs text-muted-foreground capitalize">{g.category}</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            Даритель: <span className="font-medium text-foreground">{giverFor(g.id)}</span>
+            Даритель: <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
           </div>
           {g.description && (
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description}</p>
