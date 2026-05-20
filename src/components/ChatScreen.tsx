@@ -87,12 +87,12 @@ export function ChatScreen({
       {
         id: crypto.randomUUID(),
         from: "me",
-        text: "🎁 Подарок передан",
+        text: "✅ Получение подтверждено",
         ts: Date.now(),
       },
     ]);
-    toast.success("Получатель уведомлён • +80 XP дарителю", {
-      description: "Откроется окно отзыва о подарке",
+    toast.success("Получение подтверждено • +40 XP", {
+      description: "Оставьте отзыв о дарителе",
     });
     onHandover?.();
     setTimeout(() => setShowReview(true), 600);
