@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { publishGift } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 
 interface Props {
