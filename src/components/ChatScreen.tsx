@@ -30,9 +30,13 @@ type SpeechRecognitionLike = {
 export function ChatScreen({
   giftId,
   onBack,
+  onHandover,
+  onReview,
 }: {
   giftId: string;
   onBack: () => void;
+  onHandover?: () => void;
+  onReview?: () => void;
 }) {
   const [gift, setGift] = useState<Gift | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
