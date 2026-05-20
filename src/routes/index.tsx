@@ -63,7 +63,8 @@ function Index() {
   }
 
   const update = (patch: Partial<GameState>) => {
-    const next = { ...state, ...patch };
+    const fresh = loadState();
+    const next = { ...fresh, ...patch };
     setState(next);
     saveState(next);
   };
