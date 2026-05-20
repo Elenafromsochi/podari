@@ -8,6 +8,7 @@ import { GiveGiftChips } from "@/components/GiveGiftChips";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
+import { AuthFlow } from "@/components/AuthFlow";
 import {
   loadState,
   saveState,
@@ -15,6 +16,7 @@ import {
   type GameState,
   type GamePath,
 } from "@/lib/game-state";
+import { loadUser, type UserProfile } from "@/lib/auth-state";
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
 
