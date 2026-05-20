@@ -178,6 +178,16 @@ export function ChatScreen({
           <div className="truncate text-sm font-medium">Чат с дарителем</div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
+        <Button
+          size="sm"
+          variant={handedOver ? "secondary" : "default"}
+          disabled={handedOver}
+          onClick={markHandedOver}
+          className="rounded-full"
+        >
+          <GiftIcon className="h-4 w-4" />
+          {handedOver ? "Передано" : "Подарено"}
+        </Button>
       </div>
 
       {/* Мок-уведомление о доставленном уведомлении дарителю */}
