@@ -1,21 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { HelpCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { loadState, type GameState } from "@/lib/game-state";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  getMyPostedGifts,
+  getMyReceivedGifts,
+  getMyGiftedGifts,
+} from "@/lib/cozy.functions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/cabinet")({
   head: () => ({
     meta: [
       { title: "Личный кабинет — CozyGift" },
-      { name: "description", content: "Ваш прогресс, XP и подарки" },
+      { name: "description", content: "Ваш прогресс, Опыт и подарки" },
     ],
   }),
   component: CabinetPage,
@@ -28,94 +28,69 @@ type Gift = {
   description: string | null;
   image_url: string | null;
   status: string;
-  created_at: string;
 };
 
+type TxRow = { id: string; status: string; gift: Gift | null };
+
 function CabinetPage() {
-  const [state, setState] = useState<GameState | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [gifts, setGifts] = useState<Record<string, Gift>>({});
+  const [posted, setPosted] = useState<Gift[]>([]);
+  const [received, setReceived] = useState<TxRow[]>([]);
+  const [gifted, setGifted] = useState<TxRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const postedFn = useServerFn(getMyPostedGifts);
+  const receivedFn = useServerFn(getMyReceivedGifts);
+  const giftedFn = useServerFn(getMyGiftedGifts);
+
   useEffect(() => {
-    const s = loadState();
-    setState(s);
-    setUser(loadUser());
-    const ids = Array.from(
-      new Set([...s.giftsPosted, ...s.giftsGifted, ...s.giftsReceived]),
-    );
-    if (ids.length === 0) {
-      setLoading(false);
-      return;
-    }
-    supabase
-      .from("gifts")
-      .select("id,title,category,description,image_url,status,created_at")
-      .in("id", ids)
-      .then(({ data }) => {
-        const map: Record<string, Gift> = {};
-        (data ?? []).forEach((g) => (map[g.id] = g as Gift));
-        setGifts(map);
+    (async () => {
+      const u = await loadUser();
+      setUser(u);
+      if (!u) {
         setLoading(false);
-      });
-  }, []);
+        return;
+      }
+      try {
+        const [p, r, g] = await Promise.all([postedFn(), receivedFn(), giftedFn()]);
+        setPosted((p as Gift[]) ?? []);
+        setReceived((r as TxRow[]) ?? []);
+        setGifted((g as TxRow[]) ?? []);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [postedFn, receivedFn, giftedFn]);
 
-  if (!state) return null;
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-md p-8 text-center text-muted-foreground">
+        Войдите, чтобы открыть личный кабинет.{" "}
+        <Link to="/" className="text-primary underline-offset-4 hover:underline">На главную</Link>
+      </div>
+    );
+  }
 
-  const sections: { title: string; emoji: string; ids: string[]; empty: string }[] = [
-    {
-      title: "Выложенные",
-      emoji: "📤",
-      ids: state.giftsPosted,
-      empty: "Вы пока не публиковали подарков",
-    },
-    {
-      title: "Подаренные",
-      emoji: "💝",
-      ids: state.giftsGifted,
-      empty: "Пока никому не передали подарок",
-    },
-    {
-      title: "Полученные",
-      emoji: "🎁",
-      ids: state.giftsReceived,
-      empty: "Вы пока ничего не получили",
-    },
+  const sections: { title: string; emoji: string; gifts: Gift[]; empty: string }[] = [
+    { title: "Выложенные", emoji: "📤", gifts: posted, empty: "Вы пока не публиковали подарков" },
+    { title: "Подаренные", emoji: "💝", gifts: gifted.map((t) => t.gift).filter((g): g is Gift => !!g), empty: "Пока никому не передали подарок" },
+    { title: "Полученные", emoji: "🎁", gifts: received.map((t) => t.gift).filter((g): g is Gift => !!g), empty: "Вы пока ничего не получили" },
   ];
 
   return (
     <div className="mx-auto w-full max-w-md px-5 py-8">
-      <Link
-        to="/"
-        className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← На главную
-      </Link>
+      <Link to="/" className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground">← На главную</Link>
 
       <Card className="mb-6 border-primary/20 bg-card/80">
         <CardHeader>
           <CardTitle className="text-2xl">✨ Личный кабинет</CardTitle>
-          {user?.name && (
-            <p className="text-sm text-muted-foreground">Привет, {user.name}!</p>
-          )}
+          <p className="text-sm text-muted-foreground">Привет, {user.display_name}!</p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat
-              label="Опыт"
-              value={state.xp}
-              hint="Начисляется за каждое действие: +20 за публикацию подарка, +80 за вручённый подарок, +20 за отзыв, +50 за приглашённого друга, +20 за получение подарка. По мере накопления Опыта растёт ваш Уровень."
-            />
-            <Stat
-              label="Уровень"
-              value={state.level}
-              hint="Уровень растёт по мере накопления Опыта. Каждые 200 Опыта — новый уровень. На новых уровнях открываются особые категории подарков и бонусы."
-            />
-            <Stat
-              label="Подарочные баллы"
-              value={user?.l_points_balance ?? state.balance}
-              hint="Расход: Тратятся, когда ты забираешь подарок (сумма замораживается на время Безопасной Сделки). Доход: Возвращаются на счет, когда другой участник принимает твой дар. Делись своими ресурсами, чтобы открывать новые возможности Клуба."
-            />
+            <Stat label="Опыт" value={user.xp} hint="Начисляется за каждое действие: +20 за публикацию подарка, +80 за вручённый подарок, +20 за отзыв, +20 за получение подарка. По мере накопления Опыта растёт Уровень." />
+            <Stat label="Уровень" value={user.level} hint="Уровень растёт по мере накопления Опыта. Каждые 200 Опыта — новый уровень." />
+            <Stat label="Подарочные баллы" value={user.balance} hint="Расход: списываются (замораживаются), когда забираешь подарок. Доход: возвращаются, когда твой подарок принят получателем." />
           </div>
         </CardContent>
       </Card>
@@ -125,48 +100,30 @@ function CabinetPage() {
           <section key={sec.title}>
             <h2 className="mb-2 text-lg font-semibold">
               {sec.emoji} {sec.title}{" "}
-              <span className="text-sm font-normal text-muted-foreground">
-                ({sec.ids.length})
-              </span>
+              <span className="text-sm font-normal text-muted-foreground">({sec.gifts.length})</span>
             </h2>
-            {sec.ids.length === 0 ? (
+            {sec.gifts.length === 0 ? (
               <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-                {sec.empty}
+                {loading ? "Загружаем..." : sec.empty}
               </p>
-            ) : loading ? (
-              <p className="text-sm text-muted-foreground">Загружаем...</p>
             ) : (
               <ul className="space-y-2">
-                {sec.ids
-                  .map((id) => gifts[id])
-                  .filter(Boolean)
-                  .map((g) => (
-                    <li
-                      key={g.id}
-                      className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm"
-                    >
-                      {g.image_url ? (
-                        <img
-                          src={g.image_url}
-                          alt={g.title}
-                          className="h-16 w-16 shrink-0 rounded-md object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">
-                          🎁
-                        </div>
+                {sec.gifts.map((g) => (
+                  <li key={g.id} className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm">
+                    {g.image_url ? (
+                      <img src={g.image_url} alt={g.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
+                    ) : (
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">🎁</div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{g.title}</p>
+                      <p className="text-xs text-muted-foreground">{g.category} • {g.status}</p>
+                      {g.description && (
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
                       )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{g.title}</p>
-                        <p className="text-xs text-muted-foreground">{g.category}</p>
-                        {g.description && (
-                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                            {g.description}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </section>
@@ -187,9 +144,7 @@ function Stat({ label, value, hint }: { label: string; value: number; hint?: str
           >
             <HelpCircle className="h-3.5 w-3.5" />
           </PopoverTrigger>
-          <PopoverContent side="bottom" className="w-64 text-xs leading-relaxed">
-            {hint}
-          </PopoverContent>
+          <PopoverContent side="bottom" className="w-64 text-xs leading-relaxed">{hint}</PopoverContent>
         </Popover>
       )}
       <div className="text-xl font-semibold">{value}</div>
