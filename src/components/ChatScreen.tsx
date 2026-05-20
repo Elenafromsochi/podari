@@ -64,6 +64,37 @@ export function ChatScreen({
     }
   }, [giftId]);
 
+  // Restore handover/review state
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem(`cozygift_handover_${giftId}`);
+      const r = localStorage.getItem(`cozygift_review_${giftId}`);
+      if (h) setHandedOver(true);
+      if (h && !r) setShowReview(true);
+    } catch {
+      /* noop */
+    }
+  }, [giftId]);
+
+  const markHandedOver = () => {
+    if (handedOver) return;
+    setHandedOver(true);
+    localStorage.setItem(`cozygift_handover_${giftId}`, String(Date.now()));
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        from: "me",
+        text: "🎁 Подарок передан",
+        ts: Date.now(),
+      },
+    ]);
+    toast.success("Получатель уведомлён", {
+      description: "Откроется окно отзыва о подарке",
+    });
+    setTimeout(() => setShowReview(true), 600);
+  };
+
   // Persist
   useEffect(() => {
     if (messages.length) {
