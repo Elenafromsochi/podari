@@ -307,7 +307,7 @@ export function AuthFlow({ onAuthed }: Props) {
             onClick={finishOnboarding}
             className="mt-2 h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
           >
-            Войти в игровой мир
+            Войти в мир подарков
           </Button>
         </div>
       )}
