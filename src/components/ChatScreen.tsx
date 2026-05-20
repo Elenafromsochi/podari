@@ -247,15 +247,17 @@ export function ChatScreen({
       {showReview && (
         <ReviewModal
           giftId={giftId}
-          onSubmit={async (rating, comment) => {
+          onSubmit={async ({ presetId, label, comment }) => {
+            const rating = presetId === "success" ? 5 : 3;
+            const fullComment = [label, comment].filter(Boolean).join(" — ");
             try {
               if (gift?.owner_id) {
                 await reviewFn({
                   data: {
                     transaction_id: transactionId,
                     target_id: gift.owner_id,
-                    rating: rating ?? 5,
-                    comment: comment ?? undefined,
+                    rating,
+                    comment: fullComment || undefined,
                   },
                 });
               }
