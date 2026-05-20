@@ -34,6 +34,14 @@ export function saveUser(u: UserProfile) {
   localStorage.setItem(KEY, JSON.stringify(u));
 }
 
+export function updateUser(patch: Partial<UserProfile>): UserProfile | null {
+  const u = loadUser();
+  if (!u) return null;
+  const next = { ...u, ...patch };
+  saveUser(next);
+  return next;
+}
+
 export function clearUser() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
