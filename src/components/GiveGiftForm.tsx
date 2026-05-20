@@ -115,20 +115,15 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
       });
 
       setStatus("💾 Сохраняем подарок...");
-      const { data, error: dbErr } = await supabase
-        .from("gifts")
-        .insert({
+      const { id } = await publishGiftFn({
+        data: {
           title,
           description: description.trim() || null,
           category,
           image_url: photoPreview,
-          status: "available",
-          cost: 50,
-        })
-        .select("id")
-        .single();
-      if (dbErr) throw dbErr;
-      onDone(data!.id);
+        },
+      });
+      onDone(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Что-то пошло не так");
     } finally {
