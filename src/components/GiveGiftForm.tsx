@@ -223,7 +223,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
           )}
 
           <Button onClick={submit} disabled={loading} className="w-full" size="lg">
-            {loading ? "Готовим..." : "🎁 Разместить в игровом мире (+20 XP сейчас, +80 XP и баллы после вручения)"}
+            {loading ? "Готовим..." : "🎁 Выложить подарок"}
           </Button>
         </CardContent>
       </Card>
