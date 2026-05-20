@@ -153,6 +153,36 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
+            <Label>Фото</Label>
+            <p className="text-xs text-muted-foreground">
+              🤖 ИИ автоматически напишет описание по фотографии
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                📁 Выбрать файл
+                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
+              </label>
+              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                📷 Сделать фото
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={onPhoto}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {photoPreview && (
+              <img
+                src={photoPreview}
+                alt="Превью"
+                className="mt-2 max-h-48 w-full rounded-md border object-cover"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="desc">Описание</Label>
             <div className="flex gap-2">
               <Textarea
@@ -182,33 +212,6 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
                 ? "🎙️ Говорите — текст появится в поле. Нажмите ещё раз, чтобы остановить."
                 : "Нажмите 🎙️ и продиктуйте описание голосом."}
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Фото (по желанию)</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                📁 Выбрать файл
-                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
-              </label>
-              <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                📷 Сделать фото
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={onPhoto}
-                  className="hidden"
-                />
-              </label>
-            </div>
-            {photoPreview && (
-              <img
-                src={photoPreview}
-                alt="Превью"
-                className="mt-2 max-h-48 w-full rounded-md border object-cover"
-              />
-            )}
           </div>
 
           {status && (
