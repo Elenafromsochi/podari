@@ -83,6 +83,49 @@ function Index() {
     };
   }, []);
 
+  // Уведомление дарителю: кто-то забрал его подарок
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`tx-for-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transactions",
+          filter: `sender_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const tx = payload.new as { id: string; gift_id: string };
+          const { data: gift } = await supabase
+            .from("gifts")
+            .select("title")
+            .eq("id", tx.gift_id)
+            .maybeSingle();
+          toast.success("Твой подарок выбрали! 💚", {
+            description: `«${gift?.title ?? "Подарок"}» — открой чат с получателем`,
+            action: {
+              label: "В чат",
+              onClick: () => {
+                localStorage.setItem(ACTIVE_CHAT_KEY, tx.gift_id);
+                localStorage.setItem(ACTIVE_TX_KEY, tx.id);
+                setActiveChatGift(tx.gift_id);
+                setActiveTxId(tx.id);
+                update({ step: "chat" });
+              },
+            },
+            duration: 12000,
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   if (!authChecked || !state) return null;
 
   if (!user) {
