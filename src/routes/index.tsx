@@ -8,6 +8,7 @@ import { GiveGiftChips } from "@/components/GiveGiftChips";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
+import { AuthFlow } from "@/components/AuthFlow";
 import {
   loadState,
   saveState,
@@ -15,6 +16,7 @@ import {
   type GameState,
   type GamePath,
 } from "@/lib/game-state";
+import { loadUser, type UserProfile } from "@/lib/auth-state";
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
 
@@ -34,17 +36,31 @@ const burstConfetti = () => {
 
 function Index() {
   const [state, setState] = useState<GameState | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
   const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
+    setUser(loadUser());
+    setAuthChecked(true);
     if (typeof window !== "undefined") {
       setActiveChatGift(localStorage.getItem(ACTIVE_CHAT_KEY));
     }
   }, []);
 
-  if (!state) return null;
+  if (!authChecked || !state) return null;
+
+  if (!user) {
+    return (
+      <AuthFlow
+        onAuthed={(u) => {
+          setUser(u);
+        }}
+      />
+    );
+  }
 
   const update = (patch: Partial<GameState>) => {
     const next = { ...state, ...patch };
