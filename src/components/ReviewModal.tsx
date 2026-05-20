@@ -2,14 +2,29 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Mic, MicOff } from "lucide-react";
 
 const PRESETS = [
-  { id: "perfect", label: "Подарок полностью соответствует описанию, большое спасибо! 💚", tone: "positive" },
-  { id: "nuances", label: "Подарок отличный, но есть нюансы…", tone: "neutral" },
-  { id: "difficulties", label: "Возникли сложности с получением подарка…", tone: "negative" },
-  { id: "not_match", label: "Подарок не совсем соответствует описанию", tone: "negative" },
-  { id: "warm", label: "Очень тёплое общение с дарителем ✨", tone: "positive" },
+  {
+    id: "success",
+    label: "Всё прошло успешно, подарок полностью соответствует описанию! 🔥",
+  },
+  {
+    id: "nuances",
+    label: "Подарок классный, но есть нюансы… 💬",
+  },
 ] as const;
+
+type SR = {
+  start: () => void;
+  stop: () => void;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+};
 
 export function ReviewModal({
   giftId,
@@ -20,9 +35,40 @@ export function ReviewModal({
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+  const [listening, setListening] = useState(false);
+
+  const toggleMic = (target: "main" | "nuances") => {
+    const W = window as unknown as {
+      SpeechRecognition?: new () => SR;
+      webkitSpeechRecognition?: new () => SR;
+    };
+    const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
+    if (!Ctor) return;
+    if (listening) {
+      setListening(false);
+      return;
+    }
+    const r = new Ctor();
+    r.lang = "ru-RU";
+    r.continuous = false;
+    r.interimResults = true;
+    r.onresult = (e) => {
+      let t = "";
+      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      setComment(t);
+      if (target === "nuances" && !selected) setSelected("nuances");
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    r.start();
+    setListening(true);
+  };
+
+  const nuancesSelected = selected === "nuances";
+  const canSubmit = selected && (!nuancesSelected || comment.trim().length > 0);
 
   const submit = () => {
-    if (!selected) return;
+    if (!selected || !canSubmit) return;
     const preset = PRESETS.find((p) => p.id === selected)!;
     try {
       localStorage.setItem(
@@ -43,9 +89,9 @@ export function ReviewModal({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Даритель отметил подарок как переданный 🎁</DialogTitle>
+          <DialogTitle>Расскажи, как всё прошло! ✨</DialogTitle>
           <DialogDescription>
-            Поделитесь впечатлением — это важно для равновесия системы. Окно закроется после отправки отзыва.
+            Это важно для равновесия системы. Окно закроется после отправки отзыва — за него вы получите +40 XP.
           </DialogDescription>
         </DialogHeader>
 
@@ -65,15 +111,52 @@ export function ReviewModal({
           ))}
         </div>
 
-        <Textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Комментарий (по желанию)"
-          className="mt-2"
-        />
+        {nuancesSelected && (
+          <div className="mt-2 animate-fade-in space-y-2">
+            <label className="text-sm font-medium">Расскажи подробнее, что за нюансы?</label>
+            <div className="relative">
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Поделись деталями, что можно улучшить…"
+                rows={4}
+                className="pr-12"
+              />
+              <button
+                onClick={() => toggleMic("nuances")}
+                aria-label="Голосовой ввод"
+                className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border ${
+                  listening ? "bg-destructive text-destructive-foreground" : "bg-background"
+                }`}
+              >
+                {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+        )}
 
-        <Button onClick={submit} disabled={!selected} className="mt-2 w-full">
-          Отправить отзыв
+        {!nuancesSelected && (
+          <div className="relative mt-2">
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Комментарий (по желанию)"
+              className="pr-12"
+            />
+            <button
+              onClick={() => toggleMic("main")}
+              aria-label="Голосовой ввод"
+              className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border ${
+                listening ? "bg-destructive text-destructive-foreground" : "bg-background"
+              }`}
+            >
+              {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+          </div>
+        )}
+
+        <Button onClick={submit} disabled={!canSubmit} className="mt-2 w-full" size="lg">
+          Отправить отзыв (+40 XP)
         </Button>
       </DialogContent>
     </Dialog>
