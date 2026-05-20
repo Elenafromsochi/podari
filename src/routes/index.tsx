@@ -49,6 +49,7 @@ function Index() {
   const [authChecked, setAuthChecked] = useState(false);
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
   const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
+  const [insufficientOpen, setInsufficientOpen] = useState(false);
 
   useEffect(() => {
     setState(loadState());
