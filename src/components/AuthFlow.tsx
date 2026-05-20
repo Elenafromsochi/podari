@@ -126,7 +126,7 @@ export function AuthFlow({ onAuthed }: Props) {
     // Referral bonus: owner of referral code gets +50 XP — for demo, just toast it.
     if (u.ref_code_used) {
       toast.success("Бонус по реферальному коду активирован ✨", {
-        description: "+50 XP отправлено пригласившему",
+        description: "+50 Опыта отправлено пригласившему",
       });
     }
     confetti({
@@ -299,7 +299,7 @@ export function AuthFlow({ onAuthed }: Props) {
               className="h-12 rounded-2xl text-base"
             />
             <p className="text-xs text-muted-foreground">
-              По коду — +100 баллов вам и +50 XP пригласившему
+              По коду — +100 баллов вам и +50 Опыта пригласившему
             </p>
           </div>
 
