@@ -157,9 +157,9 @@ function Index() {
               backToWelcome();
             }}
             onHandover={() => {
-              addGift("gifted", activeChatGift);
+              // Получатель подтвердил получение — даритель здесь не задействован
               const fresh = loadState();
-              const next = { ...fresh, xp: fresh.xp + 80 };
+              const next = { ...fresh, xp: fresh.xp + 40 };
               saveState(next);
               setState(next);
             }}
