@@ -96,7 +96,7 @@ function Index() {
           onDone={(giftId) => {
             addGift("posted", giftId);
             burstConfetti();
-            toast.success("+20 XP начислено ✨", {
+            toast.success("+20 Опыта начислено ✨", {
               description: "Подарок размещён в игровом мире",
             });
             update({ step: "give_done", xp: state.xp + 20 });
@@ -109,9 +109,9 @@ function Index() {
           <div className="text-5xl">🎉</div>
           <h2 className="text-2xl font-semibold">Подарок размещён!</h2>
           <p className="rounded-xl bg-mint/40 px-4 py-3 text-sm text-foreground">
-            +20 XP начислено ✨ <br />
+            +20 Опыта начислено ✨ <br />
             <span className="text-xs text-muted-foreground">
-              +80 XP и баллы — после вручения
+              +80 Опыта и баллы — после вручения
             </span>
           </p>
           <p className="text-balance text-muted-foreground">
@@ -157,17 +157,17 @@ function Index() {
               backToWelcome();
             }}
             onHandover={() => {
-              // Получатель подтвердил получение — даритель здесь не задействован
+              // Получатель подтвердил получение
               const fresh = loadState();
-              const next = { ...fresh, xp: fresh.xp + 40 };
+              const next = { ...fresh, xp: fresh.xp + 20 };
               saveState(next);
               setState(next);
             }}
             onReview={() => {
               burstConfetti();
-              toast.success("Спасибо за отзыв • +40 XP 💚");
+              toast.success("Спасибо за отзыв • +20 Опыта 💚");
               const fresh = loadState();
-              const next = { ...fresh, xp: fresh.xp + 40, path: null, step: "welcome" as const };
+              const next = { ...fresh, xp: fresh.xp + 20, path: null, step: "welcome" as const };
               saveState(next);
               setState(next);
               localStorage.removeItem(ACTIVE_CHAT_KEY);

@@ -91,7 +91,7 @@ export function ReviewModal({
         <DialogHeader>
           <DialogTitle>Расскажи, как всё прошло! ✨</DialogTitle>
           <DialogDescription>
-            Это важно для равновесия системы. Окно закроется после отправки отзыва — за него вы получите +40 XP.
+            Это важно для равновесия системы. Окно закроется после отправки отзыва — за него вы получите +20 Опыта.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,7 +156,7 @@ export function ReviewModal({
         )}
 
         <Button onClick={submit} disabled={!canSubmit} className="mt-2 w-full" size="lg">
-          Отправить отзыв (+40 XP)
+          Отправить отзыв (+20 Опыта)
         </Button>
       </DialogContent>
     </Dialog>

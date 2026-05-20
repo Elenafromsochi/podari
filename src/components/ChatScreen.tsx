@@ -91,7 +91,7 @@ export function ChatScreen({
         ts: Date.now(),
       },
     ]);
-    toast.success("Получение подтверждено • +40 XP", {
+    toast.success("Получение подтверждено • +20 Опыта", {
       description: "Оставьте отзыв о дарителе",
     });
     onHandover?.();
