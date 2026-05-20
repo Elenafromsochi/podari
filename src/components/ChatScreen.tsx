@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Send, Bell } from "lucide-react";
+import { Mic, MicOff, Send, Bell, Gift as GiftIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { ReviewModal } from "@/components/ReviewModal";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null };
@@ -40,6 +41,8 @@ export function ChatScreen({
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const [notified, setNotified] = useState(true);
+  const [handedOver, setHandedOver] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -60,6 +63,37 @@ export function ChatScreen({
       setMessages([]);
     }
   }, [giftId]);
+
+  // Restore handover/review state
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem(`cozygift_handover_${giftId}`);
+      const r = localStorage.getItem(`cozygift_review_${giftId}`);
+      if (h) setHandedOver(true);
+      if (h && !r) setShowReview(true);
+    } catch {
+      /* noop */
+    }
+  }, [giftId]);
+
+  const markHandedOver = () => {
+    if (handedOver) return;
+    setHandedOver(true);
+    localStorage.setItem(`cozygift_handover_${giftId}`, String(Date.now()));
+    setMessages((m) => [
+      ...m,
+      {
+        id: crypto.randomUUID(),
+        from: "me",
+        text: "🎁 Подарок передан",
+        ts: Date.now(),
+      },
+    ]);
+    toast.success("Получатель уведомлён", {
+      description: "Откроется окно отзыва о подарке",
+    });
+    setTimeout(() => setShowReview(true), 600);
+  };
 
   // Persist
   useEffect(() => {
@@ -144,6 +178,16 @@ export function ChatScreen({
           <div className="truncate text-sm font-medium">Чат с дарителем</div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
+        <Button
+          size="sm"
+          variant={handedOver ? "secondary" : "default"}
+          disabled={handedOver}
+          onClick={markHandedOver}
+          className="rounded-full"
+        >
+          <GiftIcon className="h-4 w-4" />
+          {handedOver ? "Передано" : "Подарено"}
+        </Button>
       </div>
 
       {/* Мок-уведомление о доставленном уведомлении дарителю */}
@@ -227,6 +271,16 @@ export function ChatScreen({
           <Send className="h-4 w-4" />
         </Button>
       </div>
+
+      {showReview && (
+        <ReviewModal
+          giftId={giftId}
+          onSubmit={() => {
+            setShowReview(false);
+            toast.success("Спасибо за отзыв 💚");
+          }}
+        />
+      )}
     </div>
   );
 }
