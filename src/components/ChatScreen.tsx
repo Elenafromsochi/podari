@@ -9,10 +9,8 @@ type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null };
 
 const AUTO_MESSAGES = [
-  "Здравствуйте! Спасибо за подарок 💚",
-  "Подскажите, когда удобно забрать?",
-  "Очень рад(а), что нашёл(ла) ваш подарок ✨",
-  "Можно уточнить детали?",
+  "Мне понравился ваш подарок. Как могу его забрать? 😊",
+  "Расскажите подробнее про ваш подарок, а именно… 💬",
 ];
 
 const STORAGE_KEY = (giftId: string) => `cozygift_chat_${giftId}`;
