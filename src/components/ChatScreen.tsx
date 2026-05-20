@@ -41,6 +41,8 @@ export function ChatScreen({
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const [notified, setNotified] = useState(true);
+  const [handedOver, setHandedOver] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
