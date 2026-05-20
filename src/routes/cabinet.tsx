@@ -95,12 +95,27 @@ function CabinetPage() {
       <Card className="mb-6 border-primary/20 bg-card/80">
         <CardHeader>
           <CardTitle className="text-2xl">✨ Личный кабинет</CardTitle>
+          {user?.name && (
+            <p className="text-sm text-muted-foreground">Привет, {user.name}!</p>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="XP" value={state.xp} />
-            <Stat label="Уровень" value={state.level} />
-            <Stat label="Баланс" value={state.balance} />
+            <Stat
+              label="XP"
+              value={state.xp}
+              hint="XP — опыт в игре. Начисляется за каждое действие: +20 за публикацию подарка, +40 за подтверждение получения, +80 за вручённый подарок, +40 за отзыв. По мере накопления XP растёт ваш уровень."
+            />
+            <Stat
+              label="Уровень"
+              value={state.level}
+              hint="Уровень растёт по мере накопления XP. Каждые 200 XP — новый уровень. На новых уровнях открываются особые категории подарков и бонусы."
+            />
+            <Stat
+              label="L-баллы"
+              value={user?.l_points_balance ?? state.balance}
+              hint="L-баллы — внутренняя валюта мира подарков. 100 баллов начислены при регистрации в подарок. Тратятся, когда вы выбираете подарок (резервируются на безопасной сделке), и возвращаются как награда за активность."
+            />
           </div>
         </CardContent>
       </Card>
