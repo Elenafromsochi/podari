@@ -10,6 +10,14 @@ import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
 import { AuthFlow } from "@/components/AuthFlow";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   loadState,
   saveState,
   addGift,
@@ -19,6 +27,7 @@ import {
 import { loadUser, updateUser, type UserProfile } from "@/lib/auth-state";
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
+const GIFT_COST = 100;
 
 export const Route = createFileRoute("/")({
   component: Index,
