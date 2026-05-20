@@ -16,7 +16,7 @@ import {
   type GameState,
   type GamePath,
 } from "@/lib/game-state";
-import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { loadUser, updateUser, type UserProfile } from "@/lib/auth-state";
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
 
@@ -100,6 +100,8 @@ function Index() {
             toast.success("+20 Опыта начислено ✨", {
               description: "Подарок размещён в игровом мире",
             });
+            const u = updateUser({ xp_balance: (user?.xp_balance ?? 0) + 20 });
+            if (u) setUser(u);
             update({ step: "give_done", xp: state.xp + 20 });
           }}
         />
@@ -143,10 +145,13 @@ function Index() {
             addGift("received", giftId);
             localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
             setActiveChatGift(giftId);
-            toast.success("Баллы заморожены • Безопасная сделка 🔒", {
+            const newBalance = Math.max(0, (user?.l_points_balance ?? state.balance) - 100);
+            const u = updateUser({ l_points_balance: newBalance });
+            if (u) setUser(u);
+            toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
               description: "Открываем чат с дарителем",
             });
-            update({ step: "chat", balance: Math.max(0, state.balance - 100) });
+            update({ step: "chat", balance: newBalance });
           }}
         />
       )}
@@ -166,6 +171,8 @@ function Index() {
               const next = { ...fresh, xp: fresh.xp + 20 };
               saveState(next);
               setState(next);
+              const u = updateUser({ xp_balance: (loadUser()?.xp_balance ?? 0) + 20 });
+              if (u) setUser(u);
             }}
             onReview={() => {
               burstConfetti();
@@ -174,6 +181,8 @@ function Index() {
               const next = { ...fresh, xp: fresh.xp + 20, path: null, step: "welcome" as const };
               saveState(next);
               setState(next);
+              const u = updateUser({ xp_balance: (loadUser()?.xp_balance ?? 0) + 20 });
+              if (u) setUser(u);
               localStorage.removeItem(ACTIVE_CHAT_KEY);
               setActiveChatGift(null);
             }}

@@ -80,9 +80,6 @@ export function WelcomeScreen({ onChoose }: Props) {
         <User className="h-4 w-4" /> Личный кабинет
       </Link>
 
-      <p className="text-center text-xs text-muted-foreground">
-        +100 баллов уже на твоём балансе ✨
-      </p>
     </div>
   );
 }
