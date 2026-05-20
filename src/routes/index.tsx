@@ -152,10 +152,15 @@ function Index() {
         <ReceiveGiftFlow
           onBack={backToWelcome}
           onPick={(giftId) => {
+            const balance = user?.l_points_balance ?? state.balance;
+            if (balance < GIFT_COST) {
+              setInsufficientOpen(true);
+              return;
+            }
             addGift("received", giftId);
             localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
             setActiveChatGift(giftId);
-            const newBalance = Math.max(0, (user?.l_points_balance ?? state.balance) - 100);
+            const newBalance = Math.max(0, balance - GIFT_COST);
             const u = updateUser({ l_points_balance: newBalance });
             if (u) setUser(u);
             toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
