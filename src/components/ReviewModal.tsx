@@ -38,10 +38,9 @@ export function ReviewModal({
   return (
     <Dialog open onOpenChange={() => {}}>
       <DialogContent
-        className="max-w-md"
+        className="max-w-md [&>button[aria-label='Close']]:hidden [&>button:last-child]:hidden"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
-        showCloseButton={false}
       >
         <DialogHeader>
           <DialogTitle>Даритель отметил подарок как переданный 🎁</DialogTitle>
