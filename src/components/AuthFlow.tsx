@@ -7,13 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
-  createUser,
   extractDigits,
   formatPhone,
   loadUser,
-  saveUser,
   sendOtp,
-  userExists,
+  signInWithPhone,
+  signUpWithPhone,
   verifyOtp,
   type UserProfile,
 } from "@/lib/auth-state";
@@ -30,7 +29,7 @@ export function AuthFlow({ onAuthed }: Props) {
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // OTP state
+  // OTP
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [seconds, setSeconds] = useState(60);
   const [lastCode, setLastCode] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export function AuthFlow({ onAuthed }: Props) {
 
   // Onboarding
   const [name, setName] = useState("");
-  const [ref, setRef] = useState("");
 
   useEffect(() => {
     if (step !== "otp") return;
@@ -60,9 +58,7 @@ export function AuthFlow({ onAuthed }: Props) {
       setLastCode(code);
       setOtp(["", "", "", ""]);
       setStep("otp");
-      toast.success("Код отправлен", {
-        description: `Демо-код: ${code}`,
-      });
+      toast.success("Код отправлен", { description: `Демо-код: ${code}` });
     } finally {
       setLoading(false);
     }
@@ -93,56 +89,60 @@ export function AuthFlow({ onAuthed }: Props) {
     }
   };
 
-  const validate = (code: string) => {
+  const validate = async (code: string) => {
     if (!verifyOtp(fullPhone, code)) {
       toast.error("Неверный код", { description: "Попробуйте ещё раз" });
       setOtp(["", "", "", ""]);
       inputsRef.current[0]?.focus();
       return;
     }
-    // success haptic
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       try { navigator.vibrate?.(40); } catch {}
     }
-    const existing = userExists(fullPhone) ? loadUser() : null;
-    if (existing) {
-      toast.success(`С возвращением, ${existing.name} 💚`);
-      onAuthed(existing, false);
-    } else {
+    setLoading(true);
+    try {
+      const signedIn = await signInWithPhone(fullPhone);
+      if (signedIn) {
+        const profile = await loadUser();
+        if (profile) {
+          toast.success(`С возвращением, ${profile.display_name} 💚`);
+          onAuthed(profile, false);
+          return;
+        }
+      }
+      // Нет такого пользователя — собираем имя
       setStep("onboarding");
+    } catch (e) {
+      toast.error("Не удалось войти", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const finishOnboarding = () => {
+  const finishOnboarding = async () => {
     if (!name.trim()) {
       toast.error("Введите имя");
       return;
     }
-    const u = createUser({
-      phone: fullPhone,
-      name: name.trim(),
-      ref_code_used: ref.trim() || undefined,
-    });
-    // Referral bonus: owner of referral code gets +50 XP — for demo, just toast it.
-    if (u.ref_code_used) {
-      toast.success("Бонус по реферальному коду активирован ✨", {
-        description: "+50 Опыта отправлено пригласившему",
+    setLoading(true);
+    try {
+      const profile = await signUpWithPhone(fullPhone, name.trim());
+      confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
+      toast.success("+100 подарочных баллов начислено!", {
+        description: "Добро пожаловать в игровой мир",
       });
+      onAuthed(profile, true);
+    } catch (e) {
+      toast.error("Не удалось создать аккаунт", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setLoading(false);
     }
-    confetti({
-      particleCount: 140,
-      spread: 90,
-      origin: { y: 0.4 },
-      scalar: 1.1,
-    });
-    toast.success("+100 баллов начислено!", {
-      description: "Добро пожаловать в игровой мир",
-    });
-    saveUser(u);
-    onAuthed(u, true);
   };
 
-  // ---------- UI ----------
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 py-8">
       {step !== "phone" && (
@@ -193,9 +193,7 @@ export function AuthFlow({ onAuthed }: Props) {
             />
             <span className="leading-snug text-muted-foreground">
               Я согласен с{" "}
-              <span className="font-medium text-foreground">
-                правилами Клуба
-              </span>{" "}
+              <span className="font-medium text-foreground">правилами Клуба</span>{" "}
               и обработкой персональных данных
             </span>
           </label>
@@ -217,9 +215,7 @@ export function AuthFlow({ onAuthed }: Props) {
       {step === "otp" && (
         <div className="flex flex-1 flex-col gap-7">
           <div className="flex flex-col items-center gap-3 pt-4 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Подтверждение номера
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Подтверждение номера</h1>
             <p className="text-sm text-muted-foreground">
               Мы отправили SMS с кодом на номер{" "}
               <span className="font-medium text-foreground">{formatPhone(phoneDigits)}</span>
@@ -241,7 +237,8 @@ export function AuthFlow({ onAuthed }: Props) {
                 value={d}
                 onChange={(e) => setDigit(i, e.target.value)}
                 onKeyDown={(e) => onKeyDown(i, e)}
-                className="h-14 w-12 rounded-2xl border border-input bg-background text-center text-2xl font-semibold shadow-sm outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/40"
+                disabled={loading}
+                className="h-14 w-12 rounded-2xl border border-input bg-background text-center text-2xl font-semibold shadow-sm outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/40 disabled:opacity-50"
               />
             ))}
           </div>
@@ -268,18 +265,14 @@ export function AuthFlow({ onAuthed }: Props) {
         <div className="flex flex-1 flex-col gap-6">
           <div className="flex flex-col items-center gap-2 pt-4 text-center">
             <div className="text-4xl">🌿</div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Знакомство
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Знакомство</h1>
             <p className="text-sm text-muted-foreground">
               Несколько штрихов — и вы в игре
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">
-              Как к вам обращаться?
-            </Label>
+            <Label className="text-xs text-muted-foreground">Как к вам обращаться?</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -288,26 +281,12 @@ export function AuthFlow({ onAuthed }: Props) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">
-              Реферальный код (если есть)
-            </Label>
-            <Input
-              value={ref}
-              onChange={(e) => setRef(e.target.value)}
-              placeholder="Например, COZY-42"
-              className="h-12 rounded-2xl text-base"
-            />
-            <p className="text-xs text-muted-foreground">
-              По коду — +100 баллов вам и +50 Опыта пригласившему
-            </p>
-          </div>
-
           <Button
             onClick={finishOnboarding}
+            disabled={loading}
             className="mt-2 h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
           >
-            Войти в мир подарков
+            {loading ? "Создаём аккаунт..." : "Войти в мир подарков"}
           </Button>
         </div>
       )}
