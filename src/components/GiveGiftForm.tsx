@@ -10,9 +10,10 @@ import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 interface Props {
   onDone: (giftId: string) => void;
   onBack: () => void;
+  presetHint?: string | null;
 }
 
-export function GiveGiftForm({ onDone, onBack }: Props) {
+export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
   const [description, setDescription] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
