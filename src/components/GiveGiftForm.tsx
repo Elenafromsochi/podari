@@ -78,12 +78,32 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
     }
   };
 
+  const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(dataUrl);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
     reader.onload = async () => {
-      const dataUrl = String(reader.result);
+      const rawUrl = String(reader.result);
+      const dataUrl = await compressImage(rawUrl);
       setPhotoPreview(dataUrl);
       setError(null);
       setDescription("");
