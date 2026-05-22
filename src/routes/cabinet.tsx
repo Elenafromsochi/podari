@@ -21,14 +21,6 @@ export const Route = createFileRoute("/cabinet")({
   }),
   component: CabinetPage,
 });
-  head: () => ({
-    meta: [
-      { title: "Личный кабинет — CozyGift" },
-      { name: "description", content: "Ваш прогресс, Опыт и подарки" },
-    ],
-  }),
-  component: CabinetPage,
-});
 
 type Gift = {
   id: string;
