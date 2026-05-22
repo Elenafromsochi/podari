@@ -41,6 +41,7 @@ const burstConfetti = () => {
 };
 
 function Index() {
+  const navigate = useNavigate();
   const [state, setState] = useState<GameState | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
