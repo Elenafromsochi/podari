@@ -33,16 +33,29 @@ type Gift = {
 
 type TxRow = { id: string; status: string; gift: Gift | null };
 
+type ChatItem = {
+  transaction_id: string;
+  status: string;
+  gift_id: string;
+  gift_title: string;
+  gift_image: string | null;
+  other_name: string;
+  created_at: string;
+};
+
 function CabinetPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [posted, setPosted] = useState<Gift[]>([]);
   const [received, setReceived] = useState<TxRow[]>([]);
   const [gifted, setGifted] = useState<TxRow[]>([]);
+  const [chatsWithGivers, setChatsWithGivers] = useState<ChatItem[]>([]);
+  const [chatsWithReceivers, setChatsWithReceivers] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
+  const chatsFn = useServerFn(getMyChats);
 
   useEffect(() => {
     (async () => {
@@ -53,15 +66,23 @@ function CabinetPage() {
         return;
       }
       try {
-        const [p, r, g] = await Promise.all([postedFn(), receivedFn(), giftedFn()]);
+        const [p, r, g, c] = await Promise.all([
+          postedFn(),
+          receivedFn(),
+          giftedFn(),
+          chatsFn(),
+        ]);
         setPosted((p as Gift[]) ?? []);
         setReceived((r as TxRow[]) ?? []);
         setGifted((g as TxRow[]) ?? []);
+        const chats = c as { with_givers: ChatItem[]; with_receivers: ChatItem[] };
+        setChatsWithGivers(chats?.with_givers ?? []);
+        setChatsWithReceivers(chats?.with_receivers ?? []);
       } finally {
         setLoading(false);
       }
     })();
-  }, [postedFn, receivedFn, giftedFn]);
+  }, [postedFn, receivedFn, giftedFn, chatsFn]);
 
   if (!user) {
     return (
