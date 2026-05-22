@@ -1,17 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, MessageCircle } from "lucide-react";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
 import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
+  getMyChats,
 } from "@/lib/cozy.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/cabinet")({
+  head: () => ({
+    meta: [
+      { title: "Личный кабинет — CozyGift" },
+      { name: "description", content: "Ваш прогресс, Опыт и подарки" },
+    ],
+  }),
+  component: CabinetPage,
+});
   head: () => ({
     meta: [
       { title: "Личный кабинет — CozyGift" },
