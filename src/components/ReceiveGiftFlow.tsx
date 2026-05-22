@@ -45,12 +45,15 @@ export function ReceiveGiftFlow({
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      let q = supabase
         .from("gifts")
         .select("id,title,description,category,image_url,cost,owner_id")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
+      if (user?.id) q = q.neq("owner_id", user.id);
+      const { data } = await q;
       const rows = (data as Gift[]) ?? [];
       const ownerIds = Array.from(
         new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)),
