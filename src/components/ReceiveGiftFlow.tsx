@@ -49,6 +49,7 @@ export function ReceiveGiftFlow({
         .from("gifts")
         .select("id,title,description,category,image_url,cost,owner_id")
         .eq("status", "available")
+        .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
       const rows = (data as Gift[]) ?? [];
       const ownerIds = Array.from(
