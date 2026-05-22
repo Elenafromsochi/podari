@@ -117,6 +117,26 @@ function CabinetPage() {
         </CardContent>
       </Card>
 
+      <section className="mb-6">
+        <h2 className="mb-2 text-lg font-semibold">💬 Чаты</h2>
+        <ChatGroup
+          title="С дарителями"
+          emoji="🎁"
+          empty="Здесь появятся чаты по подаркам, которые вы выбрали"
+          items={chatsWithGivers}
+          loading={loading}
+        />
+        <div className="h-3" />
+        <ChatGroup
+          title="С получателями"
+          emoji="💝"
+          empty="Здесь появятся чаты с теми, кто выбрал ваш подарок"
+          items={chatsWithReceivers}
+          loading={loading}
+        />
+      </section>
+
+
       <div className="space-y-6">
         {sections.map((sec) => (
           <section key={sec.title}>
