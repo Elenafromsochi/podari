@@ -25,7 +25,7 @@ export const publishGift = createServerFn({ method: "POST" })
         title: z.string().min(1).max(200),
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80),
-        image_url: z.string().max(2_000_000).nullable().optional(),
+        image_url: z.string().max(15_000_000).nullable().optional(),
       })
       .parse(input),
   )
