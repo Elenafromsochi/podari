@@ -109,11 +109,7 @@ function Index() {
             action: {
               label: "В чат",
               onClick: () => {
-                localStorage.setItem(ACTIVE_CHAT_KEY, tx.gift_id);
-                localStorage.setItem(ACTIVE_TX_KEY, tx.id);
-                setActiveChatGift(tx.gift_id);
-                setActiveTxId(tx.id);
-                update({ step: "chat" });
+                navigate({ to: "/chat/$giftId", params: { giftId: tx.gift_id } });
               },
             },
             duration: 12000,
