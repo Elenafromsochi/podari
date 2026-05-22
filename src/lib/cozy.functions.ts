@@ -180,3 +180,65 @@ export const getActiveTransactionForGift = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return row;
   });
+
+// ---------- My chats grouped by role ----------
+export const getMyChats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(
+        "id, status, created_at, sender_id, receiver_id, gift:gifts(id, title, image_url, category)",
+      )
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    const otherIds = Array.from(
+      new Set(
+        rows.map((r) =>
+          r.sender_id === userId ? r.receiver_id : r.sender_id,
+        ).filter((v): v is string => !!v),
+      ),
+    );
+    const nameMap = new Map<string, string>();
+    if (otherIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", otherIds);
+      for (const p of profs ?? []) {
+        nameMap.set(p.user_id as string, (p.display_name as string) || "Гость");
+      }
+    }
+    type Item = {
+      transaction_id: string;
+      status: string;
+      gift_id: string;
+      gift_title: string;
+      gift_image: string | null;
+      other_name: string;
+      created_at: string;
+    };
+    const asReceiver: Item[] = []; // me=receiver → собеседник=даритель
+    const asSender: Item[] = [];   // me=sender   → собеседник=получатель
+    for (const r of rows) {
+      const g = (r as { gift: { id: string; title: string; image_url: string | null } | null }).gift;
+      if (!g) continue;
+      const otherId = r.sender_id === userId ? r.receiver_id : r.sender_id;
+      const item: Item = {
+        transaction_id: r.id as string,
+        status: r.status as string,
+        gift_id: g.id,
+        gift_title: g.title,
+        gift_image: g.image_url,
+        other_name: (otherId && nameMap.get(otherId)) || "Гость",
+        created_at: r.created_at as string,
+      };
+      if (r.receiver_id === userId) asReceiver.push(item);
+      else asSender.push(item);
+    }
+    return { with_givers: asReceiver, with_receivers: asSender };
+  });
+

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -41,6 +41,7 @@ const burstConfetti = () => {
 };
 
 function Index() {
+  const navigate = useNavigate();
   const [state, setState] = useState<GameState | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -108,11 +109,7 @@ function Index() {
             action: {
               label: "В чат",
               onClick: () => {
-                localStorage.setItem(ACTIVE_CHAT_KEY, tx.gift_id);
-                localStorage.setItem(ACTIVE_TX_KEY, tx.id);
-                setActiveChatGift(tx.gift_id);
-                setActiveTxId(tx.id);
-                update({ step: "chat" });
+                navigate({ to: "/chat/$giftId", params: { giftId: tx.gift_id } });
               },
             },
             duration: 12000,

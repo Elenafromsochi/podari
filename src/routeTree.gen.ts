@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CabinetRouteImport } from './routes/cabinet'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatGiftIdRouteImport } from './routes/chat.$giftId'
 
 const CabinetRoute = CabinetRouteImport.update({
   id: '/cabinet',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatGiftIdRoute = ChatGiftIdRouteImport.update({
+  id: '/chat/$giftId',
+  path: '/chat/$giftId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
+  '/chat/$giftId': typeof ChatGiftIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
+  '/chat/$giftId': typeof ChatGiftIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
+  '/chat/$giftId': typeof ChatGiftIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/cabinet'
+  fullPaths: '/' | '/cabinet' | '/chat/$giftId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cabinet'
-  id: '__root__' | '/' | '/cabinet'
+  to: '/' | '/cabinet' | '/chat/$giftId'
+  id: '__root__' | '/' | '/cabinet' | '/chat/$giftId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CabinetRoute: typeof CabinetRoute
+  ChatGiftIdRoute: typeof ChatGiftIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat/$giftId': {
+      id: '/chat/$giftId'
+      path: '/chat/$giftId'
+      fullPath: '/chat/$giftId'
+      preLoaderRoute: typeof ChatGiftIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CabinetRoute: CabinetRoute,
+  ChatGiftIdRoute: ChatGiftIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, MessageCircle } from "lucide-react";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
 import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
+  getMyChats,
 } from "@/lib/cozy.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -32,16 +33,29 @@ type Gift = {
 
 type TxRow = { id: string; status: string; gift: Gift | null };
 
+type ChatItem = {
+  transaction_id: string;
+  status: string;
+  gift_id: string;
+  gift_title: string;
+  gift_image: string | null;
+  other_name: string;
+  created_at: string;
+};
+
 function CabinetPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [posted, setPosted] = useState<Gift[]>([]);
   const [received, setReceived] = useState<TxRow[]>([]);
   const [gifted, setGifted] = useState<TxRow[]>([]);
+  const [chatsWithGivers, setChatsWithGivers] = useState<ChatItem[]>([]);
+  const [chatsWithReceivers, setChatsWithReceivers] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
+  const chatsFn = useServerFn(getMyChats);
 
   useEffect(() => {
     (async () => {
@@ -52,15 +66,23 @@ function CabinetPage() {
         return;
       }
       try {
-        const [p, r, g] = await Promise.all([postedFn(), receivedFn(), giftedFn()]);
+        const [p, r, g, c] = await Promise.all([
+          postedFn(),
+          receivedFn(),
+          giftedFn(),
+          chatsFn(),
+        ]);
         setPosted((p as Gift[]) ?? []);
         setReceived((r as TxRow[]) ?? []);
         setGifted((g as TxRow[]) ?? []);
+        const chats = c as { with_givers: ChatItem[]; with_receivers: ChatItem[] };
+        setChatsWithGivers(chats?.with_givers ?? []);
+        setChatsWithReceivers(chats?.with_receivers ?? []);
       } finally {
         setLoading(false);
       }
     })();
-  }, [postedFn, receivedFn, giftedFn]);
+  }, [postedFn, receivedFn, giftedFn, chatsFn]);
 
   if (!user) {
     return (
@@ -94,6 +116,26 @@ function CabinetPage() {
           </div>
         </CardContent>
       </Card>
+
+      <section className="mb-6">
+        <h2 className="mb-2 text-lg font-semibold">💬 Чаты</h2>
+        <ChatGroup
+          title="С дарителями"
+          emoji="🎁"
+          empty="Здесь появятся чаты по подаркам, которые вы выбрали"
+          items={chatsWithGivers}
+          loading={loading}
+        />
+        <div className="h-3" />
+        <ChatGroup
+          title="С получателями"
+          emoji="💝"
+          empty="Здесь появятся чаты с теми, кто выбрал ваш подарок"
+          items={chatsWithReceivers}
+          loading={loading}
+        />
+      </section>
+
 
       <div className="space-y-6">
         {sections.map((sec) => (
@@ -132,6 +174,67 @@ function CabinetPage() {
     </div>
   );
 }
+
+function ChatGroup({
+  title,
+  emoji,
+  empty,
+  items,
+  loading,
+}: {
+  title: string;
+  emoji: string;
+  empty: string;
+  items: ChatItem[];
+  loading: boolean;
+}) {
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+        {emoji} {title}{" "}
+        <span className="text-xs">({items.length})</span>
+      </h3>
+      {items.length === 0 ? (
+        <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+          {loading ? "Загружаем..." : empty}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((it) => (
+            <li key={it.transaction_id}>
+              <Link
+                to="/chat/$giftId"
+                params={{ giftId: it.gift_id }}
+                className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm transition hover:bg-accent"
+              >
+                {it.gift_image ? (
+                  <img
+                    src={it.gift_image}
+                    alt={it.gift_title}
+                    className="h-12 w-12 shrink-0 rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xl">
+                    🎁
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{it.gift_title}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {it.other_name} •{" "}
+                    {it.status === "completed" ? "завершено" : "в процессе"}
+                  </p>
+                </div>
+                <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 
 function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
