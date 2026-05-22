@@ -175,6 +175,67 @@ function CabinetPage() {
   );
 }
 
+function ChatGroup({
+  title,
+  emoji,
+  empty,
+  items,
+  loading,
+}: {
+  title: string;
+  emoji: string;
+  empty: string;
+  items: ChatItem[];
+  loading: boolean;
+}) {
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+        {emoji} {title}{" "}
+        <span className="text-xs">({items.length})</span>
+      </h3>
+      {items.length === 0 ? (
+        <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+          {loading ? "Загружаем..." : empty}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((it) => (
+            <li key={it.transaction_id}>
+              <Link
+                to="/chat/$giftId"
+                params={{ giftId: it.gift_id }}
+                className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm transition hover:bg-accent"
+              >
+                {it.gift_image ? (
+                  <img
+                    src={it.gift_image}
+                    alt={it.gift_title}
+                    className="h-12 w-12 shrink-0 rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xl">
+                    🎁
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{it.gift_title}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {it.other_name} •{" "}
+                    {it.status === "completed" ? "завершено" : "в процессе"}
+                  </p>
+                </div>
+                <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+
 function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
     <div className="relative rounded-xl bg-mint/30 px-2 py-3">
