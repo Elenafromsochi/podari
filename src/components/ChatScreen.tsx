@@ -16,7 +16,6 @@ const AUTO_MESSAGES = [
   "Расскажите подробнее про ваш подарок, а именно… 💬",
 ];
 
-const STORAGE_KEY = (giftId: string) => `cozygift_chat_${giftId}`;
 
 type SR = {
   start: () => void;
@@ -43,6 +42,7 @@ export function ChatScreen({
 }) {
   const [gift, setGift] = useState<Gift | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
@@ -57,24 +57,81 @@ export function ChatScreen({
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
 
+  const isOwner = !!(meId && gift && gift.owner_id === meId);
+
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
-      setMeId(u.user?.id ?? null);
+      const myId = u.user?.id ?? null;
+      setMeId(myId);
       const { data } = await supabase
         .from("gifts")
         .select("id,title,image_url,owner_id")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
+
+      // найти чат для этого подарка, где текущий пользователь — участник
+      if (myId) {
+        const { data: chat } = await supabase
+          .from("chats")
+          .select("id")
+          .eq("gift_id", giftId)
+          .or(`user_a.eq.${myId},user_b.eq.${myId}`)
+          .maybeSingle();
+        if (chat?.id) setChatId(chat.id as string);
+      }
     })();
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY(giftId));
-      setMessages(raw ? JSON.parse(raw) : []);
-    } catch {
-      setMessages([]);
-    }
   }, [giftId]);
+
+  // загрузка сообщений + realtime
+  useEffect(() => {
+    if (!chatId || !meId) return;
+    let cancelledLocal = false;
+    (async () => {
+      const { data } = await supabase
+        .from("messages")
+        .select("id, sender_id, content, created_at")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: true });
+      if (cancelledLocal) return;
+      setMessages(
+        (data ?? []).map((m) => ({
+          id: m.id as string,
+          from: (m.sender_id === meId ? "me" : "them") as "me" | "them",
+          text: m.content as string,
+          ts: new Date(m.created_at as string).getTime(),
+        })),
+      );
+    })();
+    const channel = supabase
+      .channel(`messages-${chatId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` },
+        (payload) => {
+          const m = payload.new as { id: string; sender_id: string; content: string; created_at: string };
+          setMessages((prev) => {
+            if (prev.some((x) => x.id === m.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: m.id,
+                from: m.sender_id === meId ? "me" : "them",
+                text: m.content,
+                ts: new Date(m.created_at).getTime(),
+              },
+            ];
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      cancelledLocal = true;
+      supabase.removeChannel(channel);
+    };
+  }, [chatId, meId]);
+
 
   useEffect(() => {
     try {
@@ -86,18 +143,23 @@ export function ChatScreen({
   }, [giftId]);
 
   useEffect(() => {
-    if (messages.length) {
-      localStorage.setItem(STORAGE_KEY(giftId), JSON.stringify(messages));
-    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, giftId]);
+  }, [messages]);
 
-  const send = (raw: string) => {
+  const send = async (raw: string) => {
     const t = raw.trim();
-    if (!t) return;
-    setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", text: t, ts: Date.now() }]);
+    if (!t || !chatId || !meId) return;
     setText("");
+    const { error } = await supabase.from("messages").insert({
+      chat_id: chatId,
+      sender_id: meId,
+      content: t,
+    });
+    if (error) {
+      toast.error("Не удалось отправить", { description: error.message });
+    }
   };
+
 
   const handleCancel = async () => {
     if (cancelled || handedOver) return;
@@ -180,14 +242,19 @@ export function ChatScreen({
         <div className="mx-4 mt-3 flex items-start gap-3 rounded-2xl border bg-mint/30 p-3 text-sm">
           <Bell className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="flex-1">
-            <div className="font-medium">Даритель получил уведомление</div>
+            <div className="font-medium">
+              {isOwner ? "У вашего подарка появился получатель" : "Даритель получил уведомление"}
+            </div>
             <div className="text-xs text-muted-foreground">
-              «У вашего подарка появился получатель — перейти в чат»
+              {isOwner
+                ? "Напишите получателю — договоритесь о передаче подарка"
+                : "«У вашего подарка появился получатель — перейти в чат»"}
             </div>
           </div>
           <button onClick={() => setNotified(false)} className="text-xs text-muted-foreground hover:underline">скрыть</button>
         </div>
       )}
+
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
@@ -206,13 +273,16 @@ export function ChatScreen({
         ))}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto px-4 pb-2">
-        {AUTO_MESSAGES.map((s) => (
-          <button key={s} onClick={() => send(s)} className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs hover:bg-accent">
-            {s}
-          </button>
-        ))}
-      </div>
+      {!isOwner && (
+        <div className="flex gap-2 overflow-x-auto px-4 pb-2">
+          {AUTO_MESSAGES.map((s) => (
+            <button key={s} onClick={() => send(s)} className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs hover:bg-accent">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
 
       <div className="flex items-center gap-2 border-t bg-card px-3 py-3">
         <button
