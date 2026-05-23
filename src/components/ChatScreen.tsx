@@ -43,20 +43,26 @@ export function ChatScreen({
   onReview?: () => void;
 }) {
   const [gift, setGift] = useState<Gift | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const [notified, setNotified] = useState(true);
   const [handedOver, setHandedOver] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const handoverFn = useServerFn(confirmHandover);
   const reviewFn = useServerFn(submitReview);
+  const cancelFn = useServerFn(cancelClaim);
 
   useEffect(() => {
     (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      setMeId(u.user?.id ?? null);
       const { data } = await supabase
         .from("gifts")
         .select("id,title,image_url,owner_id")
