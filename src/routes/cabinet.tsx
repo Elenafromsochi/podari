@@ -207,12 +207,27 @@ function CabinetPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="gifts" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="gifts">🎁 Подарки</TabsTrigger>
-          <TabsTrigger value="chats">💬 Чаты</TabsTrigger>
+          <TabsTrigger value="gifts" className="relative">
+            🎁 Подарки
+            {giftsUnread > 0 && (
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {giftsUnread > 99 ? "99+" : giftsUnread}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="chats" className="relative">
+            💬 Чаты
+            {chatsUnread > 0 && (
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {chatsUnread > 99 ? "99+" : chatsUnread}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="archive">🗂 Архив</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="gifts" className="mt-4 space-y-6">
           {sections.map((sec) => (
