@@ -1,12 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, Send, X } from "lucide-react";
+import { Check, Mic, MicOff, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ReviewModal } from "@/components/ReviewModal";
-import { cancelClaim, sendChatMessage, submitReview } from "@/lib/cozy.functions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  cancelClaim,
+  confirmHandover,
+  declineHandover,
+  requestHandover,
+  sendChatMessage,
+  submitReview,
+} from "@/lib/cozy.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
@@ -46,8 +63,9 @@ export function ChatScreen({
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
-  const [handedOver, setHandedOver] = useState(false);
-  const [cancelled, setCancelled] = useState(false);
+  const [txStatus, setTxStatus] = useState<string>("pending");
+  const [handoverRequestedAt, setHandoverRequestedAt] = useState<string | null>(null);
+  const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -56,8 +74,13 @@ export function ChatScreen({
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
   const sendMessageFn = useServerFn(sendChatMessage);
+  const requestHandoverFn = useServerFn(requestHandover);
+  const confirmHandoverFn = useServerFn(confirmHandover);
+  const declineHandoverFn = useServerFn(declineHandover);
 
   const isOwner = !!(meId && gift && gift.owner_id === meId);
+  const handedOver = txStatus === "completed";
+  const cancelled = txStatus === "cancelled";
 
   useEffect(() => {
     (async () => {
@@ -71,7 +94,6 @@ export function ChatScreen({
         .maybeSingle();
       setGift(data as Gift | null);
 
-      // найти чат для этого подарка, где текущий пользователь — участник
       if (myId) {
         const { data: chat } = await supabase
           .from("chats")
@@ -83,6 +105,49 @@ export function ChatScreen({
       }
     })();
   }, [giftId]);
+
+  // загрузка / отслеживание транзакции
+  useEffect(() => {
+    if (!transactionId || !meId) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("transactions")
+        .select("status, handover_requested_at, receiver_id")
+        .eq("id", transactionId)
+        .maybeSingle();
+      if (!alive || !data) return;
+      const row = data as { status: string; handover_requested_at: string | null; receiver_id: string };
+      setTxStatus(row.status);
+      setHandoverRequestedAt(row.handover_requested_at);
+      if (row.handover_requested_at && row.receiver_id === meId && row.status === "pending") {
+        setShowReceiverConfirm(true);
+      }
+    })();
+    const channel = supabase
+      .channel(`tx-${transactionId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "transactions", filter: `id=eq.${transactionId}` },
+        (payload) => {
+          const row = payload.new as { status: string; handover_requested_at: string | null; receiver_id: string };
+          setTxStatus(row.status);
+          setHandoverRequestedAt(row.handover_requested_at);
+          if (row.handover_requested_at && row.receiver_id === meId && row.status === "pending") {
+            setShowReceiverConfirm(true);
+          }
+          if (row.status === "completed" && row.receiver_id === meId) {
+            // получатель: после подтверждения — предложить отзыв
+            setShowReview(true);
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      alive = false;
+      supabase.removeChannel(channel);
+    };
+  }, [transactionId, meId]);
 
   // загрузка сообщений + realtime
   useEffect(() => {
@@ -132,16 +197,6 @@ export function ChatScreen({
     };
   }, [chatId, meId]);
 
-
-  useEffect(() => {
-    try {
-      const h = localStorage.getItem(`cozygift_handover_${giftId}`);
-      const r = localStorage.getItem(`cozygift_review_${giftId}`);
-      if (h) setHandedOver(true);
-      if (h && !r) setShowReview(true);
-    } catch { /* noop */ }
-  }, [giftId]);
-
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
@@ -177,14 +232,12 @@ export function ChatScreen({
         });
       }
     } catch (e) {
-      // вернём текст обратно, чтобы не потерять написанное
       setText(t);
       toast.error("Не удалось отправить", {
         description: e instanceof Error ? e.message : String(e),
       });
     }
   };
-
 
   const handleCancel = async () => {
     if (cancelled || handedOver) return;
@@ -196,11 +249,46 @@ export function ChatScreen({
       });
       return;
     }
-    setCancelled(true);
     toast.success("Вы отказались от подарка", {
       description: "Замороженные баллы возвращены на ваш счёт 💚",
     });
     setTimeout(() => navigate({ to: "/cabinet" }), 800);
+  };
+
+  const handleRequestHandover = async () => {
+    try {
+      await requestHandoverFn({ data: { transaction_id: transactionId } });
+      setHandoverRequestedAt(new Date().toISOString());
+      toast.success("Запрос отправлен получателю");
+    } catch (e) {
+      toast.error("Не удалось отправить запрос", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
+
+  const handleReceiverYes = async () => {
+    setShowReceiverConfirm(false);
+    try {
+      await confirmHandoverFn({ data: { transaction_id: transactionId } });
+      toast.success("Подтверждено! Спасибо 💚");
+    } catch (e) {
+      toast.error("Не удалось подтвердить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
+
+  const handleReceiverNo = async () => {
+    setShowReceiverConfirm(false);
+    try {
+      await declineHandoverFn({ data: { transaction_id: transactionId } });
+      toast("Хорошо, ожидаем получения", { description: "Даритель сможет повторить запрос позже" });
+    } catch (e) {
+      toast.error("Не удалось отправить ответ", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
   };
 
   const toggleMic = () => {
@@ -245,11 +333,26 @@ export function ChatScreen({
         )}
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">
-            {meId && gift?.owner_id === meId ? "Чат с получателем" : "Чат с дарителем"}
+            {isOwner ? "Чат с получателем" : "Чат с дарителем"}
           </div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
-        {meId && gift && gift.owner_id !== meId && (
+        {isOwner ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={handedOver || cancelled || !!handoverRequestedAt}
+            onClick={handleRequestHandover}
+            className="rounded-full"
+          >
+            <Check className="h-4 w-4" />
+            {handedOver
+              ? "Получено"
+              : handoverRequestedAt
+                ? "Ожидаем..."
+                : "Подтвердить получение"}
+          </Button>
+        ) : (
           <Button
             size="sm"
             variant="outline"
@@ -280,7 +383,7 @@ export function ChatScreen({
         ))}
       </div>
 
-      {!isOwner && (
+      {!isOwner && !handedOver && !cancelled && (
         <div className="flex gap-2 overflow-x-auto px-4 pb-2">
           {AUTO_MESSAGES.map((s) => (
             <button
@@ -294,7 +397,6 @@ export function ChatScreen({
           ))}
         </div>
       )}
-
 
       <div className="flex items-center gap-2 border-t bg-card px-3 py-3">
         <button
@@ -318,6 +420,22 @@ export function ChatScreen({
         </Button>
       </div>
 
+      <AlertDialog open={showReceiverConfirm} onOpenChange={setShowReceiverConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Подарок получен?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Даритель просит подтвердить получение подарка «{gift?.title ?? ""}».
+              После подтверждения замороженные баллы окончательно спишутся, а даритель получит вознаграждение.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleReceiverNo}>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReceiverYes}>Да</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {showReview && (
         <ReviewModal
           giftId={giftId}
@@ -335,7 +453,6 @@ export function ChatScreen({
                   },
                 });
               }
-              localStorage.setItem(`cozygift_review_${giftId}`, String(Date.now()));
             } catch (e) {
               toast.error("Отзыв не сохранён", {
                 description: e instanceof Error ? e.message : String(e),
