@@ -90,6 +90,21 @@ export const confirmHandover = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Cancel claim (отказаться от подарка) ----------
+export const cancelClaim = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ transaction_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("cancel_claim", {
+      _transaction_id: data.transaction_id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------- Review ----------
 export const submitReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

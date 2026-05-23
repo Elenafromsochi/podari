@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, Send, Bell, Gift as GiftIcon } from "lucide-react";
+import { Mic, MicOff, Send, Bell, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ReviewModal } from "@/components/ReviewModal";
-import { confirmHandover, submitReview } from "@/lib/cozy.functions";
+import { cancelClaim, submitReview } from "@/lib/cozy.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
@@ -32,7 +33,6 @@ export function ChatScreen({
   giftId,
   transactionId,
   onBack,
-  onHandover,
   onReview,
 }: {
   giftId: string;
@@ -42,20 +42,25 @@ export function ChatScreen({
   onReview?: () => void;
 }) {
   const [gift, setGift] = useState<Gift | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const [notified, setNotified] = useState(true);
   const [handedOver, setHandedOver] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
-  const handoverFn = useServerFn(confirmHandover);
   const reviewFn = useServerFn(submitReview);
+  const cancelFn = useServerFn(cancelClaim);
 
   useEffect(() => {
     (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      setMeId(u.user?.id ?? null);
       const { data } = await supabase
         .from("gifts")
         .select("id,title,image_url,owner_id")
@@ -80,29 +85,6 @@ export function ChatScreen({
     } catch { /* noop */ }
   }, [giftId]);
 
-  const markHandedOver = async () => {
-    if (handedOver) return;
-    try {
-      await handoverFn({ data: { transaction_id: transactionId } });
-    } catch (e) {
-      toast.error("Не удалось подтвердить", {
-        description: e instanceof Error ? e.message : String(e),
-      });
-      return;
-    }
-    setHandedOver(true);
-    localStorage.setItem(`cozygift_handover_${giftId}`, String(Date.now()));
-    setMessages((m) => [
-      ...m,
-      { id: crypto.randomUUID(), from: "me", text: "✅ Получение подтверждено", ts: Date.now() },
-    ]);
-    toast.success("Получение подтверждено • +20 Опыта", {
-      description: "Дарителю вернулись 100 баллов и +80 Опыта 💚",
-    });
-    onHandover?.();
-    setTimeout(() => setShowReview(true), 600);
-  };
-
   useEffect(() => {
     if (messages.length) {
       localStorage.setItem(STORAGE_KEY(giftId), JSON.stringify(messages));
@@ -115,17 +97,23 @@ export function ChatScreen({
     if (!t) return;
     setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", text: t, ts: Date.now() }]);
     setText("");
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          id: crypto.randomUUID(),
-          from: "them",
-          text: "Спасибо! Я скоро отвечу подробнее 💌",
-          ts: Date.now(),
-        },
-      ]);
-    }, 1400);
+  };
+
+  const handleCancel = async () => {
+    if (cancelled || handedOver) return;
+    try {
+      await cancelFn({ data: { transaction_id: transactionId } });
+    } catch (e) {
+      toast.error("Не удалось отказаться", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+      return;
+    }
+    setCancelled(true);
+    toast.success("Вы отказались от подарка", {
+      description: "Замороженные баллы возвращены на ваш счёт 💚",
+    });
+    setTimeout(() => navigate({ to: "/cabinet" }), 800);
   };
 
   const toggleMic = () => {
@@ -169,19 +157,23 @@ export function ChatScreen({
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">🎁</div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">Чат с дарителем</div>
+          <div className="truncate text-sm font-medium">
+            {meId && gift?.owner_id === meId ? "Чат с получателем" : "Чат с дарителем"}
+          </div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
-        <Button
-          size="sm"
-          variant={handedOver ? "secondary" : "default"}
-          disabled={handedOver}
-          onClick={markHandedOver}
-          className="rounded-full"
-        >
-          <GiftIcon className="h-4 w-4" />
-          {handedOver ? "Получено" : "Подтвердить получение"}
-        </Button>
+        {meId && gift && gift.owner_id !== meId && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={cancelled || handedOver}
+            onClick={handleCancel}
+            className="rounded-full"
+          >
+            <X className="h-4 w-4" />
+            {cancelled ? "Отказано" : "Отказаться"}
+          </Button>
+        )}
       </div>
 
       {notified && (
