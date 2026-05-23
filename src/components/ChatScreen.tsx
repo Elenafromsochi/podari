@@ -288,7 +288,12 @@ export function ChatScreen({
       {!isOwner && (
         <div className="flex gap-2 overflow-x-auto px-4 pb-2">
           {AUTO_MESSAGES.map((s) => (
-            <button key={s} onClick={() => send(s)} className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs hover:bg-accent">
+            <button
+              key={s}
+              onClick={() => send(s)}
+              disabled={!chatId}
+              className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+            >
               {s}
             </button>
           ))}
