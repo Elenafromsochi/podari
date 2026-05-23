@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle, MessageCircle } from "lucide-react";
-import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { HelpCircle, MessageCircle, LogOut } from "lucide-react";
+import { toast } from "sonner";
+import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
 import {
   getMyPostedGifts,
   getMyReceivedGifts,
@@ -11,6 +12,18 @@ import {
 } from "@/lib/cozy.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/cabinet")({
   head: () => ({
@@ -56,6 +69,20 @@ function CabinetPage() {
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const chatsFn = useServerFn(getMyChats);
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Вы вышли из аккаунта");
+      navigate({ to: "/" });
+      if (typeof window !== "undefined") window.location.reload();
+    } catch (e) {
+      toast.error("Не удалось выйти", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -170,6 +197,28 @@ function CabinetPage() {
             )}
           </section>
         ))}
+      </div>
+
+      <div className="mt-8 border-t pt-6">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive">
+              <LogOut className="h-4 w-4" /> Выйти из аккаунта
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Выйти из аккаунта?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Сессия будет сброшена. Чтобы вернуться, потребуется снова войти по номеру телефона.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSignOut}>Выйти</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
