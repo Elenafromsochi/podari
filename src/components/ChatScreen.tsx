@@ -42,6 +42,7 @@ export function ChatScreen({
 }) {
   const [gift, setGift] = useState<Gift | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
@@ -56,24 +57,81 @@ export function ChatScreen({
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
 
+  const isOwner = !!(meId && gift && gift.owner_id === meId);
+
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
-      setMeId(u.user?.id ?? null);
+      const myId = u.user?.user?.id ?? u.user?.id ?? null;
+      setMeId(myId);
       const { data } = await supabase
         .from("gifts")
         .select("id,title,image_url,owner_id")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
+
+      // найти чат для этого подарка, где текущий пользователь — участник
+      if (myId) {
+        const { data: chat } = await supabase
+          .from("chats")
+          .select("id")
+          .eq("gift_id", giftId)
+          .or(`user_a.eq.${myId},user_b.eq.${myId}`)
+          .maybeSingle();
+        if (chat?.id) setChatId(chat.id as string);
+      }
     })();
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY(giftId));
-      setMessages(raw ? JSON.parse(raw) : []);
-    } catch {
-      setMessages([]);
-    }
   }, [giftId]);
+
+  // загрузка сообщений + realtime
+  useEffect(() => {
+    if (!chatId || !meId) return;
+    let cancelledLocal = false;
+    (async () => {
+      const { data } = await supabase
+        .from("messages")
+        .select("id, sender_id, content, created_at")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: true });
+      if (cancelledLocal) return;
+      setMessages(
+        (data ?? []).map((m) => ({
+          id: m.id as string,
+          from: (m.sender_id === meId ? "me" : "them") as "me" | "them",
+          text: m.content as string,
+          ts: new Date(m.created_at as string).getTime(),
+        })),
+      );
+    })();
+    const channel = supabase
+      .channel(`messages-${chatId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` },
+        (payload) => {
+          const m = payload.new as { id: string; sender_id: string; content: string; created_at: string };
+          setMessages((prev) => {
+            if (prev.some((x) => x.id === m.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: m.id,
+                from: m.sender_id === meId ? "me" : "them",
+                text: m.content,
+                ts: new Date(m.created_at).getTime(),
+              },
+            ];
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      cancelledLocal = true;
+      supabase.removeChannel(channel);
+    };
+  }, [chatId, meId]);
+
 
   useEffect(() => {
     try {
