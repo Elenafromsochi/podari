@@ -131,7 +131,7 @@ function CabinetPage() {
   }
 
   const sections: { title: string; emoji: string; gifts: Gift[]; empty: string }[] = [
-    { title: "Выложенные", emoji: "📤", gifts: posted, empty: "Вы пока не публиковали подарков" },
+    { title: "Выложенные", emoji: "📤", gifts: posted.filter((g) => g.status !== "gifted"), empty: "Вы пока не публиковали подарков" },
     { title: "Подаренные", emoji: "💝", gifts: gifted.map((t) => t.gift).filter((g): g is Gift => !!g), empty: "Пока никому не передали подарок" },
     { title: "Полученные", emoji: "🎁", gifts: received.map((t) => t.gift).filter((g): g is Gift => !!g), empty: "Вы пока ничего не получили" },
   ];
