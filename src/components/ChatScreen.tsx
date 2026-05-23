@@ -62,7 +62,7 @@ export function ChatScreen({
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
-      const myId = u.user?.user?.id ?? u.user?.id ?? null;
+      const myId = u.user?.id ?? null;
       setMeId(myId);
       const { data } = await supabase
         .from("gifts")
