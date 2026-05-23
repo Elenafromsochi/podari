@@ -122,17 +122,23 @@ export function ChatScreen({
     if (!t) return;
     setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", text: t, ts: Date.now() }]);
     setText("");
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          id: crypto.randomUUID(),
-          from: "them",
-          text: "Спасибо! Я скоро отвечу подробнее 💌",
-          ts: Date.now(),
-        },
-      ]);
-    }, 1400);
+  };
+
+  const handleCancel = async () => {
+    if (cancelled || handedOver) return;
+    try {
+      await cancelFn({ data: { transaction_id: transactionId } });
+    } catch (e) {
+      toast.error("Не удалось отказаться", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+      return;
+    }
+    setCancelled(true);
+    toast.success("Вы отказались от подарка", {
+      description: "Замороженные баллы возвращены на ваш счёт 💚",
+    });
+    setTimeout(() => navigate({ to: "/cabinet" }), 800);
   };
 
   const toggleMic = () => {
