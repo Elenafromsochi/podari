@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, Send, Bell, X } from "lucide-react";
+import { Mic, MicOff, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ReviewModal } from "@/components/ReviewModal";
-import { cancelClaim, submitReview } from "@/lib/cozy.functions";
+import { cancelClaim, sendChatMessage, submitReview } from "@/lib/cozy.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
@@ -46,7 +46,6 @@ export function ChatScreen({
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
-  const [notified, setNotified] = useState(true);
   const [handedOver, setHandedOver] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -56,6 +55,7 @@ export function ChatScreen({
 
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
+  const sendMessageFn = useServerFn(sendChatMessage);
 
   const isOwner = !!(meId && gift && gift.owner_id === meId);
 
@@ -160,15 +160,28 @@ export function ChatScreen({
       return;
     }
     setText("");
-    const { error } = await supabase.from("messages").insert({
-      chat_id: chatId,
-      sender_id: meId,
-      content: t,
-    });
-    if (error) {
+    try {
+      const inserted = await sendMessageFn({ data: { chat_id: chatId, content: t } });
+      if (inserted?.id) {
+        setMessages((prev) => {
+          if (prev.some((x) => x.id === inserted.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: inserted.id as string,
+              from: "me",
+              text: inserted.content as string,
+              ts: new Date(inserted.created_at as string).getTime(),
+            },
+          ];
+        });
+      }
+    } catch (e) {
       // вернём текст обратно, чтобы не потерять написанное
       setText(t);
-      toast.error("Не удалось отправить", { description: error.message });
+      toast.error("Не удалось отправить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     }
   };
 
@@ -249,24 +262,6 @@ export function ChatScreen({
           </Button>
         )}
       </div>
-
-      {notified && (
-        <div className="mx-4 mt-3 flex items-start gap-3 rounded-2xl border bg-mint/30 p-3 text-sm">
-          <Bell className="mt-0.5 h-4 w-4 shrink-0" />
-          <div className="flex-1">
-            <div className="font-medium">
-              {isOwner ? "У вашего подарка появился получатель" : "Даритель получил уведомление"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {isOwner
-                ? "Напишите получателю — договоритесь о передаче подарка"
-                : "«У вашего подарка появился получатель — перейти в чат»"}
-            </div>
-          </div>
-          <button onClick={() => setNotified(false)} className="text-xs text-muted-foreground hover:underline">скрыть</button>
-        </div>
-      )}
-
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
