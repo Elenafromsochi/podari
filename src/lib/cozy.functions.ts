@@ -126,6 +126,36 @@ export const confirmHandover = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Request handover (giver asks receiver to confirm) ----------
+export const requestHandover = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ transaction_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("request_handover", {
+      _transaction_id: data.transaction_id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Decline handover (receiver says "не получил") ----------
+export const declineHandover = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ transaction_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("decline_handover", {
+      _transaction_id: data.transaction_id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------- Cancel claim (отказаться от подарка) ----------
 export const cancelClaim = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
