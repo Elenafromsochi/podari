@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle, MessageCircle } from "lucide-react";
-import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { HelpCircle, MessageCircle, LogOut } from "lucide-react";
+import { toast } from "sonner";
+import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
 import {
   getMyPostedGifts,
   getMyReceivedGifts,
@@ -11,6 +12,18 @@ import {
 } from "@/lib/cozy.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/cabinet")({
   head: () => ({
