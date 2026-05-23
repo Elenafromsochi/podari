@@ -182,19 +182,23 @@ export function ChatScreen({
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">🎁</div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">Чат с дарителем</div>
+          <div className="truncate text-sm font-medium">
+            {meId && gift?.owner_id === meId ? "Чат с получателем" : "Чат с дарителем"}
+          </div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
-        <Button
-          size="sm"
-          variant={handedOver ? "secondary" : "default"}
-          disabled={handedOver}
-          onClick={markHandedOver}
-          className="rounded-full"
-        >
-          <GiftIcon className="h-4 w-4" />
-          {handedOver ? "Получено" : "Подтвердить получение"}
-        </Button>
+        {meId && gift && gift.owner_id !== meId && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={cancelled || handedOver}
+            onClick={handleCancel}
+            className="rounded-full"
+          >
+            <X className="h-4 w-4" />
+            {cancelled ? "Отказано" : "Отказаться"}
+          </Button>
+        )}
       </div>
 
       {notified && (
