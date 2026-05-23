@@ -16,7 +16,6 @@ const AUTO_MESSAGES = [
   "Расскажите подробнее про ваш подарок, а именно… 💬",
 ];
 
-const STORAGE_KEY = (giftId: string) => `cozygift_chat_${giftId}`;
 
 type SR = {
   start: () => void;
