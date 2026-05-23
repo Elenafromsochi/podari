@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const INITIAL_CHAT_MESSAGE = "Мне понравился ваш подарок. Как могу его забрать? 😊";
+
 // ---------- Profile ----------
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -55,7 +57,7 @@ export const claimGift = createServerFn({ method: "POST" })
     z.object({ gift_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: rows, error } = await supabase.rpc("claim_gift", {
       _gift_id: data.gift_id,
     });
@@ -69,10 +71,44 @@ export const claimGift = createServerFn({ method: "POST" })
       throw new Error(msg);
     }
     const first = Array.isArray(rows) ? rows[0] : rows;
+    if (first?.chat_id) {
+      const { error: messageError } = await supabase.from("messages").insert({
+        chat_id: first.chat_id as string,
+        sender_id: userId,
+        content: INITIAL_CHAT_MESSAGE,
+      });
+      if (messageError) throw new Error(messageError.message);
+    }
     return {
       transaction_id: first?.transaction_id as string,
       chat_id: first?.chat_id as string,
     };
+  });
+
+// ---------- Chat messages ----------
+export const sendChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        chat_id: z.string().uuid(),
+        content: z.string().trim().min(1).max(2000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await supabase
+      .from("messages")
+      .insert({
+        chat_id: data.chat_id,
+        sender_id: userId,
+        content: data.content,
+      })
+      .select("id, sender_id, content, created_at")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
   });
 
 // ---------- Confirm handover ----------
