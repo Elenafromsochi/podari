@@ -9,7 +9,9 @@ import {
 } from "@tanstack/react-router";
 
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalNotifications } from "@/components/GlobalNotifications";
 import appCss from "../styles.css?url";
+
 
 function NotFoundComponent() {
   return (
@@ -115,7 +117,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <GlobalNotifications />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
+
   );
 }

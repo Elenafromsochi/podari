@@ -243,6 +243,50 @@ export const getMyGiftedGifts = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+// ---------- Unread counters for cabinet badges ----------
+export const getUnreadCounts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        last_seen_chats_at: z.string().nullable().optional(),
+        last_seen_gifts_at: z.string().nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const sinceChats = data.last_seen_chats_at ?? "1970-01-01T00:00:00Z";
+    const sinceGifts = data.last_seen_gifts_at ?? "1970-01-01T00:00:00Z";
+
+    // Активные чаты, где я участвую
+    const { data: chats } = await supabase
+      .from("chats")
+      .select("id, user_a, user_b");
+    const chatIds = (chats ?? []).map((c) => c.id as string);
+
+    let chatsUnread = 0;
+    if (chatIds.length) {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .in("chat_id", chatIds)
+        .neq("sender_id", userId)
+        .gt("created_at", sinceChats);
+      chatsUnread = count ?? 0;
+    }
+
+    // Новые действия по подаркам: транзакции, в которых я участвую, обновлённые позже sinceGifts
+    const { count: giftsCount } = await supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .gt("created_at", sinceGifts);
+
+    return { chats_unread: chatsUnread, gifts_unread: giftsCount ?? 0 };
+  });
+
+
 // ---------- Find pending transaction by gift (for chat / handover) ----------
 export const getActiveTransactionForGift = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

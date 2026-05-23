@@ -9,7 +9,9 @@ import {
   getMyReceivedGifts,
   getMyGiftedGifts,
   getMyChats,
+  getUnreadCounts,
 } from "@/lib/cozy.functions";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -67,12 +69,17 @@ function CabinetPage() {
   const [archiveGivers, setArchiveGivers] = useState<ChatItem[]>([]);
   const [archiveReceivers, setArchiveReceivers] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>("gifts");
+  const [chatsUnread, setChatsUnread] = useState(0);
+  const [giftsUnread, setGiftsUnread] = useState(0);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const chatsFn = useServerFn(getMyChats);
+  const unreadFn = useServerFn(getUnreadCounts);
   const navigate = useNavigate();
+
 
   const handleSignOut = async () => {
     try {
@@ -121,6 +128,52 @@ function CabinetPage() {
     })();
   }, [postedFn, receivedFn, giftedFn, chatsFn]);
 
+  // Подсчёт непрочитанных: основан на отметках «последнее посещение» в localStorage
+  const refreshUnread = async () => {
+    try {
+      const lastChats = typeof window !== "undefined" ? localStorage.getItem("cozy_last_seen_chats") : null;
+      const lastGifts = typeof window !== "undefined" ? localStorage.getItem("cozy_last_seen_gifts") : null;
+      const res = (await unreadFn({
+        data: { last_seen_chats_at: lastChats, last_seen_gifts_at: lastGifts },
+      })) as { chats_unread: number; gifts_unread: number };
+      setChatsUnread(res.chats_unread ?? 0);
+      setGiftsUnread(res.gifts_unread ?? 0);
+    } catch {
+      /* noop */
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    refreshUnread();
+    const onChats = () => refreshUnread();
+    const onGifts = () => refreshUnread();
+    window.addEventListener("cozy:chats-activity", onChats);
+    window.addEventListener("cozy:gifts-activity", onGifts);
+    const id = window.setInterval(refreshUnread, 15000);
+    return () => {
+      window.removeEventListener("cozy:chats-activity", onChats);
+      window.removeEventListener("cozy:gifts-activity", onGifts);
+      window.clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.user_id]);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
+    if (typeof window === "undefined") return;
+    const now = new Date().toISOString();
+    if (val === "chats") {
+      localStorage.setItem("cozy_last_seen_chats", now);
+      setChatsUnread(0);
+    } else if (val === "gifts") {
+      localStorage.setItem("cozy_last_seen_gifts", now);
+      setGiftsUnread(0);
+    }
+  };
+
+
+
   if (!user) {
     return (
       <div className="mx-auto max-w-md p-8 text-center text-muted-foreground">
@@ -154,12 +207,27 @@ function CabinetPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="gifts" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="gifts">🎁 Подарки</TabsTrigger>
-          <TabsTrigger value="chats">💬 Чаты</TabsTrigger>
+          <TabsTrigger value="gifts" className="relative">
+            🎁 Подарки
+            {giftsUnread > 0 && (
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {giftsUnread > 99 ? "99+" : giftsUnread}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="chats" className="relative">
+            💬 Чаты
+            {chatsUnread > 0 && (
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {chatsUnread > 99 ? "99+" : chatsUnread}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="archive">🗂 Архив</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="gifts" className="mt-4 space-y-6">
           {sections.map((sec) => (
