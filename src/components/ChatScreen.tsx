@@ -33,7 +33,6 @@ export function ChatScreen({
   giftId,
   transactionId,
   onBack,
-  onHandover,
   onReview,
 }: {
   giftId: string;
@@ -55,7 +54,6 @@ export function ChatScreen({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
-  const handoverFn = useServerFn(confirmHandover);
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
 
@@ -86,29 +84,6 @@ export function ChatScreen({
       if (h && !r) setShowReview(true);
     } catch { /* noop */ }
   }, [giftId]);
-
-  const markHandedOver = async () => {
-    if (handedOver) return;
-    try {
-      await handoverFn({ data: { transaction_id: transactionId } });
-    } catch (e) {
-      toast.error("Не удалось подтвердить", {
-        description: e instanceof Error ? e.message : String(e),
-      });
-      return;
-    }
-    setHandedOver(true);
-    localStorage.setItem(`cozygift_handover_${giftId}`, String(Date.now()));
-    setMessages((m) => [
-      ...m,
-      { id: crypto.randomUUID(), from: "me", text: "✅ Получение подтверждено", ts: Date.now() },
-    ]);
-    toast.success("Получение подтверждено • +20 Опыта", {
-      description: "Дарителю вернулись 100 баллов и +80 Опыта 💚",
-    });
-    onHandover?.();
-    setTimeout(() => setShowReview(true), 600);
-  };
 
   useEffect(() => {
     if (messages.length) {
