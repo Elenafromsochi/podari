@@ -198,6 +198,28 @@ function CabinetPage() {
           </section>
         ))}
       </div>
+
+      <div className="mt-8 border-t pt-6">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive">
+              <LogOut className="h-4 w-4" /> Выйти из аккаунта
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Выйти из аккаунта?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Сессия будет сброшена. Чтобы вернуться, потребуется снова войти по номеру телефона.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSignOut}>Выйти</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }
