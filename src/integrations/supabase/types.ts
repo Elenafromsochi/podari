@@ -232,6 +232,7 @@ export type Database = {
     }
     Functions: {
       calc_level: { Args: { _xp: number }; Returns: number }
+      cancel_claim: { Args: { _transaction_id: string }; Returns: undefined }
       claim_gift: {
         Args: { _gift_id: string }
         Returns: {
