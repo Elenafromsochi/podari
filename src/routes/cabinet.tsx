@@ -63,6 +63,8 @@ function CabinetPage() {
   const [gifted, setGifted] = useState<TxRow[]>([]);
   const [chatsWithGivers, setChatsWithGivers] = useState<ChatItem[]>([]);
   const [chatsWithReceivers, setChatsWithReceivers] = useState<ChatItem[]>([]);
+  const [archiveGivers, setArchiveGivers] = useState<ChatItem[]>([]);
+  const [archiveReceivers, setArchiveReceivers] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const postedFn = useServerFn(getMyPostedGifts);
@@ -102,9 +104,16 @@ function CabinetPage() {
         setPosted((p as Gift[]) ?? []);
         setReceived((r as TxRow[]) ?? []);
         setGifted((g as TxRow[]) ?? []);
-        const chats = c as { with_givers: ChatItem[]; with_receivers: ChatItem[] };
+        const chats = c as {
+          with_givers: ChatItem[];
+          with_receivers: ChatItem[];
+          archive_with_givers?: ChatItem[];
+          archive_with_receivers?: ChatItem[];
+        };
         setChatsWithGivers(chats?.with_givers ?? []);
         setChatsWithReceivers(chats?.with_receivers ?? []);
+        setArchiveGivers(chats?.archive_with_givers ?? []);
+        setArchiveReceivers(chats?.archive_with_receivers ?? []);
       } finally {
         setLoading(false);
       }
@@ -137,67 +146,92 @@ function CabinetPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Опыт" value={user.xp} hint="Начисляется за каждое действие: +20 за публикацию подарка, +80 за вручённый подарок, +20 за отзыв, +20 за получение подарка. По мере накопления Опыта растёт Уровень." />
+            <Stat label="Опыт" value={user.xp} hint="Начисляется за каждое действие: +20 за публикацию подарка, +80 за вручённый подарок, +20 за отзыв, +10 за получение подарка." />
             <Stat label="Уровень" value={user.level} hint="Уровень растёт по мере накопления Опыта. Каждые 200 Опыта — новый уровень." />
             <Stat label="Подарочные баллы" value={user.balance} hint="Расход: списываются (замораживаются), когда забираешь подарок. Доход: возвращаются, когда твой подарок принят получателем." />
           </div>
         </CardContent>
       </Card>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-lg font-semibold">💬 Чаты</h2>
-        <ChatGroup
-          title="С дарителями"
-          emoji="🎁"
-          empty="Здесь появятся чаты по подаркам, которые вы выбрали"
-          items={chatsWithGivers}
-          loading={loading}
-        />
-        <div className="h-3" />
-        <ChatGroup
-          title="С получателями"
-          emoji="💝"
-          empty="Здесь появятся чаты с теми, кто выбрал ваш подарок"
-          items={chatsWithReceivers}
-          loading={loading}
-        />
-      </section>
+      <Tabs defaultValue="gifts" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="gifts">🎁 Подарки</TabsTrigger>
+          <TabsTrigger value="chats">💬 Чаты</TabsTrigger>
+          <TabsTrigger value="archive">🗂 Архив</TabsTrigger>
+        </TabsList>
 
-
-      <div className="space-y-6">
-        {sections.map((sec) => (
-          <section key={sec.title}>
-            <h2 className="mb-2 text-lg font-semibold">
-              {sec.emoji} {sec.title}{" "}
-              <span className="text-sm font-normal text-muted-foreground">({sec.gifts.length})</span>
-            </h2>
-            {sec.gifts.length === 0 ? (
-              <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-                {loading ? "Загружаем..." : sec.empty}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {sec.gifts.map((g) => (
-                  <li key={g.id} className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm">
-                    {g.image_url ? (
-                      <img src={g.image_url} alt={g.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
-                    ) : (
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">🎁</div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{g.title}</p>
-                      <p className="text-xs text-muted-foreground">{g.category} • {g.status}</p>
-                      {g.description && (
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
+        <TabsContent value="gifts" className="mt-4 space-y-6">
+          {sections.map((sec) => (
+            <section key={sec.title}>
+              <h2 className="mb-2 text-lg font-semibold">
+                {sec.emoji} {sec.title}{" "}
+                <span className="text-sm font-normal text-muted-foreground">({sec.gifts.length})</span>
+              </h2>
+              {sec.gifts.length === 0 ? (
+                <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+                  {loading ? "Загружаем..." : sec.empty}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {sec.gifts.map((g) => (
+                    <li key={g.id} className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm">
+                      {g.image_url ? (
+                        <img src={g.image_url} alt={g.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
+                      ) : (
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">🎁</div>
                       )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{g.title}</p>
+                        <p className="text-xs text-muted-foreground">{g.category} • {g.status}</p>
+                        {g.description && (
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="chats" className="mt-4 space-y-4">
+          <ChatGroup
+            title="С дарителями"
+            emoji="🎁"
+            empty="Здесь появятся активные чаты по подаркам, которые вы выбрали"
+            items={chatsWithGivers}
+            loading={loading}
+          />
+          <ChatGroup
+            title="С получателями"
+            emoji="💝"
+            empty="Здесь появятся активные чаты с теми, кто выбрал ваш подарок"
+            items={chatsWithReceivers}
+            loading={loading}
+          />
+        </TabsContent>
+
+        <TabsContent value="archive" className="mt-4 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Сюда попадают чаты после завершения или отказа от подарка
+          </p>
+          <ChatGroup
+            title="С дарителями"
+            emoji="🎁"
+            empty="Здесь пока нет завершённых чатов"
+            items={archiveGivers}
+            loading={loading}
+          />
+          <ChatGroup
+            title="С получателями"
+            emoji="💝"
+            empty="Здесь пока нет завершённых чатов"
+            items={archiveReceivers}
+            loading={loading}
+          />
+        </TabsContent>
+      </Tabs>
 
       <div className="mt-8 border-t pt-6">
         <AlertDialog>
