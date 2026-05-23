@@ -193,6 +193,7 @@ export type Database = {
           amount: number
           created_at: string
           gift_id: string | null
+          handover_requested_at: string | null
           id: string
           receiver_id: string | null
           sender_id: string | null
@@ -202,6 +203,7 @@ export type Database = {
           amount?: number
           created_at?: string
           gift_id?: string | null
+          handover_requested_at?: string | null
           id?: string
           receiver_id?: string | null
           sender_id?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           amount?: number
           created_at?: string
           gift_id?: string | null
+          handover_requested_at?: string | null
           id?: string
           receiver_id?: string | null
           sender_id?: string | null
@@ -241,6 +244,14 @@ export type Database = {
         }[]
       }
       confirm_handover: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
+      decline_handover: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
+      request_handover: {
         Args: { _transaction_id: string }
         Returns: undefined
       }
