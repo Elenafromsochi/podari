@@ -143,18 +143,23 @@ export function ChatScreen({
   }, [giftId]);
 
   useEffect(() => {
-    if (messages.length) {
-      localStorage.setItem(STORAGE_KEY(giftId), JSON.stringify(messages));
-    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, giftId]);
+  }, [messages]);
 
-  const send = (raw: string) => {
+  const send = async (raw: string) => {
     const t = raw.trim();
-    if (!t) return;
-    setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", text: t, ts: Date.now() }]);
+    if (!t || !chatId || !meId) return;
     setText("");
+    const { error } = await supabase.from("messages").insert({
+      chat_id: chatId,
+      sender_id: meId,
+      content: t,
+    });
+    if (error) {
+      toast.error("Не удалось отправить", { description: error.message });
+    }
   };
+
 
   const handleCancel = async () => {
     if (cancelled || handedOver) return;
