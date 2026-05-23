@@ -1,76 +1,82 @@
-# Перевод CozyGift на реальный бэкенд
 
-Цель: убрать localStorage из бизнес-логики, чтобы два пользователя могли тестировать сервис одновременно из разных браузеров. Все подарки, баллы, опыт и сделки — в базе.
+## 1. Переименование в «Подари»
 
-## 1. Авторизация по телефону
+Точечно меняю строки в UI:
+- `index.html` — `<title>` и meta description
+- `AuthFlow.tsx` — заголовок «Войти в Подари»
+- `WelcomeScreen.tsx` — приветствие
+- `cabinet.tsx` — шапка кабинета
+- мелочи: toast-тексты, og-метаданные на главной
 
-Lovable Cloud поддерживает phone-auth, но для отправки реальных SMS нужен Twilio (платно). Поэтому делаем в два этапа:
+Логику и таблицы не трогаю.
 
-- **Этап A (сейчас, без денег).** Оставляем экран ввода телефона и 4-значного кода. На бэкенде создаём пользователя через email-обвязку: `<phone>@phone.cozygift.local` + сгенерированный пароль, который шифруется и хранится у пользователя локально (как «pin»). Код подтверждения генерится сервером и показывается в тост-уведомлении (как сейчас), но факт регистрации пишется в `auth.users` Lovable Cloud — два разных браузера = два разных аккаунта.
-- **Этап B (когда подключите Twilio).** Меняем серверную функцию `sendOtp` на реальный вызов Supabase phone-auth. Фронтенд не трогаем.
+## 2. Авторизация через Telegram
 
-При первом входе создаётся запись в `profiles` через триггер `on_auth_user_created`. Поле `display_name` берётся из формы регистрации, баланс = 100.
+### Поток для пользователя
 
-## 2. Профиль и игровые поля в базе
+```text
+[Экран входа]
+  → "Войти через Telegram" — большая кнопка
+  → Сервер выдаёт одноразовый nonce (короткая строка)
+  → Открывается t.me/<твой_бот>?start=<nonce>
+  → Пользователь жмёт Start в Telegram
+  → Бот пишет: "Твой код для входа в Подари: 4821"
+  → Пользователь возвращается в приложение, вводит 4821
+  → Вход выполнен, в профиле имя из Telegram (@username или first_name)
+```
 
-Уже есть таблица `profiles` с полями `balance`, `xp`, `level`. Добавляем:
-- триггер `handle_new_user` — создаёт строку `profiles` при регистрации с балансом 100;
-- индекс по `user_id`;
-- хелпер `recalc_level(xp)` — уровень = `floor(xp/200)+1` (правило обсудим позже, сейчас используем формулу-заглушку).
+Почему именно так: Telegram запрещает ботам писать первым. `?start=<nonce>` — стандартный приём, чтобы привязать сессию браузера к конкретному Telegram-аккаунту.
 
-Фронтенд читает профиль из `profiles`, а не из localStorage.
+### Что подключаем
 
-## 3. Серверные операции (TanStack server functions)
+- Telegram-коннектор Lovable (твой существующий бот, токен ты передашь через коннектор — я его не вижу и не трогаю).
+- Узнаю `bot_username` через `getMe` при первом запуске, кеширую в env-переменной коннектора, либо беру из ответа на сервере.
 
-Все мутации — через `createServerFn` с `requireSupabaseAuth`. Никаких прямых клиентских insert/update в `gifts`/`transactions`/`profiles`.
+### Бэкенд (TanStack server functions + публичный webhook)
 
-- `publishGift({ title, description, category, image_url })` — insert в `gifts` с `owner_id = auth.uid()`, `status='available'`, `cost=100`. Начисляет `+20 xp` владельцу.
-- `claimGift({ gift_id })` — атомарно (RPC `claim_gift` в Postgres):
-  - проверка `profiles.balance >= 100` у получателя, иначе ошибка `INSUFFICIENT_BALANCE`;
-  - проверка `gifts.status='available'` и `owner_id != auth.uid()`, иначе `ALREADY_TAKEN`;
-  - списать 100 у получателя (заморозка);
-  - `UPDATE gifts SET status='reserved'`;
-  - `INSERT transactions (sender=owner, receiver=auth.uid, amount=100, status='pending')`;
-  - создать `chats` запись между дарителем и получателем;
-  - вернуть `{ transaction_id, chat_id }`.
-- `confirmHandover({ transaction_id })` — вызывает получатель (RPC `confirm_handover`):
-  - `transactions.status='completed'`;
-  - `gifts.status='gifted'`;
-  - **+100 баллов дарителю** (перевод замороженных, как выбрали);
-  - `+80 xp` дарителю, `+20 xp` получателю;
-  - пересчёт `level` обеих сторон.
-- `submitReview({ transaction_id, rating, comment })` — insert в `reviews`, `+20 xp` автору.
+**Новая таблица `auth_nonces`** (миграция):
+- `nonce` (PK, короткая строка), `code` (4 цифры, заполняется ботом), `telegram_id`, `telegram_username`, `telegram_first_name`, `consumed_at`, `expires_at` (5 минут), `created_at`.
+- RLS закрыта полностью; доступ только через server functions с service role.
 
-Все RPC — `SECURITY DEFINER` с явной проверкой `auth.uid()` внутри, чтобы атомарно обновлять чужие профили (баланс дарителя).
+**Сервер-функции** (`src/lib/telegram-auth.functions.ts`):
+- `startTelegramLogin()` → создаёт `nonce`, возвращает `{ nonce, bot_username, deep_link }`.
+- `pollTelegramLogin({ nonce })` → опрос каждые 2 сек: вернёт `{ status: "waiting" | "code_sent" }`. Код пользователю не отдаём — только Telegram.
+- `verifyTelegramCode({ nonce, code })` → находит nonce, проверяет код и срок, помечает `consumed_at`. Для `telegram_id` находит/создаёт supabase-пользователя (email `tg_<telegram_id>@tg.podari.local`, детерминированный пароль), возвращает сессию через `signInWithPassword`. Триггер `handle_new_user` уже создаёт profile.
 
-## 4. Чат
+**Публичный webhook** `src/routes/api/public/telegram/webhook.ts`:
+- Проверка `X-Telegram-Bot-Api-Secret-Token` (как в `telegram` knowledge — секрет = `sha256("telegram-webhook:" + TELEGRAM_API_KEY)`).
+- На `/start <nonce>`: находит nonce, генерирует 4-значный код, пишет в БД, отправляет в чат через connector gateway.
+- На прочие команды — приветственное сообщение.
 
-Таблица `messages` уже есть с RLS «участники чата видят сообщения». Realtime-подписка через `supabase.channel('messages').on('postgres_changes',...)`. Включить публикацию `messages` в `supabase_realtime`.
+После создания endpoint регистрирую webhook в боте через `setWebhook` из песочницы (один curl).
 
-## 5. Личный кабинет — только из базы
+### Фронтенд
 
-`/cabinet` загружает через server functions:
-- `myProfile()` → имя, баланс, опыт, уровень;
-- `myPostedGifts()` → `gifts where owner_id = me`;
-- `myReceivedGifts()` → `transactions where receiver_id = me` join `gifts`;
-- `myGiftedGifts()` → `transactions where sender_id = me and status='completed'`.
+- `AuthFlow.tsx` переписывается под Telegram (поля телефона и кода уходят).
+- Старый `auth-state.ts` (телефон → email) удаляю, остаются только `loadUser`/`signOut` и новая Telegram-обёртка.
+- Никакого ввода ника руками — берём из Telegram автоматически (можно потом поменять в кабинете).
 
-localStorage-стейт `game-state.ts` остаётся только для UX-онбординга (текущий шаг визарда), без бизнес-данных.
+## 3. Демо-сброс
 
-## 6. План работ
+Сношу всех пользователей и связанные данные (миграция, разовый `DELETE FROM auth.users` через SQL через миграцию + truncate бизнес-таблиц). Триггер на создание profile продолжит работать, новые пользователи зайдут уже через Telegram.
 
-1. Миграция: триггер на создание `profiles`, RPC `claim_gift`, `confirm_handover`, включить realtime.
-2. `auth-state.ts` → переписать на Lovable Cloud auth (этап A: phone→email-обвязка).
-3. `AuthFlow.tsx` оставить как UI, поменять только вызовы.
-4. `GiveGiftForm.onDone` → вызов `publishGift`.
-5. `ReceiveGiftFlow.onPick` + диалог нехватки баллов → вызов `claimGift`, обработка ошибок.
-6. `ChatScreen` → realtime-подписка, кнопка «подтвердить вручение» → `confirmHandover`.
-7. `cabinet.tsx` → переписать на server functions.
-8. Убрать XP/balance из localStorage; считать с сервера.
-9. Проверить два браузера: published-URL открыть в обычном Chrome и в инкогнито, зарегистрировать двух пользователей, провести цикл публикация → получение → подтверждение → отзыв.
+## 4. Ревизия перед релизом
 
-## Что я хочу подтвердить перед стартом
+Параллельно проверю и закрою:
 
-- **Phone-auth этап A** (моковый код в тосте, реальные аккаунты в БД) — ок?
-- **Display name** при регистрации сейчас не запрашивается; добавить поле «Как тебя зовут?» — ок?
-- **Уровень**: пока формула `floor(xp/200)+1`, потом настроим — ок?
+1. **RLS на новой `auth_nonces`** — закрыта, всё через server functions.
+2. **Защита webhook** — secret-token из header проверяется константно-временным сравнением.
+3. **Лимит частоты `startTelegramLogin`** — простая защита от спама (5 запросов / минуту с одного IP).
+4. **Срок жизни nonce** — 5 минут, истёкшие зачищать.
+5. **Email-провайдер в Supabase** — отключу email-confirm для tg-аккаунтов (auto-confirm включить только для домена `@tg.podari.local`? — нет, у Supabase нет такого фильтра, поэтому глобально оставлю как есть и буду делать `email_confirm: true` при создании через admin-клиент в server fn).
+6. **`onAuthStateChange` listener** — уже есть в `index.tsx`, проверю что после Telegram-входа корректно подхватывает сессию.
+7. **Сообщения «чат закрыт» и архив** — пробегусь глазами, оставлю как есть, если не сломалось.
+8. **Старый код телефона** — удаляю целиком (`auth-state.ts` → `phone-auth.ts` уходит, остаётся новый `tg-auth.ts`).
+9. **Названия в og-meta и favicon-метаданных** — обновлю на «Подари».
+
+## Что нужно от тебя перед стартом
+
+1. **Подключить Telegram-коннектор** (я попрошу `standard_connectors--connect` после твоего «ок» — там попап-выбор существующего бота).
+2. После выкатки публичного webhook я один раз дёрну `setWebhook` для твоего бота — это перенаправит все апдейты бота на наш endpoint. Если бот сейчас используется для чего-то ещё (другие сервисы, polling) — это сломает их. **Подтверди, что бот свободен и используется только для «Подари».**
+
+Если оба пункта ок — стартую.
