@@ -242,14 +242,19 @@ export function ChatScreen({
         <div className="mx-4 mt-3 flex items-start gap-3 rounded-2xl border bg-mint/30 p-3 text-sm">
           <Bell className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="flex-1">
-            <div className="font-medium">Даритель получил уведомление</div>
+            <div className="font-medium">
+              {isOwner ? "У вашего подарка появился получатель" : "Даритель получил уведомление"}
+            </div>
             <div className="text-xs text-muted-foreground">
-              «У вашего подарка появился получатель — перейти в чат»
+              {isOwner
+                ? "Напишите получателю — договоритесь о передаче подарка"
+                : "«У вашего подарка появился получатель — перейти в чат»"}
             </div>
           </div>
           <button onClick={() => setNotified(false)} className="text-xs text-muted-foreground hover:underline">скрыть</button>
         </div>
       )}
+
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
