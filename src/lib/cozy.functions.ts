@@ -303,8 +303,10 @@ export const getMyChats = createServerFn({ method: "GET" })
       other_name: string;
       created_at: string;
     };
-    const asReceiver: Item[] = []; // me=receiver → собеседник=даритель
-    const asSender: Item[] = [];   // me=sender   → собеседник=получатель
+    const activeGivers: Item[] = [];
+    const activeReceivers: Item[] = [];
+    const archiveGivers: Item[] = [];
+    const archiveReceivers: Item[] = [];
     for (const r of rows) {
       const g = (r as { gift: { id: string; title: string; image_url: string | null } | null }).gift;
       if (!g) continue;
@@ -318,9 +320,18 @@ export const getMyChats = createServerFn({ method: "GET" })
         other_name: (otherId && nameMap.get(otherId)) || "Гость",
         created_at: r.created_at as string,
       };
-      if (r.receiver_id === userId) asReceiver.push(item);
-      else asSender.push(item);
+      const isArchived = r.status === "completed" || r.status === "cancelled";
+      if (r.receiver_id === userId) {
+        (isArchived ? archiveGivers : activeGivers).push(item);
+      } else {
+        (isArchived ? archiveReceivers : activeReceivers).push(item);
+      }
     }
-    return { with_givers: asReceiver, with_receivers: asSender };
+    return {
+      with_givers: activeGivers,
+      with_receivers: activeReceivers,
+      archive_with_givers: archiveGivers,
+      archive_with_receivers: archiveReceivers,
+    };
   });
 
