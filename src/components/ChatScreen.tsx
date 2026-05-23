@@ -148,7 +148,17 @@ export function ChatScreen({
 
   const send = async (raw: string) => {
     const t = raw.trim();
-    if (!t || !chatId || !meId) return;
+    if (!t) return;
+    if (!meId) {
+      toast.error("Нужно войти в аккаунт, чтобы писать в чат");
+      return;
+    }
+    if (!chatId) {
+      toast.error("Чат ещё не готов", {
+        description: "Подождите пару секунд и попробуйте снова",
+      });
+      return;
+    }
     setText("");
     const { error } = await supabase.from("messages").insert({
       chat_id: chatId,
@@ -156,6 +166,8 @@ export function ChatScreen({
       content: t,
     });
     if (error) {
+      // вернём текст обратно, чтобы не потерять написанное
+      setText(t);
       toast.error("Не удалось отправить", { description: error.message });
     }
   };
