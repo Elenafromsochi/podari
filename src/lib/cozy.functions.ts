@@ -221,6 +221,7 @@ export const getMyReceivedGifts = createServerFn({ method: "GET" })
         "id, status, created_at, gift:gifts(id, title, category, description, image_url, status)",
       )
       .eq("receiver_id", userId)
+      .eq("status", "completed")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
