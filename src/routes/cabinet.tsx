@@ -69,12 +69,17 @@ function CabinetPage() {
   const [archiveGivers, setArchiveGivers] = useState<ChatItem[]>([]);
   const [archiveReceivers, setArchiveReceivers] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>("gifts");
+  const [chatsUnread, setChatsUnread] = useState(0);
+  const [giftsUnread, setGiftsUnread] = useState(0);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const chatsFn = useServerFn(getMyChats);
+  const unreadFn = useServerFn(getUnreadCounts);
   const navigate = useNavigate();
+
 
   const handleSignOut = async () => {
     try {
