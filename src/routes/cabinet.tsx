@@ -69,6 +69,20 @@ function CabinetPage() {
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const chatsFn = useServerFn(getMyChats);
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Вы вышли из аккаунта");
+      navigate({ to: "/" });
+      if (typeof window !== "undefined") window.location.reload();
+    } catch (e) {
+      toast.error("Не удалось выйти", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
 
   useEffect(() => {
     (async () => {
