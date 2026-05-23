@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, Send, Bell, Gift as GiftIcon } from "lucide-react";
+import { Mic, MicOff, Send, Bell, Gift as GiftIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ReviewModal } from "@/components/ReviewModal";
-import { confirmHandover, submitReview } from "@/lib/cozy.functions";
+import { cancelClaim, confirmHandover, submitReview } from "@/lib/cozy.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
