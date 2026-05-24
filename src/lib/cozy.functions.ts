@@ -54,15 +54,9 @@ export const publishGift = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("level")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const level = (prof?.level as number) ?? 1;
-    if (!allowedForLevel(level, data.gift_kind, data.price_tier)) {
-      throw new Error("LEVEL_LOCKED");
-    }
+    // На первом уровне все могут размещать любые подарки до 3 000 ₽.
+    // Уровневые ограничения подключим позже, когда введём уровни 2+.
+    void allowedForLevel;
     const { data: row, error } = await supabase
       .from("gifts")
       .insert({
