@@ -242,6 +242,24 @@ export type Database = {
           },
         ]
       }
+      telegram_referrals: {
+        Row: {
+          created_at: string
+          referred_by: string
+          telegram_id: number
+        }
+        Insert: {
+          created_at?: string
+          referred_by: string
+          telegram_id: number
+        }
+        Update: {
+          created_at?: string
+          referred_by?: string
+          telegram_id?: number
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
