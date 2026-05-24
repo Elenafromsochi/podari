@@ -85,9 +85,12 @@ export type Database = {
           cost: number
           created_at: string
           description: string | null
+          gift_kind: string
           id: string
           image_url: string | null
           owner_id: string
+          price_rub: number | null
+          price_tier: string
           status: string
           title: string
           updated_at: string
@@ -97,9 +100,12 @@ export type Database = {
           cost?: number
           created_at?: string
           description?: string | null
+          gift_kind?: string
           id?: string
           image_url?: string | null
           owner_id: string
+          price_rub?: number | null
+          price_tier?: string
           status?: string
           title: string
           updated_at?: string
@@ -109,9 +115,12 @@ export type Database = {
           cost?: number
           created_at?: string
           description?: string | null
+          gift_kind?: string
           id?: string
           image_url?: string | null
           owner_id?: string
+          price_rub?: number | null
+          price_tier?: string
           status?: string
           title?: string
           updated_at?: string
@@ -157,6 +166,7 @@ export type Database = {
           display_name: string
           id: string
           level: number
+          referred_by: string | null
           telegram_id: number | null
           telegram_username: string | null
           updated_at: string
@@ -169,6 +179,7 @@ export type Database = {
           display_name?: string
           id?: string
           level?: number
+          referred_by?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
           updated_at?: string
@@ -181,6 +192,7 @@ export type Database = {
           display_name?: string
           id?: string
           level?: number
+          referred_by?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
           updated_at?: string
@@ -195,6 +207,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          is_auto: boolean
           rating: number
           target_id: string | null
           transaction_id: string | null
@@ -204,6 +217,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_auto?: boolean
           rating: number
           target_id?: string | null
           transaction_id?: string | null
@@ -213,6 +227,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_auto?: boolean
           rating?: number
           target_id?: string | null
           transaction_id?: string | null
@@ -273,6 +288,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_referral_bonus: { Args: { _new_user: string }; Returns: undefined }
       calc_level: { Args: { _xp: number }; Returns: number }
       cancel_claim: { Args: { _transaction_id: string }; Returns: undefined }
       claim_gift: {

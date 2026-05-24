@@ -18,6 +18,24 @@ export const getMyProfile = createServerFn({ method: "GET" })
     return data;
   });
 
+// ---------- Level gates ----------
+const GiftKind = z.enum(["used_item", "specialist_time", "treat", "event_invite"]);
+const PriceTier = z.enum(["under_3k", "tier_3k_6k"]);
+
+function allowedForLevel(level: number, kind: string, tier: string): boolean {
+  if (kind === "used_item") {
+    if (tier === "under_3k") return level >= 1;
+    if (tier === "tier_3k_6k") return level >= 4;
+  }
+  if (kind === "specialist_time") {
+    if (tier === "under_3k") return level >= 2;
+    if (tier === "tier_3k_6k") return level >= 5;
+  }
+  if (kind === "treat") return level >= 3;
+  if (kind === "event_invite") return level >= 3;
+  return false;
+}
+
 // ---------- Publish ----------
 export const publishGift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -28,11 +46,23 @@ export const publishGift = createServerFn({ method: "POST" })
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80),
         image_url: z.string().max(15_000_000).nullable().optional(),
+        gift_kind: GiftKind.default("used_item"),
+        price_tier: PriceTier.default("under_3k"),
+        price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("level")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const level = (prof?.level as number) ?? 1;
+    if (!allowedForLevel(level, data.gift_kind, data.price_tier)) {
+      throw new Error("LEVEL_LOCKED");
+    }
     const { data: row, error } = await supabase
       .from("gifts")
       .insert({
@@ -41,8 +71,11 @@ export const publishGift = createServerFn({ method: "POST" })
         category: data.category,
         image_url: data.image_url ?? null,
         status: "available",
-        cost: 100,
+        cost: 1,
         owner_id: userId,
+        gift_kind: data.gift_kind,
+        price_tier: data.price_tier,
+        price_rub: data.price_rub ?? null,
       })
       .select("id")
       .single();
@@ -181,6 +214,7 @@ export const submitReview = createServerFn({ method: "POST" })
         target_id: z.string().uuid(),
         rating: z.number().int().min(1).max(5),
         comment: z.string().max(1000).optional(),
+        is_auto: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -192,9 +226,48 @@ export const submitReview = createServerFn({ method: "POST" })
       author_id: userId,
       rating: data.rating,
       comment: data.comment ?? null,
+      is_auto: data.is_auto,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// ---------- Public deals feed ----------
+export const getDealsFeed = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: txs } = await supabase
+      .from("transactions")
+      .select("id, created_at, sender_id, gift:gifts(id, title, image_url, gift_kind)")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const rows = txs ?? [];
+    const senderIds = Array.from(
+      new Set(rows.map((r) => r.sender_id).filter((v): v is string => !!v)),
+    );
+    const nameMap = new Map<string, string>();
+    if (senderIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", senderIds);
+      for (const p of profs ?? []) {
+        nameMap.set(p.user_id as string, (p.display_name as string) || "Гость");
+      }
+    }
+    return rows.map((r) => {
+      const g = (r as { gift: { id: string; title: string; image_url: string | null; gift_kind: string } | null }).gift;
+      return {
+        id: r.id as string,
+        created_at: r.created_at as string,
+        sender_name: (r.sender_id && nameMap.get(r.sender_id)) || "Гость",
+        gift_title: g?.title ?? "Подарок",
+        gift_image: g?.image_url ?? null,
+        gift_kind: g?.gift_kind ?? "used_item",
+      };
+    });
   });
 
 // ---------- Cabinet lists ----------
