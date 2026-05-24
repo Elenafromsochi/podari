@@ -136,8 +136,8 @@ export function ChatScreen({
           if (row.handover_requested_at && row.receiver_id === meId && row.status === "pending") {
             setShowReceiverConfirm(true);
           }
-          if (row.status === "completed" && row.receiver_id === meId) {
-            // получатель: после подтверждения — предложить отзыв
+          if (row.status === "completed") {
+            // Обоим участникам — предложить отзыв (получателю и дарителю)
             setShowReview(true);
           }
         },
