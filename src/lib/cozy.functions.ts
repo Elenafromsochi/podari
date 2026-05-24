@@ -214,6 +214,7 @@ export const submitReview = createServerFn({ method: "POST" })
         target_id: z.string().uuid(),
         rating: z.number().int().min(1).max(5),
         comment: z.string().max(1000).optional(),
+        is_auto: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -225,9 +226,48 @@ export const submitReview = createServerFn({ method: "POST" })
       author_id: userId,
       rating: data.rating,
       comment: data.comment ?? null,
+      is_auto: data.is_auto,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// ---------- Public deals feed ----------
+export const getDealsFeed = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: txs } = await supabase
+      .from("transactions")
+      .select("id, created_at, sender_id, gift:gifts(id, title, image_url, gift_kind)")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const rows = txs ?? [];
+    const senderIds = Array.from(
+      new Set(rows.map((r) => r.sender_id).filter((v): v is string => !!v)),
+    );
+    const nameMap = new Map<string, string>();
+    if (senderIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", senderIds);
+      for (const p of profs ?? []) {
+        nameMap.set(p.user_id as string, (p.display_name as string) || "Гость");
+      }
+    }
+    return rows.map((r) => {
+      const g = (r as { gift: { id: string; title: string; image_url: string | null; gift_kind: string } | null }).gift;
+      return {
+        id: r.id as string,
+        created_at: r.created_at as string,
+        sender_name: (r.sender_id && nameMap.get(r.sender_id)) || "Гость",
+        gift_title: g?.title ?? "Подарок",
+        gift_image: g?.image_url ?? null,
+        gift_kind: g?.gift_kind ?? "used_item",
+      };
+    });
   });
 
 // ---------- Cabinet lists ----------
