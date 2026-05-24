@@ -18,6 +18,24 @@ export const getMyProfile = createServerFn({ method: "GET" })
     return data;
   });
 
+// ---------- Level gates ----------
+const GiftKind = z.enum(["used_item", "specialist_time", "treat", "event_invite"]);
+const PriceTier = z.enum(["under_3k", "tier_3k_6k"]);
+
+function allowedForLevel(level: number, kind: string, tier: string): boolean {
+  if (kind === "used_item") {
+    if (tier === "under_3k") return level >= 1;
+    if (tier === "tier_3k_6k") return level >= 4;
+  }
+  if (kind === "specialist_time") {
+    if (tier === "under_3k") return level >= 2;
+    if (tier === "tier_3k_6k") return level >= 5;
+  }
+  if (kind === "treat") return level >= 3;
+  if (kind === "event_invite") return level >= 3;
+  return false;
+}
+
 // ---------- Publish ----------
 export const publishGift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -28,11 +46,23 @@ export const publishGift = createServerFn({ method: "POST" })
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80),
         image_url: z.string().max(15_000_000).nullable().optional(),
+        gift_kind: GiftKind.default("used_item"),
+        price_tier: PriceTier.default("under_3k"),
+        price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("level")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const level = (prof?.level as number) ?? 1;
+    if (!allowedForLevel(level, data.gift_kind, data.price_tier)) {
+      throw new Error("LEVEL_LOCKED");
+    }
     const { data: row, error } = await supabase
       .from("gifts")
       .insert({
@@ -41,8 +71,11 @@ export const publishGift = createServerFn({ method: "POST" })
         category: data.category,
         image_url: data.image_url ?? null,
         status: "available",
-        cost: 100,
+        cost: 1,
         owner_id: userId,
+        gift_kind: data.gift_kind,
+        price_tier: data.price_tier,
+        price_rub: data.price_rub ?? null,
       })
       .select("id")
       .single();
