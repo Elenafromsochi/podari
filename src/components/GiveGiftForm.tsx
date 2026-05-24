@@ -169,6 +169,9 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
+          <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+            💡 Рекомендуемая стоимость подарка — <b>до 3 000 ₽</b>. Подойдут вещи, время специалиста, угощения и приглашения на мероприятия.
+          </div>
           <div className="space-y-2">
             <Label>Фото</Label>
             <p className="text-xs text-muted-foreground">

@@ -133,6 +133,7 @@ export function ReceiveGiftFlow({
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{g.title}</div>
           <div className="mt-0.5 text-xs text-muted-foreground capitalize">{g.category}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">Рекомендованная стоимость: до 3 000 ₽</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
             Даритель: <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
           </div>
