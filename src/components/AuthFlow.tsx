@@ -1,76 +1,88 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { Sparkles, Phone, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Sparkles, Send, ArrowLeft, ShieldCheck } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
 import {
-  extractDigits,
-  formatPhone,
-  loadUser,
-  sendOtp,
-  signInWithPhone,
-  signUpWithPhone,
-  verifyOtp,
-  type UserProfile,
-} from "@/lib/auth-state";
+  startTelegramLogin,
+  pollTelegramLogin,
+  verifyTelegramCode,
+} from "@/lib/telegram-auth.functions";
 
-type Step = "phone" | "otp" | "onboarding";
+type Step = "intro" | "code";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
 }
 
 export function AuthFlow({ onAuthed }: Props) {
-  const [step, setStep] = useState<Step>("phone");
-  const [phoneDigits, setPhoneDigits] = useState("");
-  const [agreed, setAgreed] = useState(false);
+  const [step, setStep] = useState<Step>("intro");
   const [loading, setLoading] = useState(false);
 
-  // OTP
+  const [nonce, setNonce] = useState<string | null>(null);
+  const [deepLink, setDeepLink] = useState<string | null>(null);
+  const [botUsername, setBotUsername] = useState<string>("Podari_podarki_bot");
+  const [codeSent, setCodeSent] = useState(false);
+
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const [seconds, setSeconds] = useState(60);
-  const [lastCode, setLastCode] = useState<string | null>(null);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
-  // Onboarding
-  const [name, setName] = useState("");
+  const start = useServerFn(startTelegramLogin);
+  const poll = useServerFn(pollTelegramLogin);
+  const verify = useServerFn(verifyTelegramCode);
 
-  useEffect(() => {
-    if (step !== "otp") return;
-    setSeconds(60);
-    const t = setInterval(() => {
-      setSeconds((s) => (s > 0 ? s - 1 : 0));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [step]);
-
-  const fullPhone = `+7${phoneDigits}`;
-  const phoneReady = phoneDigits.length === 10 && agreed;
-
-  const requestCode = async () => {
-    if (!phoneReady || loading) return;
+  const beginLogin = async () => {
+    if (loading) return;
     setLoading(true);
     try {
-      const code = await sendOtp(fullPhone);
-      setLastCode(code);
+      const res = await start({});
+      setNonce(res.nonce);
+      setDeepLink(res.deep_link);
+      setBotUsername(res.bot_username);
+      setCodeSent(false);
       setOtp(["", "", "", ""]);
-      setStep("otp");
-      toast.success("Код отправлен", { description: `Демо-код: ${code}` });
+      setStep("code");
+      // open Telegram
+      if (typeof window !== "undefined") {
+        window.open(res.deep_link, "_blank", "noopener,noreferrer");
+      }
+    } catch (e) {
+      toast.error("Не удалось начать вход", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const resend = async () => {
-    if (seconds > 0) return;
-    const code = await sendOtp(fullPhone);
-    setLastCode(code);
-    setSeconds(60);
-    toast.success("Новый код отправлен", { description: `Демо-код: ${code}` });
-  };
+  // Poll for "bot already sent the code" — чтобы показать пользователю подсказку
+  useEffect(() => {
+    if (step !== "code" || !nonce || codeSent) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const r = await poll({ data: { nonce } });
+        if (stop) return;
+        if (r.status === "code_sent") {
+          setCodeSent(true);
+          toast.success("Код отправлен в Telegram", {
+            description: "Проверь чат с ботом",
+          });
+          inputsRef.current[0]?.focus();
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    const id = setInterval(tick, 2000);
+    tick();
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, [step, nonce, codeSent, poll]);
 
   const setDigit = (i: number, v: string) => {
     const d = v.replace(/\D/g, "").slice(-1);
@@ -79,7 +91,7 @@ export function AuthFlow({ onAuthed }: Props) {
     setOtp(next);
     if (d && i < 3) inputsRef.current[i + 1]?.focus();
     if (next.every((x) => x !== "")) {
-      validate(next.join(""));
+      submitCode(next.join(""));
     }
   };
 
@@ -89,55 +101,30 @@ export function AuthFlow({ onAuthed }: Props) {
     }
   };
 
-  const validate = async (code: string) => {
-    if (!verifyOtp(fullPhone, code)) {
-      toast.error("Неверный код", { description: "Попробуйте ещё раз" });
-      setOtp(["", "", "", ""]);
-      inputsRef.current[0]?.focus();
-      return;
-    }
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try { navigator.vibrate?.(40); } catch {}
-    }
+  const submitCode = async (code: string) => {
+    if (!nonce) return;
     setLoading(true);
     try {
-      const signedIn = await signInWithPhone(fullPhone);
-      if (signedIn) {
-        const profile = await loadUser();
-        if (profile) {
-          toast.success(`С возвращением, ${profile.display_name} 💚`);
-          onAuthed(profile, false);
-          return;
-        }
-      }
-      // Нет такого пользователя — собираем имя
-      setStep("onboarding");
-    } catch (e) {
-      toast.error("Не удалось войти", {
-        description: e instanceof Error ? e.message : String(e),
+      const { access_token, refresh_token } = await verify({
+        data: { nonce, code },
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const finishOnboarding = async () => {
-    if (!name.trim()) {
-      toast.error("Введите имя");
-      return;
-    }
-    setLoading(true);
-    try {
-      const profile = await signUpWithPhone(fullPhone, name.trim());
+      await setTelegramSession(access_token, refresh_token);
+      const profile = await loadUser();
+      if (!profile) throw new Error("Профиль не создан");
       confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
-      toast.success("+100 подарочных баллов начислено!", {
-        description: "Добро пожаловать в игровой мир",
-      });
+      toast.success(`Привет, ${profile.display_name} 💚`);
       onAuthed(profile, true);
     } catch (e) {
-      toast.error("Не удалось создать аккаунт", {
-        description: e instanceof Error ? e.message : String(e),
-      });
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось войти";
+      if (msg.includes("WRONG_CODE")) text = "Неверный код";
+      else if (msg.includes("WAITING_FOR_TELEGRAM"))
+        text = "Сначала нажми Start в Telegram";
+      else if (msg.includes("NONCE_EXPIRED")) text = "Код истёк — начни заново";
+      else if (msg.includes("NONCE_CONSUMED")) text = "Код уже использован";
+      toast.error(text);
+      setOtp(["", "", "", ""]);
+      inputsRef.current[0]?.focus();
     } finally {
       setLoading(false);
     }
@@ -145,84 +132,76 @@ export function AuthFlow({ onAuthed }: Props) {
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 py-8">
-      {step !== "phone" && (
+      {step === "code" && (
         <button
-          onClick={() => setStep(step === "otp" ? "phone" : "otp")}
+          onClick={() => setStep("intro")}
           className="mb-4 inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Назад
         </button>
       )}
 
-      {step === "phone" && (
+      {step === "intro" && (
         <div className="flex flex-1 flex-col gap-7">
           <div className="flex flex-col items-center gap-3 pt-6 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-peach shadow-sm">
               <Sparkles className="h-8 w-8 text-peach-foreground" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Добро пожаловать в Клуб Ресурс
+              Добро пожаловать в «Подари» 🎁
             </h1>
             <p className="text-balance text-sm text-muted-foreground">
-              Введите ваш номер телефона для авторизации или регистрации.
+              Сервис, где люди дарят друг другу время, вещи и заботу.
+              Вход — через Telegram, без паролей.
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="text-xs text-muted-foreground">
-              Номер телефона
-            </Label>
-            <div className="relative">
-              <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="phone"
-                inputMode="tel"
-                autoComplete="tel"
-                value={formatPhone(phoneDigits)}
-                onChange={(e) => setPhoneDigits(extractDigits(e.target.value))}
-                className="h-12 rounded-2xl pl-10 text-base tracking-wide"
-              />
-            </div>
+          <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Как это работает</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>Жмёшь кнопку ниже — откроется наш бот в Telegram</li>
+              <li>В боте нажми <b>Start</b></li>
+              <li>Бот пришлёт 4-значный код</li>
+              <li>Введи код здесь — и ты внутри</li>
+            </ol>
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-muted/40 p-4 text-sm">
-            <Checkbox
-              checked={agreed}
-              onCheckedChange={(v) => setAgreed(v === true)}
-              className="mt-0.5"
-            />
-            <span className="leading-snug text-muted-foreground">
-              Я согласен с{" "}
-              <span className="font-medium text-foreground">правилами Клуба</span>{" "}
-              и обработкой персональных данных
-            </span>
-          </label>
-
           <Button
-            onClick={requestCode}
-            disabled={!phoneReady || loading}
+            onClick={beginLogin}
+            disabled={loading}
             className="h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90 disabled:opacity-50"
           >
-            {loading ? "Отправляем..." : "Получить код доступа"}
+            <Send className="mr-2 h-5 w-5" />
+            {loading ? "Готовим вход..." : "Войти через Telegram"}
           </Button>
 
           <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" /> Защищено • без спама
+            <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • без паролей • без спама
           </p>
         </div>
       )}
 
-      {step === "otp" && (
-        <div className="flex flex-1 flex-col gap-7">
+      {step === "code" && (
+        <div className="flex flex-1 flex-col gap-6">
           <div className="flex flex-col items-center gap-3 pt-4 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">Подтверждение номера</h1>
-            <p className="text-sm text-muted-foreground">
-              Мы отправили SMS с кодом на номер{" "}
-              <span className="font-medium text-foreground">{formatPhone(phoneDigits)}</span>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Введи код из Telegram
+            </h1>
+            <p className="text-balance text-sm text-muted-foreground">
+              Открой чат с{" "}
+              <a
+                href={deepLink ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                @{botUsername}
+              </a>{" "}
+              и нажми <b>Start</b> — бот пришлёт 4 цифры.
             </p>
-            {lastCode && (
-              <p className="rounded-full bg-peach/40 px-3 py-1 text-xs text-foreground">
-                Демо-код: <span className="font-mono font-semibold">{lastCode}</span>
+            {codeSent && (
+              <p className="rounded-full bg-mint/40 px-3 py-1 text-xs text-foreground">
+                ✅ Код отправлен в Telegram
               </p>
             )}
           </div>
@@ -231,7 +210,9 @@ export function AuthFlow({ onAuthed }: Props) {
             {otp.map((d, i) => (
               <input
                 key={i}
-                ref={(el) => { inputsRef.current[i] = el; }}
+                ref={(el) => {
+                  inputsRef.current[i] = el;
+                }}
                 inputMode="numeric"
                 maxLength={1}
                 value={d}
@@ -243,51 +224,16 @@ export function AuthFlow({ onAuthed }: Props) {
             ))}
           </div>
 
-          <div className="text-center text-sm">
-            {seconds > 0 ? (
-              <span className="text-muted-foreground">
-                Повторный запрос доступен через{" "}
-                <span className="font-medium text-foreground">{seconds} сек</span>
-              </span>
-            ) : (
-              <button
-                onClick={resend}
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                Отправить код повторно
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {step === "onboarding" && (
-        <div className="flex flex-1 flex-col gap-6">
-          <div className="flex flex-col items-center gap-2 pt-4 text-center">
-            <div className="text-4xl">🌿</div>
-            <h1 className="text-2xl font-semibold tracking-tight">Знакомство</h1>
-            <p className="text-sm text-muted-foreground">
-              Несколько штрихов — и вы в игре
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Как к вам обращаться?</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Имя"
-              className="h-12 rounded-2xl text-base"
-            />
-          </div>
-
-          <Button
-            onClick={finishOnboarding}
-            disabled={loading}
-            className="mt-2 h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
-          >
-            {loading ? "Создаём аккаунт..." : "Войти в мир подарков"}
-          </Button>
+          {deepLink && (
+            <a
+              href={deepLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mx-auto inline-flex items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
+            >
+              <Send className="h-4 w-4" /> Открыть бота ещё раз
+            </a>
+          )}
         </div>
       )}
     </div>
