@@ -146,7 +146,7 @@ export function ReceiveGiftFlow({
         className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
         size="lg"
       >
-        🎁 Забрать за {g.cost ?? 100} баллов
+        🎁 Забрать за {g.cost ?? 1} балл
       </Button>
     </Card>
   );
@@ -215,7 +215,7 @@ export function ReceiveGiftFlow({
         </button>
 
         <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm">
-          🎉 Поздравляем! Тебе начислены подарочные <b>100 баллов</b> — на них можно выбрать любой подарок. Что бы тебе хотелось получить прямо сейчас?
+          🎉 Добро пожаловать! У тебя есть подарочные баллы — на них можно выбрать подарок (1 балл за любой подарок). Что бы тебе хотелось получить прямо сейчас?
         </div>
 
         <h2 className="mb-1 text-2xl font-semibold">Выбери категорию</h2>

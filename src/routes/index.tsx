@@ -182,7 +182,7 @@ function Index() {
               setActiveChatGift(giftId);
               setActiveTxId(res.transaction_id);
               await refreshUser();
-              toast.success("−100 баллов заморожены • Безопасная сделка 🔒", {
+              toast.success("−1 балл заморожен • Безопасная сделка 🔒", {
                 description: "Открываем чат с дарителем",
               });
               update({ step: "chat" });
@@ -248,9 +248,9 @@ function Index() {
           <DialogHeader>
             <DialogTitle>Недостаточно подарочных баллов 🎁</DialogTitle>
             <DialogDescription className="pt-2 text-left">
-              Чтобы выбрать новый подарок, нужно <b>100 баллов</b>. Сейчас твои баллы заморожены или потрачены.
+              Чтобы выбрать новый подарок, нужен <b>1 балл</b>. Сейчас твой баланс пуст или баллы заморожены в другой сделке.
               <br /><br />
-              Размести свой подарок и дождись, когда кто-то его заберёт — тебе вернётся <b>+100 баллов</b>, и ты снова сможешь получать подарки. Дарить и получать — одинаково важно 💚
+              Размести свой подарок (+0.2 балла) и дождись вручения (+0.8 балла) — так баланс восстановится. Дарить и получать одинаково важно 💚
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
