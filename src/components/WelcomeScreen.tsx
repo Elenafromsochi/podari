@@ -2,6 +2,7 @@ import { Gift, HandHeart, Sparkles, User } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { DealsFeed } from "@/components/DealsFeed";
 import type { GamePath } from "@/lib/game-state";
 
 interface Props {
@@ -33,7 +34,7 @@ export function WelcomeScreen({ onChoose }: Props) {
   }, []);
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-8 px-5 py-10">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center gap-8 px-5 py-10">
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-peach shadow-sm">
           <Sparkles className="h-10 w-10 text-peach-foreground" />
@@ -80,6 +81,9 @@ export function WelcomeScreen({ onChoose }: Props) {
         <User className="h-4 w-4" /> Личный кабинет
       </Link>
 
+      <div className="w-full">
+        <DealsFeed />
+      </div>
     </div>
   );
 }
