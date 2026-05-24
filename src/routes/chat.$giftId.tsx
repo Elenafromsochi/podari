@@ -10,7 +10,7 @@ import { loadUser, type UserProfile } from "@/lib/auth-state";
 export const Route = createFileRoute("/chat/$giftId")({
   head: () => ({
     meta: [
-      { title: "Чат — CozyGift" },
+      { title: "Чат — Подари" },
       { name: "description", content: "Общение с дарителем или получателем подарка" },
     ],
   }),

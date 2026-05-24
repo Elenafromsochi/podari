@@ -31,7 +31,7 @@ import {
 export const Route = createFileRoute("/cabinet")({
   head: () => ({
     meta: [
-      { title: "Личный кабинет — CozyGift" },
+      { title: "Личный кабинет — Подари" },
       { name: "description", content: "Ваш прогресс, Опыт и подарки" },
     ],
   }),

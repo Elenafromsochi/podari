@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      auth_nonces: {
+        Row: {
+          code: string | null
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          nonce: string
+          telegram_first_name: string | null
+          telegram_id: number | null
+          telegram_username: string | null
+        }
+        Insert: {
+          code?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          nonce: string
+          telegram_first_name?: string | null
+          telegram_id?: number | null
+          telegram_username?: string | null
+        }
+        Update: {
+          code?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          nonce?: string
+          telegram_first_name?: string | null
+          telegram_id?: number | null
+          telegram_username?: string | null
+        }
+        Relationships: []
+      }
       chats: {
         Row: {
           created_at: string
@@ -124,6 +157,8 @@ export type Database = {
           display_name: string
           id: string
           level: number
+          telegram_id: number | null
+          telegram_username: string | null
           updated_at: string
           user_id: string | null
           xp: number
@@ -134,6 +169,8 @@ export type Database = {
           display_name?: string
           id?: string
           level?: number
+          telegram_id?: number | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string | null
           xp?: number
@@ -144,6 +181,8 @@ export type Database = {
           display_name?: string
           id?: string
           level?: number
+          telegram_id?: number | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string | null
           xp?: number

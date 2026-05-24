@@ -75,14 +75,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Подари — сервис добрых подарков" },
+      { name: "description", content: "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram." },
+      { property: "og:title", content: "Подари 🎁" },
+      { property: "og:description", content: "Сервис добрых подарков. Дари и получай — одинаково важно." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
