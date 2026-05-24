@@ -40,7 +40,7 @@ export function WelcomeScreen({ onChoose }: Props) {
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">{heading}</h1>
         <p className="text-balance text-muted-foreground">
-          Это уютное место, где люди дарят друг другу время, вещи и заботу.
+          «Подари» — это уютный сервис, где люди дарят друг другу время, вещи и заботу.
           С чего начнём твоё приключение?
         </p>
       </div>
