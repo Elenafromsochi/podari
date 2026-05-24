@@ -103,6 +103,15 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     let session = (await anon.auth.signInWithPassword({ email, password }))
       .data.session;
 
+    // Look up pending referral by telegram_id (set in webhook on /start ref_<uid>)
+    const { data: refRow } = await supabaseAdmin
+      .from("telegram_referrals")
+      .select("referred_by")
+      .eq("telegram_id", tgId)
+      .maybeSingle();
+    const referredBy = (refRow?.referred_by as string | undefined) ?? null;
+
+    let isNewUser = false;
     if (!session) {
       const { error: createErr } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -112,11 +121,13 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
           display_name: displayName,
           telegram_id: tgId,
           telegram_username: row.telegram_username,
+          referred_by: referredBy,
         },
       });
       if (createErr && !/already/i.test(createErr.message)) {
         throw new Error(createErr.message);
       }
+      isNewUser = !createErr;
       const r = await anon.auth.signInWithPassword({ email, password });
       if (r.error || !r.data.session) {
         throw new Error(r.error?.message ?? "SIGNIN_FAILED");
@@ -133,6 +144,24 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
         display_name: displayName,
       })
       .eq("user_id", session.user.id);
+
+    // Referral bonus — только для нового пользователя и только если referrer ≠ сам себе
+    if (isNewUser && referredBy && referredBy !== session.user.id) {
+      // На случай, если handle_new_user не подтянул (не должно случаться, но страхуемся)
+      await supabaseAdmin
+        .from("profiles")
+        .update({ referred_by: referredBy })
+        .eq("user_id", session.user.id)
+        .is("referred_by", null);
+      await supabaseAdmin.rpc("apply_referral_bonus", {
+        _new_user: session.user.id,
+      });
+      // Подчищаем pending-запись, чтобы не сработала повторно
+      await supabaseAdmin
+        .from("telegram_referrals")
+        .delete()
+        .eq("telegram_id", tgId);
+    }
 
     // Mark nonce consumed
     await supabaseAdmin

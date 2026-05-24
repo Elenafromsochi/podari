@@ -57,11 +57,34 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true, ignored: true });
         }
 
-        // /start <nonce>
+        // /start <param>  — param может быть nonce для логина, либо ref_<uuid> для реферала
         const m = text.match(/^\/start(?:\s+(\S+))?/);
         if (m) {
-          const nonce = m[1];
-          if (!nonce) {
+          const param = m[1];
+
+          // Реферальная ссылка: ref_<uuid>
+          if (param && param.startsWith("ref_")) {
+            const refId = param.slice(4);
+            const isUuid =
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+                refId,
+              );
+            if (isUuid) {
+              await supabaseAdmin
+                .from("telegram_referrals")
+                .upsert(
+                  { telegram_id: from.id, referred_by: refId },
+                  { onConflict: "telegram_id" },
+                );
+            }
+            await sendTgMessage(
+              chatId,
+              `Привет! 💚\nТебя пригласили в «Подари» — сервис уютных подарков. Когда войдёшь в приложение через Telegram, тебе сразу зачислится +1 балл на первый подарок, а пригласившему +50 опыта.\n\nОткрой приложение и нажми «Войти через Telegram».`,
+            );
+            return Response.json({ ok: true });
+          }
+
+          if (!param) {
             await sendTgMessage(
               chatId,
               `Привет! Чтобы войти в Подари, открой ссылку входа из приложения 💚`,
@@ -69,6 +92,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             return Response.json({ ok: true });
           }
 
+          const nonce = param;
           // Find nonce
           const { data: row } = await supabaseAdmin
             .from("auth_nonces")
