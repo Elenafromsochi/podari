@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle, MessageCircle, LogOut } from "lucide-react";
+import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
 import {
@@ -207,6 +207,9 @@ function CabinetPage() {
         </CardContent>
       </Card>
 
+      <InviteCard userId={user.user_id} />
+
+
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="gifts" className="relative">
@@ -384,6 +387,62 @@ function ChatGroup({
         </ul>
       )}
     </div>
+  );
+}
+
+const BOT_USERNAME = "Podari_podarki_bot";
+
+function InviteCard({ userId }: { userId: string }) {
+  const [copied, setCopied] = useState(false);
+  const link = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success("Ссылка скопирована 💚", {
+        description: "Отправь её другу — за каждого получишь +50 опыта",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Не удалось скопировать");
+    }
+  };
+
+  const share = () => {
+    const text = `Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\nПо ссылке тебе сразу зачислится 1 балл на первый подарок: ${link}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    if (typeof window !== "undefined") window.open(url, "_blank");
+  };
+
+  return (
+    <Card className="mb-6 border-lavender/40 bg-lavender/15">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <GiftIcon className="h-5 w-5 text-lavender-foreground" />
+          Пригласи друга
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Другу — <b>+1 балл</b> на первый подарок, тебе — <b>+50 опыта</b> 💚
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-2">
+          <span className="flex-1 truncate text-xs text-muted-foreground">{link}</span>
+          <button
+            type="button"
+            onClick={copy}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            aria-label="Скопировать ссылку"
+          >
+            {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+          </button>
+        </div>
+        <Button onClick={share} className="w-full gap-2 bg-lavender text-lavender-foreground hover:bg-lavender/90">
+          📤 Поделиться в Telegram
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
