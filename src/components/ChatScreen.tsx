@@ -439,17 +439,31 @@ export function ChatScreen({
       {showReview && (
         <ReviewModal
           giftId={giftId}
-          onSubmit={async ({ presetId, label, comment }) => {
-            const rating = presetId === "success" ? 5 : 3;
+          role={isOwner ? "giver" : "receiver"}
+          onSubmit={async ({ label, comment, rating, isAuto }) => {
             const fullComment = [label, comment].filter(Boolean).join(" — ");
+            // target_id: получатель оценивает дарителя, даритель оценивает получателя
+            let targetId: string | null = null;
+            if (isOwner) {
+              // нужно вытащить receiver_id из транзакции
+              const { data: tx } = await supabase
+                .from("transactions")
+                .select("receiver_id")
+                .eq("id", transactionId)
+                .maybeSingle();
+              targetId = (tx?.receiver_id as string) ?? null;
+            } else {
+              targetId = gift?.owner_id ?? null;
+            }
             try {
-              if (gift?.owner_id) {
+              if (targetId) {
                 await reviewFn({
                   data: {
                     transaction_id: transactionId,
-                    target_id: gift.owner_id,
+                    target_id: targetId,
                     rating,
                     comment: fullComment || undefined,
+                    is_auto: isAuto,
                   },
                 });
               }
