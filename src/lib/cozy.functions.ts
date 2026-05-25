@@ -57,6 +57,10 @@ export const publishGift = createServerFn({ method: "POST" })
     // На первом уровне все могут размещать любые подарки до 3 000 ₽.
     // Уровневые ограничения подключим позже, когда введём уровни 2+.
     void allowedForLevel;
+    // Игровая стоимость зависит от ценового тира:
+    //   under_3k   → 1 балл (базовый старт)
+    //   tier_3k_6k → 5 баллов (нужно подарить ~5 базовых подарков, чтобы накопить)
+    const cost = data.price_tier === "tier_3k_6k" ? 5 : 1;
     const { data: row, error } = await supabase
       .from("gifts")
       .insert({
@@ -65,7 +69,7 @@ export const publishGift = createServerFn({ method: "POST" })
         category: data.category,
         image_url: data.image_url ?? null,
         status: "available",
-        cost: 1,
+        cost,
         owner_id: userId,
         gift_kind: data.gift_kind,
         price_tier: data.price_tier,
