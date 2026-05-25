@@ -60,28 +60,19 @@ export function OnboardingChecklist({ hasPosted, hasReceived, hasGifted }: Props
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {items.map((it) => (
-          <div
-            key={it.label}
-            className={`flex items-start gap-3 rounded-xl px-3 py-2 transition ${
-              it.done ? "opacity-60" : "bg-background/60"
-            }`}
-          >
-            {it.done ? (
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-            ) : (
+        {(() => {
+          const current = items.find((i) => !i.done);
+          if (!current) return null;
+          return (
+            <div className="flex items-start gap-3 rounded-xl bg-background/60 px-3 py-2">
               <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            )}
-            <div className="min-w-0 flex-1">
-              <p className={`text-sm font-medium ${it.done ? "line-through" : ""}`}>
-                {it.label}
-              </p>
-              {!it.done && (
-                <p className="text-xs text-muted-foreground">{it.hint}</p>
-              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{current.label}</p>
+                <p className="text-xs text-muted-foreground">{current.hint}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })()}
         <Link
           to="/"
           className="mt-2 block w-full rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground transition hover:opacity-90"
