@@ -26,6 +26,32 @@ import {
 } from "@/lib/cozy.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
+
+const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
+  const parts = text.split(URL_RE);
+  return (
+    <span className="whitespace-pre-wrap break-words">
+      {parts.map((p, i) => {
+        if (i % 2 === 1) {
+          const href = p.startsWith("http") ? p : `https://${p}`;
+          return (
+            <a
+              key={i}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`underline underline-offset-2 ${isMe ? "text-primary-foreground" : "text-primary"}`}
+            >
+              {p}
+            </a>
+          );
+        }
+        return <span key={i}>{p}</span>;
+      })}
+    </span>
+  );
+}
 type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
 
 const AUTO_MESSAGES = [
@@ -380,7 +406,7 @@ export function ChatScreen({
             <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
               m.from === "me" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
             }`}>
-              {m.text}
+              <Linkified text={m.text} isMe={m.from === "me"} />
             </div>
           </div>
         ))}
