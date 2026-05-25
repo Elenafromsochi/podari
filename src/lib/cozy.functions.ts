@@ -105,7 +105,7 @@ export const claimGift = createServerFn({ method: "POST" })
       if (msg.includes("ALREADY_TAKEN")) throw new Error("ALREADY_TAKEN");
       if (msg.includes("OWN_GIFT")) throw new Error("OWN_GIFT");
       if (msg.includes("GIFT_NOT_FOUND")) throw new Error("GIFT_NOT_FOUND");
-      throw new Error(msg);
+      failOp("CLAIM_FAILED", error);
     }
     const first = Array.isArray(rows) ? rows[0] : rows;
     if (first?.chat_id) {
