@@ -470,7 +470,7 @@ function Stat({ label, value, hint }: { label: string; value: number; hint?: str
           >
             <HelpCircle className="h-3.5 w-3.5" />
           </PopoverTrigger>
-          <PopoverContent side="bottom" className="w-64 text-xs leading-relaxed">{hint}</PopoverContent>
+          <PopoverContent side="bottom" className="w-64 whitespace-pre-line text-xs leading-relaxed">{hint}</PopoverContent>
         </Popover>
       )}
       <div className="text-xl font-semibold">{value}</div>
