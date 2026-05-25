@@ -178,6 +178,7 @@ function Index() {
       {(state.step === "receive_categories" || state.step === "receive_feed") && (
         <ReceiveGiftFlow
           onBack={backToWelcome}
+          userLevel={user.level}
           onPick={async (giftId) => {
             try {
               const res = await claim({ data: { gift_id: giftId } });

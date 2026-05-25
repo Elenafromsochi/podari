@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Search } from "lucide-react";
+import { Mic, MicOff, Search, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
 
 type Gift = {
   id: string;
@@ -13,10 +15,11 @@ type Gift = {
   image_url: string | null;
   cost: number;
   owner_id: string | null;
+  gift_kind: GiftKind;
   owner_name?: string;
 };
 
-type Step = "categories" | "feed" | "search";
+type Step = "kinds" | "categories" | "feed" | "search";
 
 type SR = {
   start: () => void;
@@ -32,12 +35,15 @@ type SR = {
 export function ReceiveGiftFlow({
   onBack,
   onPick,
+  userLevel,
 }: {
   onBack: () => void;
   onPick: (giftId: string) => void;
+  userLevel: number;
 }) {
-  const [step, setStep] = useState<Step>("categories");
+  const [step, setStep] = useState<Step>("kinds");
   const [gifts, setGifts] = useState<Gift[] | null>(null);
+  const [kind, setKind] = useState<GiftKind | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [listening, setListening] = useState(false);
@@ -48,7 +54,7 @@ export function ReceiveGiftFlow({
       const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,owner_id")
+        .select("id,title,description,category,image_url,cost,owner_id,gift_kind")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
@@ -155,18 +161,22 @@ export function ReceiveGiftFlow({
   // Search step
   if (step === "search") {
     const q = query.trim().toLowerCase();
+    const unlockedKinds = new Set(
+      GIFT_KINDS.filter((k) => userLevel >= k.minLevel).map((k) => k.id),
+    );
+    const pool = gifts.filter((g) => unlockedKinds.has(g.gift_kind));
     const results = q
-      ? gifts.filter(
+      ? pool.filter(
           (g) =>
             g.title.toLowerCase().includes(q) ||
             g.category.toLowerCase().includes(q) ||
             (g.description ?? "").toLowerCase().includes(q),
         )
-      : gifts;
+      : pool;
     return (
       <div className="mx-auto w-full max-w-md px-5 py-8">
         <button
-          onClick={() => setStep("categories")}
+          onClick={() => setStep("kinds")}
           className="mb-4 text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
           ← К категориям
@@ -201,10 +211,10 @@ export function ReceiveGiftFlow({
     );
   }
 
-  if (step === "categories") {
-    const counts = new Map<string, number>();
-    for (const g of gifts) counts.set(g.category, (counts.get(g.category) ?? 0) + 1);
-    const cats = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  // Top level: kinds (always visible, locked for low levels)
+  if (step === "kinds") {
+    const countsByKind = new Map<string, number>();
+    for (const g of gifts) countsByKind.set(g.gift_kind, (countsByKind.get(g.gift_kind) ?? 0) + 1);
 
     return (
       <div className="mx-auto w-full max-w-md px-5 py-8">
@@ -216,15 +226,54 @@ export function ReceiveGiftFlow({
         </button>
 
         <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm">
-          🎉 Добро пожаловать! У тебя есть подарочные баллы — на них можно выбрать подарок (1 балл за любой подарок). Что бы тебе хотелось получить прямо сейчас?
+          🎉 У тебя есть подарочные баллы. Категории открываются по уровню — твой сейчас: <b>{userLevel}</b>.
         </div>
 
-        <h2 className="mb-1 text-2xl font-semibold">Выбери категорию</h2>
+        <h2 className="mb-1 text-2xl font-semibold">Что бы тебе хотелось?</h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Доступно {gifts.length} {gifts.length === 1 ? "подарок" : "подарков"}.
+          Выбери категорию подарка
         </p>
 
-        <div className="mb-5 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm">
+        <div className="grid grid-cols-2 gap-3">
+          {GIFT_KINDS.map((k) => {
+            const locked = userLevel < k.minLevel;
+            const n = countsByKind.get(k.id) ?? 0;
+            return (
+              <button
+                key={k.id}
+                onClick={() => {
+                  if (locked) {
+                    toast(`🔒 ${k.shortLabel}`, {
+                      description: `Откроется на ${k.minLevel} уровне. Дари и получай подарки — и ты дойдёшь сюда!`,
+                    });
+                    return;
+                  }
+                  setKind(k.id);
+                  setCategory(null);
+                  setStep("categories");
+                }}
+                aria-disabled={locked}
+                className={`relative rounded-2xl border bg-card p-4 text-left shadow-sm transition ${
+                  locked ? "cursor-not-allowed opacity-60" : "hover:bg-accent hover:-translate-y-0.5"
+                }`}
+              >
+                <div className="mb-1 text-2xl">{k.emoji}</div>
+                <div className="text-sm font-medium">{k.shortLabel}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {locked ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Lock className="h-3 w-3" /> Откроется на ур. {k.minLevel}
+                    </span>
+                  ) : (
+                    <>{n} {n === 1 ? "подарок" : "подарков"}</>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={query}
@@ -243,9 +292,35 @@ export function ReceiveGiftFlow({
             {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Within a kind: show its sub-categories
+  if (step === "categories" && kind) {
+    const kindMeta = getKindMeta(kind);
+    const inKind = gifts.filter((g) => g.gift_kind === kind);
+    const counts = new Map<string, number>();
+    for (const g of inKind) counts.set(g.category, (counts.get(g.category) ?? 0) + 1);
+    const cats = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+
+    return (
+      <div className="mx-auto w-full max-w-md px-5 py-8">
+        <button
+          onClick={() => setStep("kinds")}
+          className="mb-4 text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          ← К категориям
+        </button>
+        <h2 className="mb-1 text-2xl font-semibold">
+          {kindMeta?.emoji} {kindMeta?.shortLabel}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Доступно {inKind.length} {inKind.length === 1 ? "подарок" : "подарков"}
+        </p>
 
         {cats.length === 0 ? (
-          <p className="text-muted-foreground">Пока нет активных подарков 💚</p>
+          <p className="text-muted-foreground">В этой категории пока пусто 💚</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {cats.map(([cat, n]) => (
@@ -269,7 +344,7 @@ export function ReceiveGiftFlow({
     );
   }
 
-  const filtered = gifts.filter((g) => g.category === category);
+  const filtered = gifts.filter((g) => g.gift_kind === kind && g.category === category);
 
   return (
     <div className="mx-auto w-full max-w-md px-5 py-8">
