@@ -220,6 +220,12 @@ function CabinetPage() {
         </CardContent>
       </Card>
 
+      <OnboardingChecklist
+        hasPosted={posted.length > 0}
+        hasReceived={received.length > 0}
+        hasGifted={gifted.length > 0}
+      />
+
       <InviteCard userId={user.user_id} />
 
 
