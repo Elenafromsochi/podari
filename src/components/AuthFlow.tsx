@@ -115,6 +115,9 @@ export function AuthFlow({ onAuthed }: Props) {
       await setTelegramSession(access_token, refresh_token);
       const profile = await loadUser();
       if (!profile) throw new Error("Профиль не создан");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cozygift_pending_ref");
+      }
       confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
       toast.success(`Привет, ${profile.display_name} 💚`);
       onAuthed(profile, true);
