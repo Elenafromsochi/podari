@@ -1,72 +1,20 @@
+import { Lock } from "lucide-react";
+import { toast } from "sonner";
+import { GIFT_KINDS, pickRandomHint, type GiftKind } from "@/lib/gift-kinds";
+
 interface Props {
-  onPick: (chip: string) => void;
+  onPick: (kind: GiftKind, hint: string) => void;
   onBack: () => void;
+  userLevel: number;
 }
 
-const CHIPS: { id: string; label: string; emoji: string; hints: string[] }[] = [
-  {
-    id: "thing",
-    label: "Вещь дома, которой не пользуешься",
-    emoji: "📦",
-    hints: [
-      "Книга, которую прочитал и больше не вернусь к ней",
-      "Настольная игра, что пылится на полке",
-      "Красивая ваза, которая не вписалась в интерьер",
-      "Беспроводные наушники, лежат без дела",
-      "Новый блокнот, всё никак не начну вести",
-      "Кофемолка, которой пользовался пару раз",
-      "Свеча с любимым ароматом из дубля",
-      "Виниловая пластинка, не подошла под мой плеер",
-    ],
-  },
-  {
-    id: "service",
-    label: "Своя услуга / экспертность",
-    emoji: "💼",
-    hints: [
-      "Часовая консультация по карьере и резюме",
-      "Помогу собрать капсульный гардероб",
-      "Разберу ваш сайт с точки зрения UX",
-      "Проведу мини-сессию по тайм-менеджменту",
-      "Сделаю фотопортрет за 30 минут",
-      "Помогу с настройкой Notion под ваши задачи",
-      "Урок английского — разговорная практика",
-      "Дам обратную связь по вашему питчу",
-    ],
-  },
-  {
-    id: "coffee",
-    label: "Угостить кофе",
-    emoji: "☕️",
-    hints: [
-      "Флэт уайт в уютной кофейне у метро",
-      "Раф на лавандовом сиропе с видом на парк",
-      "Капучино и круассан на двоих утром",
-      "Эспрессо и медленный разговор на час",
-      "Матча-латте в новом спешелти на районе",
-      "Фильтр-кофе с обжарщиком и историей зерна",
-    ],
-  },
-  {
-    id: "walk",
-    label: "Пойти вместе на выставку или прогулку",
-    emoji: "🌿",
-    hints: [
-      "Прогулка по набережной на закате",
-      "Поход на выставку современного искусства",
-      "Утренний забег в парке + завтрак после",
-      "Экскурсия по архитектуре центра города",
-      "Вечер в ботаническом саду",
-      "Спокойная прогулка с разговорами по душам",
-    ],
-  },
-];
+export function GiveGiftChips({ onPick, onBack, userLevel }: Props) {
+  const handleLocked = (minLevel: number, label: string) => {
+    toast(`🔒 ${label}`, {
+      description: `Откроется на ${minLevel} уровне. Продолжай дарить и получать — и ты дойдёшь сюда!`,
+    });
+  };
 
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-export function GiveGiftChips({ onPick, onBack }: Props) {
   return (
     <div className="mx-auto w-full max-w-md px-5 py-8">
       <button
@@ -77,20 +25,41 @@ export function GiveGiftChips({ onPick, onBack }: Props) {
       </button>
       <h2 className="mb-2 text-2xl font-semibold tracking-tight">Отличный выбор! ✨</h2>
       <p className="mb-6 text-balance text-muted-foreground">
-        Давай узнаем, чем ты готов поделиться. Не думай долго — выбери один из вариантов:
+        Чем готов поделиться? Категории открываются по мере роста уровня — твой сейчас: <b>{userLevel}</b>.
       </p>
       <div className="flex flex-col gap-3">
-        {CHIPS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => onPick(pickRandom(c.hints))}
-            className="group flex items-center gap-3 rounded-2xl border bg-card px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-accent hover:shadow-md"
-          >
-            <span className="text-2xl">{c.emoji}</span>
-            <span className="flex-1 text-sm font-medium">{c.label}</span>
-            <span className="text-muted-foreground transition group-hover:translate-x-1">→</span>
-          </button>
-        ))}
+        {GIFT_KINDS.map((c) => {
+          const locked = userLevel < c.minLevel;
+          return (
+            <button
+              key={c.id}
+              onClick={() =>
+                locked
+                  ? handleLocked(c.minLevel, c.label)
+                  : onPick(c.id, pickRandomHint(c.id))
+              }
+              aria-disabled={locked}
+              className={`group flex items-center gap-3 rounded-2xl border bg-card px-4 py-4 text-left shadow-sm transition ${
+                locked
+                  ? "cursor-not-allowed opacity-60"
+                  : "hover:-translate-y-0.5 hover:bg-accent hover:shadow-md"
+              }`}
+            >
+              <span className="text-2xl">{c.emoji}</span>
+              <span className="flex-1">
+                <span className="block text-sm font-medium">{c.label}</span>
+                {locked && (
+                  <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Lock className="h-3 w-3" /> Откроется на {c.minLevel} уровне
+                  </span>
+                )}
+              </span>
+              <span className="text-muted-foreground transition group-hover:translate-x-1">
+                {locked ? <Lock className="h-4 w-4" /> : "→"}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
