@@ -457,26 +457,18 @@ export function ChatScreen({
       )}
 
       <div className="flex items-center gap-2 border-t bg-card px-3 py-3">
-        <button
-          onClick={toggleMic}
-          className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-            listening ? "bg-destructive text-destructive-foreground" : "bg-background"
-          }`}
-          aria-label="Голосовой ввод"
-        >
-          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </button>
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
-          placeholder={listening ? "Слушаю…" : "Напишите сообщение"}
+          placeholder="Напишите сообщение"
           className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
         />
         <Button size="icon" className="rounded-full" onClick={() => send(text)}>
           <Send className="h-4 w-4" />
         </Button>
       </div>
+
 
       <AlertDialog open={showReceiverConfirm} onOpenChange={setShowReceiverConfirm}>
         <AlertDialogContent>
