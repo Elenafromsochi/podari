@@ -380,7 +380,7 @@ export function ChatScreen({
             <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
               m.from === "me" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
             }`}>
-              {m.text}
+              <Linkified text={m.text} isMe={m.from === "me"} />
             </div>
           </div>
         ))}
