@@ -106,11 +106,11 @@ export function ChatScreen({
     })();
   }, [giftId]);
 
-  // загрузка / отслеживание транзакции
+  // загрузка / отслеживание транзакции (realtime + polling fallback)
   useEffect(() => {
     if (!transactionId || !meId) return;
     let alive = true;
-    (async () => {
+    const fetchTx = async () => {
       const { data } = await supabase
         .from("transactions")
         .select("status, handover_requested_at, receiver_id")
@@ -118,57 +118,58 @@ export function ChatScreen({
         .maybeSingle();
       if (!alive || !data) return;
       const row = data as { status: string; handover_requested_at: string | null; receiver_id: string };
-      setTxStatus(row.status);
-      setHandoverRequestedAt(row.handover_requested_at);
+      setTxStatus((prev) => (prev === row.status ? prev : row.status));
+      setHandoverRequestedAt((prev) => (prev === row.handover_requested_at ? prev : row.handover_requested_at));
       if (row.handover_requested_at && row.receiver_id === meId && row.status === "pending") {
         setShowReceiverConfirm(true);
       }
-    })();
+      if (row.status === "completed") {
+        setShowReview(true);
+      }
+    };
+    fetchTx();
     const channel = supabase
       .channel(`tx-${transactionId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "transactions", filter: `id=eq.${transactionId}` },
-        (payload) => {
-          const row = payload.new as { status: string; handover_requested_at: string | null; receiver_id: string };
-          setTxStatus(row.status);
-          setHandoverRequestedAt(row.handover_requested_at);
-          if (row.handover_requested_at && row.receiver_id === meId && row.status === "pending") {
-            setShowReceiverConfirm(true);
-          }
-          if (row.status === "completed") {
-            // Обоим участникам — предложить отзыв (получателю и дарителю)
-            setShowReview(true);
-          }
-        },
+        () => { fetchTx(); },
       )
       .subscribe();
+    // Fallback polling — на случай если realtime не доставил
+    const pollId = setInterval(fetchTx, 4000);
     return () => {
       alive = false;
+      clearInterval(pollId);
       supabase.removeChannel(channel);
     };
   }, [transactionId, meId]);
 
-  // загрузка сообщений + realtime
+  // загрузка сообщений + realtime + polling fallback
   useEffect(() => {
     if (!chatId || !meId) return;
     let cancelledLocal = false;
-    (async () => {
+    const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
         .select("id, sender_id, content, created_at")
         .eq("chat_id", chatId)
         .order("created_at", { ascending: true });
-      if (cancelledLocal) return;
-      setMessages(
-        (data ?? []).map((m) => ({
-          id: m.id as string,
-          from: (m.sender_id === meId ? "me" : "them") as "me" | "them",
-          text: m.content as string,
-          ts: new Date(m.created_at as string).getTime(),
-        })),
-      );
-    })();
+      if (cancelledLocal || !data) return;
+      const next: Msg[] = data.map((m) => ({
+        id: m.id as string,
+        from: (m.sender_id === meId ? "me" : "them") as "me" | "them",
+        text: m.content as string,
+        ts: new Date(m.created_at as string).getTime(),
+      }));
+      setMessages((prev) => {
+        if (prev.length === next.length && prev.every((p, i) => p.id === next[i].id)) {
+          return prev;
+        }
+        return next;
+      });
+    };
+    fetchMessages();
     const channel = supabase
       .channel(`messages-${chatId}`)
       .on(
@@ -191,8 +192,10 @@ export function ChatScreen({
         },
       )
       .subscribe();
+    const pollId = setInterval(fetchMessages, 3500);
     return () => {
       cancelledLocal = true;
+      clearInterval(pollId);
       supabase.removeChannel(channel);
     };
   }, [chatId, meId]);
