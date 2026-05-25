@@ -90,7 +90,7 @@ export function WelcomeScreen({ onChoose, userXp = 0 }: Props) {
         <DealsFeed />
       </div>
 
-      <WelcomeCoachmarks />
+      <WelcomeCoachmarks userXp={userXp} />
     </div>
   );
 }
