@@ -83,7 +83,7 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     const { data: row, error: rowErr } = await supabaseAdmin
       .from("auth_nonces")
       .select(
-        "nonce, code, telegram_id, telegram_username, telegram_first_name, expires_at, consumed_at",
+        "nonce, code, telegram_id, telegram_username, telegram_first_name, expires_at, consumed_at, referrer_id",
       )
       .eq("nonce", data.nonce)
       .maybeSingle();
