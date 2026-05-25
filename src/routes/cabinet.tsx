@@ -460,7 +460,7 @@ function InviteCard({ userId }: { userId: string }) {
   };
 
   const share = () => {
-    const text = `Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\nПо ссылке тебе сразу зачислится 1 балл на первый подарок: ${link}`;
+    const text = "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\nПо этой ссылке тебе сразу зачислится 1 балл на первый подарок:";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
     if (typeof window !== "undefined") window.open(url, "_blank");
   };
