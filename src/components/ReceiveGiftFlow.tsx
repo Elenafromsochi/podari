@@ -17,6 +17,7 @@ type Gift = {
   owner_id: string | null;
   gift_kind: GiftKind;
   owner_name?: string;
+  owner_level?: number;
 };
 
 type Step = "kinds" | "categories" | "feed" | "search";
