@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const CATEGORIES = ["книги", "медитации", "кофе", "музыка", "еда", "разное"];
 
@@ -21,6 +22,7 @@ async function callGateway(body: any) {
 }
 
 export const generateGiftMeta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { description: string; hasImage?: boolean }) => {
     const d = String(input?.description ?? "").trim();
     if (!d) throw new Error("Описание не может быть пустым");
@@ -75,6 +77,7 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
   });
 
 export const describeGiftImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { imageDataUrl: string }) => {
     const url = String(input?.imageDataUrl ?? "");
     if (!url.startsWith("data:image/")) throw new Error("Нужно изображение");
