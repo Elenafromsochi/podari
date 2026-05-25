@@ -484,7 +484,7 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
     if (rpcErr) throw new Error(rpcErr.message);
 
     // 2) Грузим текущее состояние
-    const [{ data: owned }, { data: posted }, gifted, received, reviews, referrals, profile] =
+    const [ownedRes, postedRes, giftedRes, receivedRes, reviewsRes, referralsRes, profileRes] =
       await Promise.all([
         supabase
           .from("user_achievements")
@@ -516,18 +516,17 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
           .maybeSingle(),
       ]);
 
-    // count requests return { count } via head:true; we asked for select
     const _ownedMap = new Map<string, string>();
-    (owned ?? []).forEach((r) => _ownedMap.set(r.code as string, r.awarded_at as string));
+    ((ownedRes.data ?? []) as { code: string; awarded_at: string }[]).forEach((r) =>
+      _ownedMap.set(r.code, r.awarded_at),
+    );
 
-    // helpers to read counts
-    const cnt = (res: { count?: number | null }) => res.count ?? 0;
-    const postedN = (posted as unknown as { count?: number | null })?.count ?? 0;
-    const giftedN = cnt(gifted as unknown as { count?: number | null });
-    const receivedN = cnt(received as unknown as { count?: number | null });
-    const reviewsN = cnt(reviews as unknown as { count?: number | null });
-    const referralsN = cnt(referrals as unknown as { count?: number | null });
-    const levelN = (profile as { level?: number } | null)?.level ?? 1;
+    const postedN = postedRes.count ?? 0;
+    const giftedN = giftedRes.count ?? 0;
+    const receivedN = receivedRes.count ?? 0;
+    const reviewsN = reviewsRes.count ?? 0;
+    const referralsN = referralsRes.count ?? 0;
+    const levelN = (profileRes.data as { level?: number } | null)?.level ?? 1;
 
     const targets: Record<string, { value: number; target: number }> = {
       first_post:     { value: postedN,    target: 1 },
