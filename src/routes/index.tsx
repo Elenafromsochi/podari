@@ -113,7 +113,9 @@ function Index() {
   if (!user) {
     return (
       <AuthFlow
+        initialNonce={pendingLoginNonce}
         onAuthed={(u) => {
+          setPendingLoginNonce(null);
           setUser(u);
         }}
       />
