@@ -101,6 +101,7 @@ function CabinetPage() {
     (async () => {
       const u = await loadUser();
       setUser(u);
+      setAuthChecked(true);
       if (!u) {
         setLoading(false);
         return;
