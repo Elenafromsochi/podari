@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Mic, MicOff, Send, X } from "lucide-react";
+import { Check, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -60,16 +60,6 @@ const AUTO_MESSAGES = [
 ];
 
 
-type SR = {
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: ((e: unknown) => void) | null;
-  onend: (() => void) | null;
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-};
 
 export function ChatScreen({
   giftId,
@@ -89,13 +79,13 @@ export function ChatScreen({
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
-  const [listening, setListening] = useState(false);
+  
   const [txStatus, setTxStatus] = useState<string>("pending");
   const [handoverRequestedAt, setHandoverRequestedAt] = useState<string | null>(null);
   const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
   const navigate = useNavigate();
 
   const reviewFn = useServerFn(submitReview);
@@ -347,36 +337,7 @@ export function ChatScreen({
     }
   };
 
-  const toggleMic = () => {
-    const W = window as unknown as {
-      SpeechRecognition?: new () => SR;
-      webkitSpeechRecognition?: new () => SR;
-    };
-    const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
-    if (!Ctor) {
-      toast.error("Голосовой ввод не поддерживается в этом браузере");
-      return;
-    }
-    if (listening) {
-      recogRef.current?.stop();
-      setListening(false);
-      return;
-    }
-    const r = new Ctor();
-    r.lang = "ru-RU";
-    r.continuous = false;
-    r.interimResults = true;
-    r.onresult = (e) => {
-      let final = "";
-      for (let i = 0; i < e.results.length; i++) final += e.results[i][0].transcript;
-      setText(final);
-    };
-    r.onerror = () => setListening(false);
-    r.onend = () => setListening(false);
-    recogRef.current = r;
-    r.start();
-    setListening(true);
-  };
+
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-background">
@@ -467,26 +428,18 @@ export function ChatScreen({
       )}
 
       <div className="flex items-center gap-2 border-t bg-card px-3 py-3">
-        <button
-          onClick={toggleMic}
-          className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-            listening ? "bg-destructive text-destructive-foreground" : "bg-background"
-          }`}
-          aria-label="Голосовой ввод"
-        >
-          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </button>
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
-          placeholder={listening ? "Слушаю…" : "Напишите сообщение"}
+          placeholder="Напишите сообщение"
           className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
         />
         <Button size="icon" className="rounded-full" onClick={() => send(text)}>
           <Send className="h-4 w-4" />
         </Button>
       </div>
+
 
       <AlertDialog open={showReceiverConfirm} onOpenChange={setShowReceiverConfirm}>
         <AlertDialogContent>
