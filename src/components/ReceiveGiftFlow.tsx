@@ -74,7 +74,7 @@ export function ReceiveGiftFlow({
       const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,owner_id,gift_kind")
+        .select("id,title,description,category,image_url,cost,owner_id,gift_kind,created_at")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
