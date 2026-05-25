@@ -122,9 +122,10 @@ export const describeGiftImage = createServerFn({ method: "POST" })
       ],
     });
 
-    const description = String(json?.choices?.[0]?.message?.content ?? "")
+    let description = String(json?.choices?.[0]?.message?.content ?? "")
       .trim()
       .slice(0, 600);
+    if (looksUnsafe(description)) description = "Подарок с фотографии";
     if (!description) throw new Error("Не удалось распознать изображение");
     return { description };
   });
