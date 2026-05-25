@@ -133,6 +133,32 @@ export function ChatScreen({
     })();
   }, [giftId]);
 
+  // load partner (other party) id + name
+  useEffect(() => {
+    if (!meId || !gift || !transactionId) return;
+    (async () => {
+      let partnerId: string | null = null;
+      if (gift.owner_id === meId) {
+        const { data: tx } = await supabase
+          .from("transactions")
+          .select("sender_id,receiver_id")
+          .eq("id", transactionId)
+          .maybeSingle();
+        const row = tx as { sender_id: string | null; receiver_id: string | null } | null;
+        partnerId = row ? (row.sender_id === meId ? row.receiver_id : row.sender_id) : null;
+      } else {
+        partnerId = gift.owner_id;
+      }
+      if (!partnerId) return;
+      const { data: profs } = await supabase
+        .rpc("get_public_profiles", { _user_ids: [partnerId] });
+      const list = (profs ?? []) as Array<{ user_id: string; display_name: string }>;
+      const name = list[0]?.display_name || "Гость";
+      setPartner({ id: partnerId, name });
+    })();
+  }, [meId, gift, transactionId]);
+
+
   // загрузка / отслеживание транзакции (realtime + polling fallback)
   useEffect(() => {
     if (!transactionId || !meId) return;
