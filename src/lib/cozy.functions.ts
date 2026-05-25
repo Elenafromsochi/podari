@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+
+function failOp(code: string, err: unknown): never {
+  console.error(`[cozy] ${code}`, err);
+  throw new Error(code);
+}
+
 const INITIAL_CHAT_MESSAGE = "Мне понравился ваш подарок. Как могу его забрать? 😊";
 
 // ---------- Profile ----------
