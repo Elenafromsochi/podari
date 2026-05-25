@@ -39,7 +39,10 @@ export const startTelegramLogin = createServerFn({ method: "POST" })
       expires_at: new Date(Date.now() + NONCE_TTL_MS).toISOString(),
       referrer_id: data?.referrer_id ?? null,
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[telegram-auth] NONCE_CREATE_FAILED", error);
+      throw new Error("NONCE_CREATE_FAILED");
+    }
 
     return {
       nonce,
@@ -88,7 +91,10 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
       .eq("nonce", data.nonce)
       .maybeSingle();
 
-    if (rowErr) throw new Error(rowErr.message);
+    if (rowErr) {
+      console.error("[telegram-auth] NONCE_LOOKUP_FAILED", rowErr);
+      throw new Error("NONCE_LOOKUP_FAILED");
+    }
     if (!row) throw new Error("NONCE_NOT_FOUND");
     if (row.consumed_at) throw new Error("NONCE_CONSUMED");
     if (new Date(row.expires_at).getTime() < Date.now())
@@ -136,12 +142,14 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
         },
       });
       if (createErr && !/already/i.test(createErr.message)) {
-        throw new Error(createErr.message);
+        console.error("[telegram-auth] USER_CREATE_FAILED", createErr);
+        throw new Error("USER_CREATE_FAILED");
       }
       isNewUser = !createErr;
       const r = await anon.auth.signInWithPassword({ email, password });
       if (r.error || !r.data.session) {
-        throw new Error(r.error?.message ?? "SIGNIN_FAILED");
+        console.error("[telegram-auth] SIGNIN_FAILED", r.error);
+        throw new Error("SIGNIN_FAILED");
       }
       session = r.data.session;
     }
