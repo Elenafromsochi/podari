@@ -76,10 +76,33 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                   { telegram_id: from.id, referred_by: refId },
                   { onConflict: "telegram_id" },
                 );
+
+              // Сразу выдаём код — чтобы пользователь не возвращался в приложение за новым nonce
+              const { randomBytes } = await import("crypto");
+              const nonce = randomBytes(9).toString("base64url");
+              const code = String(Math.floor(1000 + Math.random() * 9000));
+              const { error: nErr } = await supabaseAdmin
+                .from("auth_nonces")
+                .insert({
+                  nonce,
+                  expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+                  referrer_id: refId,
+                  code,
+                  telegram_id: from.id,
+                  telegram_username: from.username ?? null,
+                  telegram_first_name: from.first_name ?? null,
+                });
+              if (!nErr) {
+                await sendTgMessage(
+                  chatId,
+                  `Привет! 💚 Тебя пригласили в «Подари».\n\nТвой код для входа: ${code}\n\nВведи его на странице входа: https://podari.lovable.app/?ref=${refId}\n\nКод действует 5 минут. После входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
+                );
+                return Response.json({ ok: true });
+              }
             }
             await sendTgMessage(
               chatId,
-              `Привет! 💚\nТебя пригласили в «Подари» — сервис уютных подарков. Когда войдёшь в приложение через Telegram, тебе сразу зачислится +1 балл на первый подарок, а пригласившему +50 опыта.\n\nОткрой приложение и нажми «Войти через Telegram».`,
+              `Привет! 💚\nТебя пригласили в «Подари». Открой https://podari.lovable.app/ и войди через Telegram.`,
             );
             return Response.json({ ok: true });
           }
