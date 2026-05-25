@@ -1,0 +1,1 @@
+ALTER TABLE public.auth_nonces ADD COLUMN IF NOT EXISTS referrer_id uuid;

@@ -23,12 +23,21 @@ function userEmail(tgId: number) {
 }
 
 /** Шаг 1: фронтенд просит nonce, открывает deep-link на бота. */
-export const startTelegramLogin = createServerFn({ method: "POST" }).handler(
-  async () => {
+export const startTelegramLogin = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        referrer_id: z.string().uuid().optional().nullable(),
+      })
+      .optional()
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data }) => {
     const nonce = makeNonce();
     const { error } = await supabaseAdmin.from("auth_nonces").insert({
       nonce,
       expires_at: new Date(Date.now() + NONCE_TTL_MS).toISOString(),
+      referrer_id: data?.referrer_id ?? null,
     });
     if (error) throw new Error(error.message);
 
@@ -37,8 +46,7 @@ export const startTelegramLogin = createServerFn({ method: "POST" }).handler(
       bot_username: BOT_USERNAME,
       deep_link: `https://t.me/${BOT_USERNAME}?start=${nonce}`,
     };
-  },
-);
+  });
 
 /** Шаг 2: фронтенд опрашивает — пользователь уже нажал Start? */
 export const pollTelegramLogin = createServerFn({ method: "POST" })
@@ -75,7 +83,7 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     const { data: row, error: rowErr } = await supabaseAdmin
       .from("auth_nonces")
       .select(
-        "nonce, code, telegram_id, telegram_username, telegram_first_name, expires_at, consumed_at",
+        "nonce, code, telegram_id, telegram_username, telegram_first_name, expires_at, consumed_at, referrer_id",
       )
       .eq("nonce", data.nonce)
       .maybeSingle();
@@ -103,13 +111,16 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     let session = (await anon.auth.signInWithPassword({ email, password }))
       .data.session;
 
-    // Look up pending referral by telegram_id (set in webhook on /start ref_<uid>)
-    const { data: refRow } = await supabaseAdmin
-      .from("telegram_referrals")
-      .select("referred_by")
-      .eq("telegram_id", tgId)
-      .maybeSingle();
-    const referredBy = (refRow?.referred_by as string | undefined) ?? null;
+    // Look up pending referral: сначала из nonce (ссылка из приложения), потом из webhook (deep-link бота)
+    let referredBy: string | null = (row as { referrer_id?: string | null }).referrer_id ?? null;
+    if (!referredBy) {
+      const { data: refRow } = await supabaseAdmin
+        .from("telegram_referrals")
+        .select("referred_by")
+        .eq("telegram_id", tgId)
+        .maybeSingle();
+      referredBy = (refRow?.referred_by as string | undefined) ?? null;
+    }
 
     let isNewUser = false;
     if (!session) {

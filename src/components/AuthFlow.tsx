@@ -37,7 +37,11 @@ export function AuthFlow({ onAuthed }: Props) {
     if (loading) return;
     setLoading(true);
     try {
-      const res = await start();
+      const referrer_id =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cozygift_pending_ref")
+          : null;
+      const res = await start({ data: { referrer_id } });
       setNonce(res.nonce);
       setDeepLink(res.deep_link);
       setBotUsername(res.bot_username);
@@ -111,6 +115,9 @@ export function AuthFlow({ onAuthed }: Props) {
       await setTelegramSession(access_token, refresh_token);
       const profile = await loadUser();
       if (!profile) throw new Error("Профиль не создан");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cozygift_pending_ref");
+      }
       confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
       toast.success(`Привет, ${profile.display_name} 💚`);
       onAuthed(profile, true);

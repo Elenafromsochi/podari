@@ -419,11 +419,22 @@ function ChatGroup({
   );
 }
 
-const BOT_USERNAME = "Podari_podarki_bot";
+const PROJECT_ID = "bd25f75c-2201-409b-aa60-d7c459f781a6";
+const APP_PUBLIC_URL = `https://project--${PROJECT_ID}.lovable.app`;
+
+function getAppOrigin() {
+  if (typeof window === "undefined") return APP_PUBLIC_URL;
+  const host = window.location.host;
+  // Используем стабильный публичный URL для шеринга, а не временный preview
+  if (host.includes("id-preview--") || host.includes("localhost")) {
+    return APP_PUBLIC_URL;
+  }
+  return window.location.origin;
+}
 
 function InviteCard({ userId }: { userId: string }) {
   const [copied, setCopied] = useState(false);
-  const link = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
+  const link = `${getAppOrigin()}/?ref=${userId}`;
 
   const copy = async () => {
     try {
