@@ -60,16 +60,6 @@ const AUTO_MESSAGES = [
 ];
 
 
-type SR = {
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: ((e: unknown) => void) | null;
-  onend: (() => void) | null;
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-};
 
 export function ChatScreen({
   giftId,
