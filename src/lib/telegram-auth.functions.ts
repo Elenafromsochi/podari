@@ -23,12 +23,21 @@ function userEmail(tgId: number) {
 }
 
 /** Шаг 1: фронтенд просит nonce, открывает deep-link на бота. */
-export const startTelegramLogin = createServerFn({ method: "POST" }).handler(
-  async () => {
+export const startTelegramLogin = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        referrer_id: z.string().uuid().optional().nullable(),
+      })
+      .optional()
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data }) => {
     const nonce = makeNonce();
     const { error } = await supabaseAdmin.from("auth_nonces").insert({
       nonce,
       expires_at: new Date(Date.now() + NONCE_TTL_MS).toISOString(),
+      referrer_id: data?.referrer_id ?? null,
     });
     if (error) throw new Error(error.message);
 
@@ -37,8 +46,7 @@ export const startTelegramLogin = createServerFn({ method: "POST" }).handler(
       bot_username: BOT_USERNAME,
       deep_link: `https://t.me/${BOT_USERNAME}?start=${nonce}`,
     };
-  },
-);
+  });
 
 /** Шаг 2: фронтенд опрашивает — пользователь уже нажал Start? */
 export const pollTelegramLogin = createServerFn({ method: "POST" })
