@@ -111,13 +111,16 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     let session = (await anon.auth.signInWithPassword({ email, password }))
       .data.session;
 
-    // Look up pending referral by telegram_id (set in webhook on /start ref_<uid>)
-    const { data: refRow } = await supabaseAdmin
-      .from("telegram_referrals")
-      .select("referred_by")
-      .eq("telegram_id", tgId)
-      .maybeSingle();
-    const referredBy = (refRow?.referred_by as string | undefined) ?? null;
+    // Look up pending referral: сначала из nonce (ссылка из приложения), потом из webhook (deep-link бота)
+    let referredBy: string | null = (row as { referrer_id?: string | null }).referrer_id ?? null;
+    if (!referredBy) {
+      const { data: refRow } = await supabaseAdmin
+        .from("telegram_referrals")
+        .select("referred_by")
+        .eq("telegram_id", tgId)
+        .maybeSingle();
+      referredBy = (refRow?.referred_by as string | undefined) ?? null;
+    }
 
     let isNewUser = false;
     if (!session) {
