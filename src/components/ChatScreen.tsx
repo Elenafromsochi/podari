@@ -79,7 +79,7 @@ export function ChatScreen({
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
-  const [listening, setListening] = useState(false);
+  
   const [txStatus, setTxStatus] = useState<string>("pending");
   const [handoverRequestedAt, setHandoverRequestedAt] = useState<string | null>(null);
   const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
