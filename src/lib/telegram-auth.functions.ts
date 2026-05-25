@@ -91,7 +91,10 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
       .eq("nonce", data.nonce)
       .maybeSingle();
 
-    if (rowErr) throw new Error(rowErr.message);
+    if (rowErr) {
+      console.error("[telegram-auth] NONCE_LOOKUP_FAILED", rowErr);
+      throw new Error("NONCE_LOOKUP_FAILED");
+    }
     if (!row) throw new Error("NONCE_NOT_FOUND");
     if (row.consumed_at) throw new Error("NONCE_CONSUMED");
     if (new Date(row.expires_at).getTime() < Date.now())
