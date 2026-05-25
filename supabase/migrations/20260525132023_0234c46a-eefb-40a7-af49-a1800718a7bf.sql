@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "realtime_deny_all" ON public.messages;
