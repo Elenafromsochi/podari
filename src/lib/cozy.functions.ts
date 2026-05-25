@@ -572,3 +572,111 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
       newly_granted: (granted ?? []) as { code: string; xp_granted: number }[],
     };
   });
+
+// ---------- Banner: активные сделки и непрочитанные сообщения ----------
+export const getDealsBanner = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ last_seen_chats_at: z.string().nullable().optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const sinceChats = data.last_seen_chats_at ?? "1970-01-01T00:00:00Z";
+
+    // Активные сделки, где я участвую
+    const { data: txs } = await supabase
+      .from("transactions")
+      .select("id, gift_id, sender_id, receiver_id, status, handover_requested_at, created_at")
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    const pending = txs ?? [];
+    const giftIds = Array.from(new Set(pending.map((t) => t.gift_id as string).filter(Boolean)));
+
+    let gifts: { id: string; title: string }[] = [];
+    if (giftIds.length) {
+      const { data } = await supabase.from("gifts").select("id, title").in("id", giftIds);
+      gifts = (data ?? []) as { id: string; title: string }[];
+    }
+    const giftMap = new Map(gifts.map((g) => [g.id, g.title]));
+
+    // Непрочитанные сообщения
+    const { data: chats } = await supabase.from("chats").select("id");
+    const chatIds = (chats ?? []).map((c) => c.id as string);
+    let unread = 0;
+    if (chatIds.length) {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .in("chat_id", chatIds)
+        .neq("sender_id", userId)
+        .gt("created_at", sinceChats);
+      unread = count ?? 0;
+    }
+
+    const deals = pending.slice(0, 3).map((t) => ({
+      transaction_id: t.id as string,
+      gift_id: t.gift_id as string,
+      gift_title: giftMap.get(t.gift_id as string) ?? "Подарок",
+      role: (t.sender_id === userId ? "giver" : "receiver") as "giver" | "receiver",
+      handover_requested: !!t.handover_requested_at,
+    }));
+
+    return { pending_count: pending.length, unread_msgs: unread, deals };
+  });
+
+// ---------- Update / delete gift (only owner, only if not engaged) ----------
+export const updateGift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        title: z.string().min(1).max(200),
+        description: z.string().max(2000).nullable().optional(),
+        category: z.string().min(1).max(80),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: loadErr } = await supabase
+      .from("gifts")
+      .select("id, owner_id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (loadErr) failOp("GIFT_LOAD_FAILED", loadErr);
+    if (!existing) throw new Error("GIFT_NOT_FOUND");
+    if (existing.owner_id !== userId) throw new Error("NOT_OWNER");
+    if (existing.status !== "available") throw new Error("GIFT_IN_DEAL");
+    const { error } = await supabase
+      .from("gifts")
+      .update({
+        title: data.title,
+        description: data.description ?? null,
+        category: data.category,
+      })
+      .eq("id", data.id);
+    if (error) failOp("GIFT_UPDATE_FAILED", error);
+    return { ok: true };
+  });
+
+export const deleteGift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: loadErr } = await supabase
+      .from("gifts")
+      .select("id, owner_id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (loadErr) failOp("GIFT_LOAD_FAILED", loadErr);
+    if (!existing) throw new Error("GIFT_NOT_FOUND");
+    if (existing.owner_id !== userId) throw new Error("NOT_OWNER");
+    if (existing.status !== "available") throw new Error("GIFT_IN_DEAL");
+    const { error } = await supabase.from("gifts").delete().eq("id", data.id);
+    if (error) failOp("GIFT_DELETE_FAILED", error);
+    return { ok: true };
+  });
