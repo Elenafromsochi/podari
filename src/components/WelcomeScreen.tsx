@@ -8,6 +8,7 @@ import type { GamePath } from "@/lib/game-state";
 
 interface Props {
   onChoose: (path: GamePath) => void;
+  userXp?: number;
 }
 
 const GREETING_KEY = "cozygift_greeted_session";
@@ -23,7 +24,7 @@ const MOTIVATIONAL_PHRASES = [
   "Поделись тем, что больше не нужно 🎀",
 ];
 
-export function WelcomeScreen({ onChoose }: Props) {
+export function WelcomeScreen({ onChoose, userXp = 0 }: Props) {
   const heading = useMemo(() => {
     if (typeof window === "undefined") return "Привет 👋";
     const greeted = sessionStorage.getItem(GREETING_KEY);
@@ -89,7 +90,7 @@ export function WelcomeScreen({ onChoose }: Props) {
         <DealsFeed />
       </div>
 
-      <WelcomeCoachmarks />
+      <WelcomeCoachmarks userXp={userXp} />
     </div>
   );
 }

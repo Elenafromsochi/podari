@@ -33,7 +33,7 @@ const STEPS: Step[] = [
   },
 ];
 
-export function WelcomeCoachmarks() {
+export function WelcomeCoachmarks({ userXp = 0 }: { userXp?: number }) {
   const [active, setActive] = useState(false);
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -41,10 +41,16 @@ export function WelcomeCoachmarks() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (localStorage.getItem(KEY)) return;
+    // Если пользователь уже что-то делал в приложении — обучение не показываем,
+    // даже если localStorage был очищен (например, заход с другого домена).
+    if (userXp > 0) {
+      localStorage.setItem(KEY, "1");
+      return;
+    }
     // Запускаем после первого рендера welcome-экрана
     const t = setTimeout(() => setActive(true), 500);
     return () => clearTimeout(t);
-  }, []);
+  }, [userXp]);
 
   useEffect(() => {
     if (!active) return;

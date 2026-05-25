@@ -63,6 +63,7 @@ type ChatItem = {
 
 function CabinetPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [posted, setPosted] = useState<Gift[]>([]);
   const [received, setReceived] = useState<TxRow[]>([]);
   const [gifted, setGifted] = useState<TxRow[]>([]);
@@ -100,6 +101,7 @@ function CabinetPage() {
     (async () => {
       const u = await loadUser();
       setUser(u);
+      setAuthChecked(true);
       if (!u) {
         setLoading(false);
         return;
@@ -175,6 +177,14 @@ function CabinetPage() {
   };
 
 
+
+  if (!authChecked) {
+    return (
+      <div className="mx-auto max-w-md p-8 text-center text-sm text-muted-foreground">
+        Загружаем кабинет…
+      </div>
+    );
+  }
 
   if (!user) {
     return (
