@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           expires_at: string
           nonce: string
+          referrer_id: string | null
           telegram_first_name: string | null
           telegram_id: number | null
           telegram_username: string | null
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           nonce: string
+          referrer_id?: string | null
           telegram_first_name?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           nonce?: string
+          referrer_id?: string | null
           telegram_first_name?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
