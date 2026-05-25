@@ -1,11 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Search, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+
+function timeAgo(iso?: string | null): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "только что";
+  if (m < 60) return `${m} мин назад`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ч назад`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} дн назад`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w} нед назад`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo} мес назад`;
+  return `${Math.floor(d / 365)} г назад`;
+}
 
 type Gift = {
   id: string;
