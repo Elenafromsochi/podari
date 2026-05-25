@@ -142,12 +142,14 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
         },
       });
       if (createErr && !/already/i.test(createErr.message)) {
-        throw new Error(createErr.message);
+        console.error("[telegram-auth] USER_CREATE_FAILED", createErr);
+        throw new Error("USER_CREATE_FAILED");
       }
       isNewUser = !createErr;
       const r = await anon.auth.signInWithPassword({ email, password });
       if (r.error || !r.data.session) {
-        throw new Error(r.error?.message ?? "SIGNIN_FAILED");
+        console.error("[telegram-auth] SIGNIN_FAILED", r.error);
+        throw new Error("SIGNIN_FAILED");
       }
       session = r.data.session;
     }
