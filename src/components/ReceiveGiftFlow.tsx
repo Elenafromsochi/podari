@@ -1,11 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Search, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+
+function timeAgo(iso?: string | null): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "только что";
+  if (m < 60) return `${m} мин назад`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ч назад`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} дн назад`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w} нед назад`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo} мес назад`;
+  return `${Math.floor(d / 365)} г назад`;
+}
 
 type Gift = {
   id: string;
@@ -16,6 +34,7 @@ type Gift = {
   cost: number;
   owner_id: string | null;
   gift_kind: GiftKind;
+  created_at?: string;
   owner_name?: string;
   owner_level?: number;
 };
@@ -55,7 +74,7 @@ export function ReceiveGiftFlow({
       const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,owner_id,gift_kind")
+        .select("id,title,description,category,image_url,cost,owner_id,gift_kind,created_at")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
@@ -125,39 +144,51 @@ export function ReceiveGiftFlow({
   }
 
   const renderCard = (g: Gift) => (
-    <Card key={g.id} className="overflow-hidden p-3">
+    <Card key={g.id} className="overflow-hidden p-0">
       {g.image_url ? (
         <img
           src={g.image_url}
           alt={g.title}
-          className="aspect-square w-full rounded-xl object-cover"
+          className="aspect-square w-full object-cover"
         />
       ) : (
-        <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-muted text-6xl">
+        <div className="flex aspect-square w-full items-center justify-center bg-muted text-[9rem]">
           🎁
         </div>
       )}
-      <div className="mt-3 space-y-1">
-        <div className="text-lg font-semibold leading-tight">{g.title}</div>
-        <div className="text-xs text-muted-foreground capitalize">{g.category}</div>
+      <div className="space-y-2 p-4">
+        <div className="text-2xl font-semibold leading-tight break-words">{g.title}</div>
         {g.description && (
-          <p className="line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
+          <p className="whitespace-pre-wrap break-words text-base text-muted-foreground">
+            {g.description}
+          </p>
         )}
-        <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-sm text-muted-foreground">
           <span>Даритель:</span>
-          <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
+          {g.owner_id ? (
+            <Link
+              to="/user/$userId"
+              params={{ userId: g.owner_id }}
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {g.owner_name ?? "Гость"}
+            </Link>
+          ) : (
+            <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
+          )}
           <span className="inline-flex items-center rounded-full bg-peach/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
             ур. {g.owner_level ?? 1}
           </span>
         </div>
+        <div className="text-xs text-muted-foreground">{timeAgo(g.created_at)}</div>
+        <Button
+          onClick={() => onPick(g.id)}
+          className="mt-2 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+          size="lg"
+        >
+          🎁 Забрать за {g.cost ?? 1} балл
+        </Button>
       </div>
-      <Button
-        onClick={() => onPick(g.id)}
-        className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-        size="lg"
-      >
-        🎁 Забрать за {g.cost ?? 1} балл
-      </Button>
     </Card>
   );
 
