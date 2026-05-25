@@ -523,3 +523,157 @@ function Stat({ label, value, hint }: { label: string; value: number; hint?: str
     </div>
   );
 }
+
+function PostedGiftItem({
+  gift,
+  editable,
+  onChanged,
+}: {
+  gift: Gift;
+  editable: boolean;
+  onChanged: (action: "update" | "delete", id: string, patch?: Partial<Gift>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [title, setTitle] = useState(gift.title);
+  const [category, setCategory] = useState(gift.category);
+  const [description, setDescription] = useState(gift.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const updateFn = useServerFn(updateGift);
+  const deleteFn = useServerFn(deleteGift);
+
+  const canModify = editable && gift.status === "available";
+
+  const handleSave = async () => {
+    if (!title.trim() || !category.trim()) {
+      toast.error("Заполни название и категорию");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateFn({
+        data: {
+          id: gift.id,
+          title: title.trim(),
+          category: category.trim(),
+          description: description.trim() || null,
+        },
+      });
+      onChanged("update", gift.id, {
+        title: title.trim(),
+        category: category.trim(),
+        description: description.trim() || null,
+      });
+      toast.success("Подарок обновлён ✨");
+      setOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("GIFT_IN_DEAL")) {
+        toast.error("Нельзя изменить: подарок уже в сделке");
+      } else {
+        toast.error("Не удалось сохранить", { description: msg });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteFn({ data: { id: gift.id } });
+      onChanged("delete", gift.id);
+      toast.success("Подарок удалён");
+      setConfirmOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("GIFT_IN_DEAL")) {
+        toast.error("Нельзя удалить: подарок уже в сделке");
+      } else {
+        toast.error("Не удалось удалить", { description: msg });
+      }
+    }
+  };
+
+  return (
+    <li className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm">
+      {gift.image_url ? (
+        <img src={gift.image_url} alt={gift.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
+      ) : (
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">🎁</div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{gift.title}</p>
+        <p className="text-xs text-muted-foreground">{gift.category} • {gift.status}</p>
+        {gift.description && (
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{gift.description}</p>
+        )}
+      </div>
+      {canModify && (
+        <div className="flex shrink-0 flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Редактировать подарок"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            aria-label="Удалить подарок"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Редактировать подарок</DialogTitle>
+            <DialogDescription>Изменения видны сразу всем пользователям</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="g-title">Название</Label>
+              <Input id="g-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="g-cat">Категория</Label>
+              <Input id="g-cat" value={category} onChange={(e) => setCategory(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="g-desc">Описание</Label>
+              <Textarea id="g-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+              Отмена
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Сохраняем…" : "Сохранить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Подарок «{gift.title}» исчезнет из ленты. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </li>
+  );
+}
