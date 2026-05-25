@@ -95,7 +95,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               if (!nErr) {
                 await sendTgMessage(
                   chatId,
-                  `Привет! 💚 Тебя пригласили в «Подари».\n\nТвой код для входа: ${code}\n\nВведи его на странице входа: https://podari.lovable.app/?ref=${refId}\n\nКод действует 5 минут. После входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
+                  `Привет! 💚 Тебя пригласили в «Подари».\n\nТвой код для входа: ${code}\n\nОткрой ссылку и введи код: https://podari.lovable.app/?login=${nonce}\n\nКод действует 5 минут. После входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
                 );
                 return Response.json({ ok: true });
               }
