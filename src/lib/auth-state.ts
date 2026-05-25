@@ -4,6 +4,7 @@
 // Здесь — только утилиты загрузки/выхода и тип профиля.
 
 import { supabase } from "@/integrations/supabase/client";
+import { checkLevelUp } from "@/lib/level-up";
 
 export interface UserProfile {
   user_id: string;
@@ -21,7 +22,9 @@ export async function loadUser(): Promise<UserProfile | null> {
     .select("user_id, display_name, balance, xp, level")
     .eq("user_id", user.id)
     .maybeSingle();
-  return (data as UserProfile) ?? null;
+  const profile = (data as UserProfile) ?? null;
+  if (profile) checkLevelUp(profile.level);
+  return profile;
 }
 
 export async function refreshProfile(): Promise<UserProfile | null> {
