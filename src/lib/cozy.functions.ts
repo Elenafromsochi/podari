@@ -20,7 +20,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .select("user_id, display_name, balance, xp, level")
       .eq("user_id", userId)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) failOp("PROFILE_LOAD_FAILED", error);
     return data;
   });
 
@@ -83,7 +83,7 @@ export const publishGift = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) failOp("GIFT_SAVE_FAILED", error);
     return { id: row.id };
   });
 
@@ -114,7 +114,7 @@ export const claimGift = createServerFn({ method: "POST" })
         sender_id: userId,
         content: INITIAL_CHAT_MESSAGE,
       });
-      if (messageError) throw new Error(messageError.message);
+      if (messageError) failOp("MESSAGE_SEND_FAILED", messageError);
     }
     return {
       transaction_id: first?.transaction_id as string,
@@ -144,7 +144,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       })
       .select("id, sender_id, content, created_at")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) failOp("MESSAGE_SEND_FAILED", error);
     return row;
   });
 
@@ -159,7 +159,7 @@ export const confirmHandover = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("confirm_handover", {
       _transaction_id: data.transaction_id,
     });
-    if (error) throw new Error(error.message);
+    if (error) failOp("HANDOVER_FAILED", error);
     return { ok: true };
   });
 
@@ -174,7 +174,7 @@ export const requestHandover = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("request_handover", {
       _transaction_id: data.transaction_id,
     });
-    if (error) throw new Error(error.message);
+    if (error) failOp("HANDOVER_FAILED", error);
     return { ok: true };
   });
 
@@ -189,7 +189,7 @@ export const declineHandover = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("decline_handover", {
       _transaction_id: data.transaction_id,
     });
-    if (error) throw new Error(error.message);
+    if (error) failOp("HANDOVER_FAILED", error);
     return { ok: true };
   });
 
@@ -204,7 +204,7 @@ export const cancelClaim = createServerFn({ method: "POST" })
     const { error } = await supabase.rpc("cancel_claim", {
       _transaction_id: data.transaction_id,
     });
-    if (error) throw new Error(error.message);
+    if (error) failOp("CLAIM_CANCEL_FAILED", error);
     return { ok: true };
   });
 
@@ -230,7 +230,7 @@ export const submitReview = createServerFn({ method: "POST" })
       .select("sender_id, receiver_id")
       .eq("id", data.transaction_id)
       .maybeSingle();
-    if (txErr) throw new Error(txErr.message);
+    if (txErr) failOp("REVIEW_FAILED", txErr);
     if (!tx || (tx.sender_id !== userId && tx.receiver_id !== userId)) {
       throw new Error("NOT_PARTY");
     }
@@ -245,7 +245,7 @@ export const submitReview = createServerFn({ method: "POST" })
       comment: data.comment ?? null,
       is_auto: data.is_auto,
     });
-    if (error) throw new Error(error.message);
+    if (error) failOp("REVIEW_FAILED", error);
     return { ok: true };
   });
 
@@ -296,7 +296,7 @@ export const getMyPostedGifts = createServerFn({ method: "GET" })
       .select("id, title, category, description, image_url, status, created_at")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) failOp("GIFTS_LOAD_FAILED", error);
     return data ?? [];
   });
 
@@ -312,7 +312,7 @@ export const getMyReceivedGifts = createServerFn({ method: "GET" })
       .eq("receiver_id", userId)
       .eq("status", "completed")
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) failOp("GIFTS_LOAD_FAILED", error);
     return data ?? [];
   });
 
@@ -328,7 +328,7 @@ export const getMyGiftedGifts = createServerFn({ method: "GET" })
       .eq("sender_id", userId)
       .eq("status", "completed")
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) failOp("GIFTS_LOAD_FAILED", error);
     return data ?? [];
   });
 
@@ -392,7 +392,7 @@ export const getActiveTransactionForGift = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) failOp("TRANSACTION_LOAD_FAILED", error);
     return row;
   });
 
@@ -408,7 +408,7 @@ export const getMyChats = createServerFn({ method: "GET" })
       )
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) failOp("CHATS_LOAD_FAILED", error);
     const rows = data ?? [];
     const otherIds = Array.from(
       new Set(
@@ -498,7 +498,7 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
 
     // 1) Запускаем серверную функцию — она идемпотентно начислит всё новое
     const { data: granted, error: rpcErr } = await supabase.rpc("sync_achievements");
-    if (rpcErr) throw new Error(rpcErr.message);
+    if (rpcErr) failOp("ACHIEVEMENTS_SYNC_FAILED", rpcErr);
 
     // 2) Грузим текущее состояние
     const [ownedRes, postedRes, giftedRes, receivedRes, reviewsRes, referralsRes, profileRes] =
