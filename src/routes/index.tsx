@@ -129,7 +129,7 @@ function Index() {
     <div className="min-h-[100dvh] bg-background">
       <DemoResetButton />
 
-      {state.step === "welcome" && <WelcomeScreen onChoose={choose} />}
+      {state.step === "welcome" && <WelcomeScreen onChoose={choose} userXp={user.xp} />}
 
       {state.step === "give_chip" && (
         <GiveGiftChips
