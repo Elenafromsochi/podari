@@ -144,53 +144,55 @@ export function ReceiveGiftFlow({
   }
 
   const renderCard = (g: Gift) => (
-    <Card key={g.id} className="overflow-hidden p-0">
-      {g.image_url ? (
-        <img
-          src={g.image_url}
-          alt={g.title}
-          className="aspect-square w-full object-cover"
-        />
-      ) : (
-        <div className="flex aspect-square w-full items-center justify-center bg-muted text-[9rem]">
-          🎁
-        </div>
-      )}
-      <div className="space-y-2 p-4">
-        <div className="text-2xl font-semibold leading-tight break-words">{g.title}</div>
-        {g.description && (
-          <p className="whitespace-pre-wrap break-words text-base text-muted-foreground">
-            {g.description}
-          </p>
+    <Card key={g.id} className="overflow-hidden p-3">
+      <div className="flex gap-3">
+        {g.image_url ? (
+          <img
+            src={g.image_url}
+            alt={g.title}
+            className="h-20 w-20 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-3xl">
+            🎁
+          </div>
         )}
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-sm text-muted-foreground">
-          <span>Даритель:</span>
-          {g.owner_id ? (
-            <Link
-              to="/user/$userId"
-              params={{ userId: g.owner_id }}
-              className="font-medium text-primary underline-offset-2 hover:underline"
-            >
-              {g.owner_name ?? "Гость"}
-            </Link>
-          ) : (
-            <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="text-base font-semibold leading-tight break-words">{g.title}</div>
+          {g.description && (
+            <p className="line-clamp-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+              {g.description}
+            </p>
           )}
-          <span className="inline-flex items-center rounded-full bg-peach/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
-            ур. {g.owner_level ?? 1}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            {g.owner_id ? (
+              <Link
+                to="/user/$userId"
+                params={{ userId: g.owner_id }}
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                {g.owner_name ?? "Гость"}
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
+            )}
+            <span className="inline-flex items-center rounded-full bg-peach/50 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+              ур. {g.owner_level ?? 1}
+            </span>
+            <span>· {timeAgo(g.created_at)}</span>
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">{timeAgo(g.created_at)}</div>
-        <Button
-          onClick={() => onPick(g.id)}
-          className="mt-2 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-          size="lg"
-        >
-          🎁 Забрать за {g.cost ?? 1} балл
-        </Button>
       </div>
+      <Button
+        onClick={() => onPick(g.id)}
+        className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+        size="sm"
+      >
+        🎁 Забрать за {g.cost ?? 1} балл
+      </Button>
     </Card>
   );
+
 
   // Search step
   if (step === "search") {
