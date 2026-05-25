@@ -8,6 +8,7 @@ import type { GamePath } from "@/lib/game-state";
 
 interface Props {
   onChoose: (path: GamePath) => void;
+  userXp?: number;
 }
 
 const GREETING_KEY = "cozygift_greeted_session";
