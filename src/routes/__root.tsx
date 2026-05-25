@@ -120,6 +120,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <DealsBanner />
       <Outlet />
       <GlobalNotifications />
       <LevelUpModal />
