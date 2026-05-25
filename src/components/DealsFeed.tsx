@@ -107,26 +107,27 @@ export function DealsFeed() {
               <img
                 src={d.gift_image}
                 alt={d.gift_title}
-                className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                className="h-24 w-24 shrink-0 rounded-xl object-cover"
               />
             ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-muted text-4xl">
                 🎁
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm">
+              <div className="text-sm break-words">
                 <span className="font-medium">{d.sender_name}</span>{" "}
                 <span className="text-muted-foreground">вручил{" "}</span>
                 <span className="font-medium">{d.gift_title}</span>
               </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
+              <div className="mt-1 text-[11px] text-muted-foreground">
                 {KIND_LABEL[d.gift_kind] ?? "подарок"} · {timeAgo(d.created_at)}
               </div>
             </div>
           </div>
         ))}
       </div>
+
     </div>
   );
 }
