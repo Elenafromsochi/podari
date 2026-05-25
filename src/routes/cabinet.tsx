@@ -178,6 +178,14 @@ function CabinetPage() {
 
 
 
+  if (!authChecked) {
+    return (
+      <div className="mx-auto max-w-md p-8 text-center text-sm text-muted-foreground">
+        Загружаем кабинет…
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="mx-auto max-w-md p-8 text-center text-muted-foreground">
