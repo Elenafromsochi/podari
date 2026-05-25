@@ -432,13 +432,8 @@ function ChatGroup({
 const APP_PUBLIC_URL = "https://podari.lovable.app";
 
 function getAppOrigin() {
-  if (typeof window === "undefined") return APP_PUBLIC_URL;
-  const host = window.location.host;
-  // Используем стабильный публичный URL для шеринга, а не временный preview
-  if (host.includes("id-preview--") || host.includes("localhost")) {
-    return APP_PUBLIC_URL;
-  }
-  return window.location.origin;
+  // Всегда используем стабильный публичный URL для шеринга
+  return APP_PUBLIC_URL;
 }
 
 function InviteCard({ userId }: { userId: string }) {
