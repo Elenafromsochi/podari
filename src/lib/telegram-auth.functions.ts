@@ -39,7 +39,10 @@ export const startTelegramLogin = createServerFn({ method: "POST" })
       expires_at: new Date(Date.now() + NONCE_TTL_MS).toISOString(),
       referrer_id: data?.referrer_id ?? null,
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[telegram-auth] NONCE_CREATE_FAILED", error);
+      throw new Error("NONCE_CREATE_FAILED");
+    }
 
     return {
       nonce,
