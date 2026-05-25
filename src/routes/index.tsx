@@ -79,9 +79,15 @@ function Index() {
         const isUuid = ref && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
         if (isUuid) {
           localStorage.setItem("cozygift_pending_ref", ref!);
-          // Чистим URL, чтобы не висел ref после авторизации
+        }
+        const login = params.get("login");
+        if (login && /^[A-Za-z0-9_-]{8,32}$/.test(login)) {
+          setPendingLoginNonce(login);
+        }
+        if (isUuid || login) {
           const url = new URL(window.location.href);
           url.searchParams.delete("ref");
+          url.searchParams.delete("login");
           window.history.replaceState({}, "", url.toString());
         }
       } catch {
