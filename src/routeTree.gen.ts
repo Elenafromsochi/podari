@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CabinetRouteImport } from './routes/cabinet'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UserUserIdRouteImport } from './routes/user.$userId'
 import { Route as ChatGiftIdRouteImport } from './routes/chat.$giftId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
@@ -22,6 +23,11 @@ const CabinetRoute = CabinetRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UserUserIdRoute = UserUserIdRouteImport.update({
+  id: '/user/$userId',
+  path: '/user/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatGiftIdRoute = ChatGiftIdRouteImport.update({
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
+  '/user/$userId': typeof UserUserIdRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
+  '/user/$userId': typeof UserUserIdRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -53,18 +61,30 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
+  '/user/$userId': typeof UserUserIdRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/cabinet' | '/chat/$giftId' | '/api/public/telegram/webhook'
+  fullPaths:
+    | '/'
+    | '/cabinet'
+    | '/chat/$giftId'
+    | '/user/$userId'
+    | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cabinet' | '/chat/$giftId' | '/api/public/telegram/webhook'
+  to:
+    | '/'
+    | '/cabinet'
+    | '/chat/$giftId'
+    | '/user/$userId'
+    | '/api/public/telegram/webhook'
   id:
     | '__root__'
     | '/'
     | '/cabinet'
     | '/chat/$giftId'
+    | '/user/$userId'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -72,6 +92,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CabinetRoute: typeof CabinetRoute
   ChatGiftIdRoute: typeof ChatGiftIdRoute
+  UserUserIdRoute: typeof UserUserIdRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -89,6 +110,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user/$userId': {
+      id: '/user/$userId'
+      path: '/user/$userId'
+      fullPath: '/user/$userId'
+      preLoaderRoute: typeof UserUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/$giftId': {
@@ -112,8 +140,19 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CabinetRoute: CabinetRoute,
   ChatGiftIdRoute: ChatGiftIdRoute,
+  UserUserIdRoute: UserUserIdRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
