@@ -45,6 +45,7 @@ function Index() {
   const [state, setState] = useState<GameState | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [pendingLoginNonce, setPendingLoginNonce] = useState<string | null>(null);
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
   const [activeTxId, setActiveTxId] = useState<string | null>(null);
   const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
