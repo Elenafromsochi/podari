@@ -88,7 +88,8 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
     } catch {
       parsed = {};
     }
-    const title = (parsed.title || "Подарок").toString().slice(0, 80).trim();
+    let title = (parsed.title || "Подарок").toString().slice(0, 80).trim();
+    if (looksUnsafe(title)) title = "Подарок";
     const category = CATEGORIES.includes(parsed.category || "")
       ? (parsed.category as string)
       : "разное";
