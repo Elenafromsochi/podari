@@ -132,7 +132,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
           await sendTgMessage(
             chatId,
-            `🎁 Подари\nТвой код для входа: ${code}\n\nВведи его в приложении в течение 5 минут.`,
+            `🎁 Подари\nТвой код для входа: ${code}\n\nВведи его на странице входа: https://podari.lovable.app/\n\nКод действует 5 минут.`,
           );
           return Response.json({ ok: true });
         }
