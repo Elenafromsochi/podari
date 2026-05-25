@@ -218,6 +218,19 @@ export const submitReview = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    // Проверяем, что отправитель — участник транзакции и target_id — другая сторона
+    const { data: tx, error: txErr } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (txErr) throw new Error(txErr.message);
+    if (!tx || (tx.sender_id !== userId && tx.receiver_id !== userId)) {
+      throw new Error("NOT_PARTY");
+    }
+    const expectedTarget = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+    if (data.target_id !== expectedTarget) throw new Error("INVALID_TARGET");
+
     const { error } = await supabase.from("reviews").insert({
       transaction_id: data.transaction_id,
       target_id: data.target_id,
