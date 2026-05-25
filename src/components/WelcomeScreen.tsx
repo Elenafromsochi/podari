@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { DealsFeed } from "@/components/DealsFeed";
+import { WelcomeCoachmarks } from "@/components/WelcomeCoachmarks";
 import type { GamePath } from "@/lib/game-state";
 
 interface Props {
@@ -49,6 +50,7 @@ export function WelcomeScreen({ onChoose }: Props) {
       <div className="flex w-full flex-col gap-3">
         <Button
           onClick={() => onChoose("receive")}
+          data-coach="receive"
           className="h-auto justify-start gap-4 rounded-2xl bg-mint px-5 py-5 text-mint-foreground shadow-sm hover:bg-mint/90"
         >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background/60">
@@ -62,6 +64,7 @@ export function WelcomeScreen({ onChoose }: Props) {
 
         <Button
           onClick={() => onChoose("give")}
+          data-coach="give"
           className="h-auto justify-start gap-4 rounded-2xl bg-lavender px-5 py-5 text-lavender-foreground shadow-sm hover:bg-lavender/90"
         >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background/60">
@@ -76,6 +79,7 @@ export function WelcomeScreen({ onChoose }: Props) {
 
       <Link
         to="/cabinet"
+        data-coach="cabinet"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
         <User className="h-4 w-4" /> Личный кабинет
@@ -84,6 +88,8 @@ export function WelcomeScreen({ onChoose }: Props) {
       <div className="w-full">
         <DealsFeed />
       </div>
+
+      <WelcomeCoachmarks />
     </div>
   );
 }
