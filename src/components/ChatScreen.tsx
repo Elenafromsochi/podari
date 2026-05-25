@@ -390,6 +390,18 @@ export function ChatScreen({
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">
             {isOwner ? "Чат с получателем" : "Чат с дарителем"}
+            {partner && (
+              <>
+                {": "}
+                <Link
+                  to="/user/$userId"
+                  params={{ userId: partner.id }}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  {partner.name}
+                </Link>
+              </>
+            )}
           </div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
