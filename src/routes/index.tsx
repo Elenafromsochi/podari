@@ -48,6 +48,7 @@ function Index() {
   const [activeChatGift, setActiveChatGift] = useState<string | null>(null);
   const [activeTxId, setActiveTxId] = useState<string | null>(null);
   const [givePresetHint, setGivePresetHint] = useState<string | null>(null);
+  const [giveKind, setGiveKind] = useState<import("@/lib/gift-kinds").GiftKind>("used_item");
   const [insufficientOpen, setInsufficientOpen] = useState(false);
 
   const claim = useServerFn(claimGift);
@@ -118,7 +119,9 @@ function Index() {
       {state.step === "give_chip" && (
         <GiveGiftChips
           onBack={backToWelcome}
-          onPick={(label) => {
+          userLevel={user.level}
+          onPick={(kind, label) => {
+            setGiveKind(kind);
             setGivePresetHint(label);
             update({ step: "give_form" });
           }}
@@ -129,6 +132,7 @@ function Index() {
         <GiveGiftForm
           onBack={() => update({ step: "give_chip" })}
           presetHint={givePresetHint}
+          giftKind={giveKind}
           onDone={async () => {
             burstConfetti();
             toast.success("+20 Опыта начислено ✨", {
@@ -174,6 +178,7 @@ function Index() {
       {(state.step === "receive_categories" || state.step === "receive_feed") && (
         <ReceiveGiftFlow
           onBack={backToWelcome}
+          userLevel={user.level}
           onPick={async (giftId) => {
             try {
               const res = await claim({ data: { gift_id: giftId } });
