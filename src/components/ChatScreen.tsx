@@ -337,36 +337,7 @@ export function ChatScreen({
     }
   };
 
-  const toggleMic = () => {
-    const W = window as unknown as {
-      SpeechRecognition?: new () => SR;
-      webkitSpeechRecognition?: new () => SR;
-    };
-    const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
-    if (!Ctor) {
-      toast.error("Голосовой ввод не поддерживается в этом браузере");
-      return;
-    }
-    if (listening) {
-      recogRef.current?.stop();
-      setListening(false);
-      return;
-    }
-    const r = new Ctor();
-    r.lang = "ru-RU";
-    r.continuous = false;
-    r.interimResults = true;
-    r.onresult = (e) => {
-      let final = "";
-      for (let i = 0; i < e.results.length; i++) final += e.results[i][0].transcript;
-      setText(final);
-    };
-    r.onerror = () => setListening(false);
-    r.onend = () => setListening(false);
-    recogRef.current = r;
-    r.start();
-    setListening(true);
-  };
+
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-background">
