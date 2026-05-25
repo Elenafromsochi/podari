@@ -330,7 +330,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_public: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          level: number | null
+          user_id: string | null
+          xp: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          level?: number | null
+          user_id?: string | null
+          xp?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          level?: number | null
+          user_id?: string | null
+          xp?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_referral_bonus: { Args: { _new_user: string }; Returns: undefined }
@@ -350,6 +373,15 @@ export type Database = {
       decline_handover: {
         Args: { _transaction_id: string }
         Returns: undefined
+      }
+      get_public_profiles: {
+        Args: { _user_ids: string[] }
+        Returns: {
+          display_name: string
+          level: number
+          user_id: string
+          xp: number
+        }[]
       }
       request_handover: {
         Args: { _transaction_id: string }
