@@ -309,6 +309,10 @@ function CabinetPage() {
           />
         </TabsContent>
 
+        <TabsContent value="achievements" className="mt-4">
+          <Achievements variant="full" />
+        </TabsContent>
+
         <TabsContent value="archive" className="mt-4 space-y-4">
           <p className="text-xs text-muted-foreground">
             Сюда попадают чаты после завершения или отказа от подарка
