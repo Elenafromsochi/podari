@@ -34,6 +34,7 @@ type Gift = {
   cost: number;
   owner_id: string | null;
   gift_kind: GiftKind;
+  created_at?: string;
   owner_name?: string;
   owner_level?: number;
 };
