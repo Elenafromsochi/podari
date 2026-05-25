@@ -429,8 +429,7 @@ function ChatGroup({
   );
 }
 
-const PROJECT_ID = "bd25f75c-2201-409b-aa60-d7c459f781a6";
-const APP_PUBLIC_URL = `https://project--${PROJECT_ID}.lovable.app`;
+const APP_PUBLIC_URL = "https://podari.lovable.app";
 
 function getAppOrigin() {
   if (typeof window === "undefined") return APP_PUBLIC_URL;
