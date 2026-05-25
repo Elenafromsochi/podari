@@ -7,13 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { publishGift } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 
+import type { GiftKind } from "@/lib/gift-kinds";
+
 interface Props {
   onDone: (giftId: string) => void;
   onBack: () => void;
   presetHint?: string | null;
+  giftKind: GiftKind;
 }
 
-export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
+export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -141,6 +144,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint }: Props) {
           description: description.trim() || null,
           category,
           image_url: photoPreview,
+          gift_kind: giftKind,
         },
       });
       onDone(id);
