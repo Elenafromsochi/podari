@@ -301,6 +301,30 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          awarded_at: string
+          code: string
+          id: string
+          user_id: string
+          xp_granted: number
+        }
+        Insert: {
+          awarded_at?: string
+          code: string
+          id?: string
+          user_id: string
+          xp_granted?: number
+        }
+        Update: {
+          awarded_at?: string
+          code?: string
+          id?: string
+          user_id?: string
+          xp_granted?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -327,6 +351,13 @@ export type Database = {
       request_handover: {
         Args: { _transaction_id: string }
         Returns: undefined
+      }
+      sync_achievements: {
+        Args: never
+        Returns: {
+          code: string
+          xp_granted: number
+        }[]
       }
     }
     Enums: {

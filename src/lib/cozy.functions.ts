@@ -450,3 +450,108 @@ export const getMyChats = createServerFn({ method: "GET" })
     };
   });
 
+
+// ---------- Achievements ----------
+export const ACHIEVEMENT_META: Record<
+  string,
+  { title: string; description: string; emoji: string; xp: number; group: string }
+> = {
+  first_post:     { title: "Первая публикация", description: "Разместил свой первый подарок",          emoji: "📤", xp: 10, group: "Старт" },
+  first_handover: { title: "Первая встреча",    description: "Передал подарок получателю",              emoji: "🤝", xp: 15, group: "Старт" },
+  first_receive:  { title: "Первая радость",    description: "Получил свой первый подарок",             emoji: "🎁", xp: 10, group: "Старт" },
+  first_review:   { title: "Спасибо сказано",   description: "Оставил первый отзыв",                    emoji: "💌", xp: 10, group: "Старт" },
+  giver_5:        { title: "Щедрая душа",       description: "Передал 5 подарков",                      emoji: "💝", xp: 30, group: "Даритель" },
+  receiver_5:     { title: "Открытый миру",     description: "Получил 5 подарков",                      emoji: "🌸", xp: 20, group: "Получатель" },
+  level_2:        { title: "Новый горизонт",    description: "Достиг 2 уровня",                         emoji: "✨", xp: 25, group: "Прогресс" },
+  first_referral: { title: "Пригласил друга",   description: "Привёл первого нового пользователя",      emoji: "👯", xp: 30, group: "Социальное" },
+};
+
+export type AchievementRow = {
+  code: string;
+  unlocked: boolean;
+  awarded_at: string | null;
+  progress: number;
+  target: number;
+};
+
+export const syncAndGetAchievements = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    // 1) Запускаем серверную функцию — она идемпотентно начислит всё новое
+    const { data: granted, error: rpcErr } = await supabase.rpc("sync_achievements");
+    if (rpcErr) throw new Error(rpcErr.message);
+
+    // 2) Грузим текущее состояние
+    const [ownedRes, postedRes, giftedRes, receivedRes, reviewsRes, referralsRes, profileRes] =
+      await Promise.all([
+        supabase
+          .from("user_achievements")
+          .select("code, awarded_at")
+          .eq("user_id", userId),
+        supabase.from("gifts").select("id", { count: "exact", head: true }).eq("owner_id", userId),
+        supabase
+          .from("transactions")
+          .select("id", { count: "exact", head: true })
+          .eq("sender_id", userId)
+          .eq("status", "completed"),
+        supabase
+          .from("transactions")
+          .select("id", { count: "exact", head: true })
+          .eq("receiver_id", userId)
+          .eq("status", "completed"),
+        supabase
+          .from("reviews")
+          .select("id", { count: "exact", head: true })
+          .eq("author_id", userId),
+        supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("referred_by", userId),
+        supabase
+          .from("profiles")
+          .select("level")
+          .eq("user_id", userId)
+          .maybeSingle(),
+      ]);
+
+    const _ownedMap = new Map<string, string>();
+    ((ownedRes.data ?? []) as { code: string; awarded_at: string }[]).forEach((r) =>
+      _ownedMap.set(r.code, r.awarded_at),
+    );
+
+    const postedN = postedRes.count ?? 0;
+    const giftedN = giftedRes.count ?? 0;
+    const receivedN = receivedRes.count ?? 0;
+    const reviewsN = reviewsRes.count ?? 0;
+    const referralsN = referralsRes.count ?? 0;
+    const levelN = (profileRes.data as { level?: number } | null)?.level ?? 1;
+
+    const targets: Record<string, { value: number; target: number }> = {
+      first_post:     { value: postedN,    target: 1 },
+      first_handover: { value: giftedN,    target: 1 },
+      first_receive:  { value: receivedN,  target: 1 },
+      first_review:   { value: reviewsN,   target: 1 },
+      giver_5:        { value: giftedN,    target: 5 },
+      receiver_5:     { value: receivedN,  target: 5 },
+      level_2:        { value: levelN,     target: 2 },
+      first_referral: { value: referralsN, target: 1 },
+    };
+
+    const items: AchievementRow[] = Object.keys(targets).map((code) => {
+      const t = targets[code];
+      return {
+        code,
+        unlocked: _ownedMap.has(code),
+        awarded_at: _ownedMap.get(code) ?? null,
+        progress: Math.min(t.value, t.target),
+        target: t.target,
+      };
+    });
+
+    return {
+      items,
+      newly_granted: (granted ?? []) as { code: string; xp_granted: number }[],
+    };
+  });
