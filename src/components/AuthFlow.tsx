@@ -15,16 +15,17 @@ type Step = "intro" | "code";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
+  initialNonce?: string | null;
 }
 
-export function AuthFlow({ onAuthed }: Props) {
-  const [step, setStep] = useState<Step>("intro");
+export function AuthFlow({ onAuthed, initialNonce }: Props) {
+  const [step, setStep] = useState<Step>(initialNonce ? "code" : "intro");
   const [loading, setLoading] = useState(false);
 
-  const [nonce, setNonce] = useState<string | null>(null);
+  const [nonce, setNonce] = useState<string | null>(initialNonce ?? null);
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [botUsername, setBotUsername] = useState<string>("Podari_podarki_bot");
-  const [codeSent, setCodeSent] = useState(false);
+  const [codeSent, setCodeSent] = useState(!!initialNonce);
 
   const [otp, setOtp] = useState(["", "", "", ""]);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
