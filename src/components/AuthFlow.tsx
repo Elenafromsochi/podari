@@ -37,7 +37,11 @@ export function AuthFlow({ onAuthed }: Props) {
     if (loading) return;
     setLoading(true);
     try {
-      const res = await start();
+      const referrer_id =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cozygift_pending_ref")
+          : null;
+      const res = await start({ data: { referrer_id } });
       setNonce(res.nonce);
       setDeepLink(res.deep_link);
       setBotUsername(res.bot_username);
