@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { Achievements } from "@/components/Achievements";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -228,11 +229,15 @@ function CabinetPage() {
 
       <InviteCard userId={user.user_id} />
 
+      <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm">
+        <Achievements variant="preview" />
+      </div>
+
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="gifts" className="relative">
-            🎁 Подарки
+            🎁
             {giftsUnread > 0 && (
               <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                 {giftsUnread > 99 ? "99+" : giftsUnread}
@@ -240,14 +245,15 @@ function CabinetPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="chats" className="relative">
-            💬 Чаты
+            💬
             {chatsUnread > 0 && (
               <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                 {chatsUnread > 99 ? "99+" : chatsUnread}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="archive">🗂 Архив</TabsTrigger>
+          <TabsTrigger value="achievements">🏆</TabsTrigger>
+          <TabsTrigger value="archive">🗂</TabsTrigger>
         </TabsList>
 
 
