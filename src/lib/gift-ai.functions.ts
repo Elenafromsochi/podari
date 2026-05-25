@@ -1,6 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Защита от prompt injection: вырезаем управляющие конструкции,
+// нормализуем переносы и режем длину.
+function sanitizeUserText(raw: string, max = 1000): string {
+  return raw
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/```+/g, " ")
+    .replace(/<\|[^|]*\|>/g, " ")
+    .replace(/\b(system|assistant|user)\s*:/gi, " ")
+    .replace(/ignore (all |the )?(previous|above) (instructions|prompt)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+// Запрещённые паттерны в сгенерированном тексте.
+function looksUnsafe(text: string): boolean {
+  return /(system\s*:|<\|[^|]*\|>|ignore (all |the )?(previous|above))/i.test(text);
+}
+
 const CATEGORIES = ["книги", "медитации", "кофе", "музыка", "еда", "разное"];
 
 async function callGateway(body: any) {
