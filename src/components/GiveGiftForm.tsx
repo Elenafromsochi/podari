@@ -23,42 +23,49 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [interimText, setInterimText] = useState("");
+  const [recSeconds, setRecSeconds] = useState(0);
 
   const recognitionRef = useRef<any>(null);
   const baseTextRef = useRef<string>("");
+  const wantsRecordingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateMeta = useServerFn(generateGiftMeta);
   const describeImage = useServerFn(describeGiftImage);
   const publishGiftFn = useServerFn(publishGift);
 
   useEffect(() => {
     return () => {
+      wantsRecordingRef.current = false;
       try {
         recognitionRef.current?.stop?.();
       } catch {}
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  const toggleMic = () => {
+  const startTimer = () => {
+    setRecSeconds(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setRecSeconds((s) => s + 1), 1000);
+  };
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const createRecognition = () => {
     const SR =
       (typeof window !== "undefined" &&
         ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
       null;
-    if (!SR) {
-      setError("Голосовой ввод не поддерживается в этом браузере");
-      return;
-    }
-    if (recording) {
-      try {
-        recognitionRef.current?.stop?.();
-      } catch {}
-      setRecording(false);
-      return;
-    }
+    if (!SR) return null;
     const rec = new SR();
     rec.lang = "ru-RU";
     rec.continuous = true;
     rec.interimResults = true;
-    baseTextRef.current = description ? description.trim() + " " : "";
     rec.onresult = (event: any) => {
       let interim = "";
       let finalText = "";
@@ -68,18 +75,72 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
         else interim += res[0].transcript;
       }
       if (finalText) baseTextRef.current += finalText + " ";
+      setInterimText(interim);
       setDescription((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
     };
-    rec.onerror = () => setRecording(false);
-    rec.onend = () => setRecording(false);
+    rec.onerror = (e: any) => {
+      // 'no-speech' и 'aborted' — это нормальные обрывы, не показываем ошибку
+      if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
+        setError("Ошибка распознавания. Попробуйте ещё раз.");
+      }
+    };
+    rec.onend = () => {
+      // Авто-перезапуск, пока пользователь не нажал «Стоп»
+      if (wantsRecordingRef.current) {
+        try {
+          rec.start();
+        } catch {
+          // если не получилось — окончательно останавливаем
+          wantsRecordingRef.current = false;
+          setRecording(false);
+          setInterimText("");
+          stopTimer();
+        }
+      } else {
+        setRecording(false);
+        setInterimText("");
+        stopTimer();
+      }
+    };
+    return rec;
+  };
+
+  const toggleMic = () => {
+    if (recording) {
+      wantsRecordingRef.current = false;
+      try {
+        recognitionRef.current?.stop?.();
+      } catch {}
+      setRecording(false);
+      setInterimText("");
+      stopTimer();
+      // Закрепляем интерим в основном тексте
+      baseTextRef.current = description ? description.trim() + " " : "";
+      return;
+    }
+    const rec = createRecognition();
+    if (!rec) {
+      setError("Голосовой ввод не поддерживается в этом браузере");
+      return;
+    }
+    baseTextRef.current = description ? description.trim() + " " : "";
     recognitionRef.current = rec;
+    wantsRecordingRef.current = true;
+    setError(null);
     setRecording(true);
+    startTimer();
     try {
       rec.start();
     } catch {
+      wantsRecordingRef.current = false;
       setRecording(false);
+      stopTimer();
     }
   };
+
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
 
   const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<string> =>
     new Promise((resolve) => {
