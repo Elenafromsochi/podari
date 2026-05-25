@@ -84,8 +84,8 @@ export function ChatScreen({
   const [handoverRequestedAt, setHandoverRequestedAt] = useState<string | null>(null);
   const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const recogRef = useRef<SR | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
   const navigate = useNavigate();
 
   const reviewFn = useServerFn(submitReview);
