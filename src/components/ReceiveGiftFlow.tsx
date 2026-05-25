@@ -67,13 +67,13 @@ export function ReceiveGiftFlow({
       let nameMap = new Map<string, string>();
       if (ownerIds.length) {
         const { data: profs } = await supabase
-          .from("profiles")
-          .select("user_id,display_name")
-          .in("user_id", ownerIds);
+          .rpc("get_public_profiles", { _user_ids: ownerIds });
         nameMap = new Map(
-          (profs ?? []).map((p) => [p.user_id as string, (p.display_name as string) || "Гость"]),
+          ((profs ?? []) as Array<{ user_id: string; display_name: string }>)
+            .map((p) => [p.user_id, p.display_name || "Гость"]),
         );
       }
+
       setGifts(
         rows.map((g) => ({
           ...g,
