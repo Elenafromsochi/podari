@@ -86,6 +86,7 @@ export function ChatScreen({
   const [gift, setGift] = useState<Gift | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
+  const [partner, setPartner] = useState<{ id: string; name: string } | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
