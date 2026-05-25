@@ -71,6 +71,21 @@ function Index() {
     if (typeof window !== "undefined") {
       setActiveChatGift(localStorage.getItem(ACTIVE_CHAT_KEY));
       setActiveTxId(localStorage.getItem(ACTIVE_TX_KEY));
+      // Захватываем реферальный код из URL и сохраняем до момента входа
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        const isUuid = ref && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
+        if (isUuid) {
+          localStorage.setItem("cozygift_pending_ref", ref!);
+          // Чистим URL, чтобы не висел ref после авторизации
+          const url = new URL(window.location.href);
+          url.searchParams.delete("ref");
+          window.history.replaceState({}, "", url.toString());
+        }
+      } catch {
+        /* ignore */
+      }
     }
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
