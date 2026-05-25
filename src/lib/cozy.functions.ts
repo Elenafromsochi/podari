@@ -248,13 +248,12 @@ export const getDealsFeed = createServerFn({ method: "GET" })
     const nameMap = new Map<string, string>();
     if (senderIds.length) {
       const { data: profs } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", senderIds);
-      for (const p of profs ?? []) {
-        nameMap.set(p.user_id as string, (p.display_name as string) || "Гость");
+        .rpc("get_public_profiles", { _user_ids: senderIds });
+      for (const p of (profs ?? []) as Array<{ user_id: string; display_name: string }>) {
+        nameMap.set(p.user_id, p.display_name || "Гость");
       }
     }
+
     return rows.map((r) => {
       const g = (r as { gift: { id: string; title: string; image_url: string | null; gift_kind: string } | null }).gift;
       return {
