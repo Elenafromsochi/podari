@@ -285,18 +285,37 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
                 aria-label={recording ? "Остановить запись" : "Голосовой ввод"}
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border text-lg transition-all ${
                   recording
-                    ? "animate-pulse border-primary bg-primary text-primary-foreground shadow-md"
+                    ? "animate-pulse border-destructive bg-destructive text-destructive-foreground shadow-md"
                     : "border-input bg-background hover:bg-accent"
                 }`}
               >
-                🎙️
+                {recording ? "⏹" : "🎙️"}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {recording
-                ? "🎙️ Говорите — текст появится в поле. Нажмите ещё раз, чтобы остановить."
-                : "Нажмите 🎙️ и продиктуйте описание голосом."}
-            </p>
+            {recording ? (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                </span>
+                <span className="font-medium">Запись {formatTime(recSeconds)}</span>
+                <span className="truncate text-destructive/80">
+                  {interimText ? `«${interimText}»` : "слушаю..."}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  className="ml-auto rounded border border-destructive/40 bg-background px-2 py-0.5 text-[11px] font-medium text-destructive hover:bg-destructive/10"
+                >
+                  Стоп
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Нажмите 🎙️ и продиктуйте описание голосом. Можно делать паузы — запись не прервётся, пока не нажмёте «Стоп».
+              </p>
+            )}
+
           </div>
 
           {status && (
