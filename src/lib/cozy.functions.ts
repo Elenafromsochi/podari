@@ -480,7 +480,7 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     // 1) Запускаем серверную функцию — она идемпотентно начислит всё новое
-    const { data: granted, error: rpcErr } = await (supabase.rpc as (name: string) => Promise<{ data: { code: string; xp_granted: number }[] | null; error: { message: string } | null }>)("sync_achievements");
+    const { data: granted, error: rpcErr } = await supabase.rpc("sync_achievements");
     if (rpcErr) throw new Error(rpcErr.message);
 
     // 2) Грузим текущее состояние
