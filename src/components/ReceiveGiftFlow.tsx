@@ -17,6 +17,7 @@ type Gift = {
   owner_id: string | null;
   gift_kind: GiftKind;
   owner_name?: string;
+  owner_level?: number;
 };
 
 type Step = "kinds" | "categories" | "feed" | "search";
@@ -65,19 +66,20 @@ export function ReceiveGiftFlow({
         new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)),
       );
       let nameMap = new Map<string, string>();
+      let levelMap = new Map<string, number>();
       if (ownerIds.length) {
         const { data: profs } = await supabase
           .rpc("get_public_profiles", { _user_ids: ownerIds });
-        nameMap = new Map(
-          ((profs ?? []) as Array<{ user_id: string; display_name: string }>)
-            .map((p) => [p.user_id, p.display_name || "Гость"]),
-        );
+        const list = (profs ?? []) as Array<{ user_id: string; display_name: string; level: number }>;
+        nameMap = new Map(list.map((p) => [p.user_id, p.display_name || "Гость"]));
+        levelMap = new Map(list.map((p) => [p.user_id, p.level ?? 1]));
       }
 
       setGifts(
         rows.map((g) => ({
           ...g,
           owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
+          owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
         })),
       );
     })();
@@ -124,28 +126,29 @@ export function ReceiveGiftFlow({
 
   const renderCard = (g: Gift) => (
     <Card key={g.id} className="overflow-hidden p-3">
-      <div className="flex gap-3">
-        {g.image_url ? (
-          <img
-            src={g.image_url}
-            alt={g.title}
-            className="h-20 w-20 shrink-0 rounded-lg object-cover"
-          />
-        ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
-            🎁
-          </div>
+      {g.image_url ? (
+        <img
+          src={g.image_url}
+          alt={g.title}
+          className="aspect-square w-full rounded-xl object-cover"
+        />
+      ) : (
+        <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-muted text-6xl">
+          🎁
+        </div>
+      )}
+      <div className="mt-3 space-y-1">
+        <div className="text-lg font-semibold leading-tight">{g.title}</div>
+        <div className="text-xs text-muted-foreground capitalize">{g.category}</div>
+        {g.description && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
         )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{g.title}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground capitalize">{g.category}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">Рекомендованная стоимость: до 3 000 ₽</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            Даритель: <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
-          </div>
-          {g.description && (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{g.description}</p>
-          )}
+        <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+          <span>Даритель:</span>
+          <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
+          <span className="inline-flex items-center rounded-full bg-peach/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
+            ур. {g.owner_level ?? 1}
+          </span>
         </div>
       </div>
       <Button
