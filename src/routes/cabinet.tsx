@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check } from "lucide-react";
+import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
 import {
@@ -10,7 +10,20 @@ import {
   getMyGiftedGifts,
   getMyChats,
   getUnreadCounts,
+  updateGift,
+  deleteGift,
 } from "@/lib/cozy.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -239,13 +252,12 @@ function CabinetPage() {
 
       <InviteCard userId={user.user_id} />
 
-      <div className="mb-6 rounded-2xl border bg-card p-4 shadow-sm">
-        <Achievements variant="preview" />
-      </div>
+
+
 
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="gifts" className="relative">
             🎁
             {giftsUnread > 0 && (
@@ -262,7 +274,6 @@ function CabinetPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="achievements">🏆</TabsTrigger>
           <TabsTrigger value="archive">🗂</TabsTrigger>
         </TabsList>
 
@@ -281,25 +292,28 @@ function CabinetPage() {
               ) : (
                 <ul className="space-y-2">
                   {sec.gifts.map((g) => (
-                    <li key={g.id} className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm">
-                      {g.image_url ? (
-                        <img src={g.image_url} alt={g.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
-                      ) : (
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">🎁</div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{g.title}</p>
-                        <p className="text-xs text-muted-foreground">{g.category} • {g.status}</p>
-                        {g.description && (
-                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
-                        )}
-                      </div>
-                    </li>
+                    <PostedGiftItem
+                      key={g.id}
+                      gift={g}
+                      editable={sec.title === "Выложенные"}
+                      onChanged={(action, id, patch) => {
+                        if (action === "delete") {
+                          setPosted((prev) => prev.filter((x) => x.id !== id));
+                        } else if (action === "update" && patch) {
+                          setPosted((prev) =>
+                            prev.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+                          );
+                        }
+                      }}
+                    />
                   ))}
                 </ul>
               )}
             </section>
           ))}
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <Achievements variant="preview" />
+          </div>
         </TabsContent>
 
         <TabsContent value="chats" className="mt-4 space-y-4">
@@ -317,10 +331,9 @@ function CabinetPage() {
             items={chatsWithReceivers}
             loading={loading}
           />
-        </TabsContent>
-
-        <TabsContent value="achievements" className="mt-4">
-          <Achievements variant="full" />
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <Achievements variant="preview" />
+          </div>
         </TabsContent>
 
         <TabsContent value="archive" className="mt-4 space-y-4">
