@@ -66,19 +66,20 @@ export function ReceiveGiftFlow({
         new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)),
       );
       let nameMap = new Map<string, string>();
+      let levelMap = new Map<string, number>();
       if (ownerIds.length) {
         const { data: profs } = await supabase
           .rpc("get_public_profiles", { _user_ids: ownerIds });
-        nameMap = new Map(
-          ((profs ?? []) as Array<{ user_id: string; display_name: string }>)
-            .map((p) => [p.user_id, p.display_name || "Гость"]),
-        );
+        const list = (profs ?? []) as Array<{ user_id: string; display_name: string; level: number }>;
+        nameMap = new Map(list.map((p) => [p.user_id, p.display_name || "Гость"]));
+        levelMap = new Map(list.map((p) => [p.user_id, p.level ?? 1]));
       }
 
       setGifts(
         rows.map((g) => ({
           ...g,
           owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
+          owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
         })),
       );
     })();
