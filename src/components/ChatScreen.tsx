@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, Mic, MicOff, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +86,7 @@ export function ChatScreen({
   const [gift, setGift] = useState<Gift | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
+  const [partner, setPartner] = useState<{ id: string; name: string } | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
@@ -131,6 +132,32 @@ export function ChatScreen({
       }
     })();
   }, [giftId]);
+
+  // load partner (other party) id + name
+  useEffect(() => {
+    if (!meId || !gift || !transactionId) return;
+    (async () => {
+      let partnerId: string | null = null;
+      if (gift.owner_id === meId) {
+        const { data: tx } = await supabase
+          .from("transactions")
+          .select("sender_id,receiver_id")
+          .eq("id", transactionId)
+          .maybeSingle();
+        const row = tx as { sender_id: string | null; receiver_id: string | null } | null;
+        partnerId = row ? (row.sender_id === meId ? row.receiver_id : row.sender_id) : null;
+      } else {
+        partnerId = gift.owner_id;
+      }
+      if (!partnerId) return;
+      const { data: profs } = await supabase
+        .rpc("get_public_profiles", { _user_ids: [partnerId] });
+      const list = (profs ?? []) as Array<{ user_id: string; display_name: string }>;
+      const name = list[0]?.display_name || "Гость";
+      setPartner({ id: partnerId, name });
+    })();
+  }, [meId, gift, transactionId]);
+
 
   // загрузка / отслеживание транзакции (realtime + polling fallback)
   useEffect(() => {
@@ -363,6 +390,18 @@ export function ChatScreen({
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">
             {isOwner ? "Чат с получателем" : "Чат с дарителем"}
+            {partner && (
+              <>
+                {": "}
+                <Link
+                  to="/user/$userId"
+                  params={{ userId: partner.id }}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  {partner.name}
+                </Link>
+              </>
+            )}
           </div>
           <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
         </div>
