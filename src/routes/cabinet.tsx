@@ -63,6 +63,7 @@ type ChatItem = {
 
 function CabinetPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [posted, setPosted] = useState<Gift[]>([]);
   const [received, setReceived] = useState<TxRow[]>([]);
   const [gifted, setGifted] = useState<TxRow[]>([]);
