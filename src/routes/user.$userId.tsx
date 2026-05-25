@@ -72,38 +72,62 @@ function UserProfilePage() {
         </div>
       </div>
 
-      <h2 className="pt-2 text-lg font-medium">Подарки этого дарителя</h2>
-      {gifts === null ? (
-        <Skeleton className="h-32 w-full" />
-      ) : gifts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Пока нет доступных подарков.</p>
-      ) : (
-        <div className="space-y-3">
-          {gifts.map((g) => (
-            <Card key={g.id} className="overflow-hidden p-0">
-              {g.image_url ? (
-                <img src={g.image_url} alt={g.title} className="aspect-square w-full object-cover" />
-              ) : (
-                <div className="flex aspect-square w-full items-center justify-center bg-muted text-[9rem]">🎁</div>
-              )}
-              <div className="space-y-2 p-4">
-                <div className="text-xl font-semibold leading-tight break-words">{g.title}</div>
-                {g.description && (
-                  <p className="whitespace-pre-wrap break-words text-base text-muted-foreground">
-                    {g.description}
-                  </p>
+      <section className="space-y-3">
+        <h2 className="pt-2 text-lg font-medium">Выложенные подарки</h2>
+        {available === null ? (
+          <Skeleton className="h-32 w-full" />
+        ) : available.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Пока нет доступных подарков.</p>
+        ) : (
+          <div className="space-y-3">
+            {available.map((g) => (
+              <Card key={g.id} className="overflow-hidden p-0">
+                {g.image_url ? (
+                  <img src={g.image_url} alt={g.title} className="aspect-square w-full object-cover" />
+                ) : (
+                  <div className="flex aspect-square w-full items-center justify-center bg-muted text-[9rem]">🎁</div>
                 )}
-                <Link
-                  to="/"
-                  className="mt-2 inline-block text-sm text-primary hover:underline"
-                >
-                  Перейти в ленту, чтобы забрать →
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                <div className="space-y-2 p-4">
+                  <div className="text-xl font-semibold leading-tight break-words">{g.title}</div>
+                  {g.description && (
+                    <p className="whitespace-pre-wrap break-words text-base text-muted-foreground">
+                      {g.description}
+                    </p>
+                  )}
+                  <Link to="/" className="mt-2 inline-block text-sm text-primary hover:underline">
+                    Перейти в ленту, чтобы забрать →
+                  </Link>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="pt-2 text-lg font-medium">Уже подарено</h2>
+        {given === null ? (
+          <Skeleton className="h-24 w-full" />
+        ) : given.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Пока не подарил ни одного подарка.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {given.map((g) => (
+              <Card key={g.id} className="overflow-hidden p-0 opacity-90">
+                {g.image_url ? (
+                  <img src={g.image_url} alt={g.title} className="aspect-square w-full object-cover" />
+                ) : (
+                  <div className="flex aspect-square w-full items-center justify-center bg-muted text-5xl">🎁</div>
+                )}
+                <div className="p-2">
+                  <div className="line-clamp-2 text-sm font-medium leading-tight break-words">{g.title}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">подарено</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
