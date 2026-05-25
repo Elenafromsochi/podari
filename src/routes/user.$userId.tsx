@@ -31,7 +31,8 @@ function UserProfilePage() {
   const navigate = useNavigate();
   const [name, setName] = useState<string>("Гость");
   const [level, setLevel] = useState<number>(1);
-  const [gifts, setGifts] = useState<Gift[] | null>(null);
+  const [available, setAvailable] = useState<Gift[] | null>(null);
+  const [given, setGiven] = useState<Gift[] | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -45,9 +46,11 @@ function UserProfilePage() {
         .from("gifts")
         .select("id,title,description,image_url,cost,status")
         .eq("owner_id", userId)
-        .eq("status", "available")
+        .in("status", ["available", "gifted"])
         .order("created_at", { ascending: false });
-      setGifts((data as Gift[]) ?? []);
+      const rows = (data as Gift[]) ?? [];
+      setAvailable(rows.filter((g) => g.status === "available"));
+      setGiven(rows.filter((g) => g.status === "gifted"));
     })();
   }, [userId]);
 
