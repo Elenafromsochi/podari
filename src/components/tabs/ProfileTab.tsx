@@ -144,7 +144,12 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
             )}
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
               <Sparkles className="h-3.5 w-3.5 text-primary" /> Уровень {user.level}
+              <HelpPopover
+                label="Уровень"
+                hint={`Уровень растёт по мере накопления Опыта:\n1 уровень — от 0 до 199 XP\n2 уровень — от 200 до 499 XP\n3 уровень — от 500 до 999 XP\n4 уровень — от 1000 до 1699 XP\n5 уровень — от 1700 до 2499 XP`}
+              />
             </div>
+
           </div>
         </div>
       </section>
