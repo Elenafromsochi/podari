@@ -10,16 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as CabinetRouteImport } from './routes/cabinet'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UserUserIdRouteImport } from './routes/user.$userId'
 import { Route as ChatGiftIdRouteImport } from './routes/chat.$giftId'
-import { Route as CabinetInsightsRouteImport } from './routes/cabinet.insights'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
   path: '/set-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CabinetRoute = CabinetRouteImport.update({
@@ -42,11 +47,6 @@ const ChatGiftIdRoute = ChatGiftIdRouteImport.update({
   path: '/chat/$giftId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CabinetInsightsRoute = CabinetInsightsRouteImport.update({
-  id: '/insights',
-  path: '/insights',
-  getParentRoute: () => CabinetRoute,
-} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram/webhook',
@@ -56,18 +56,18 @@ const ApiPublicTelegramWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/cabinet': typeof CabinetRouteWithChildren
+  '/cabinet': typeof CabinetRoute
+  '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
-  '/cabinet/insights': typeof CabinetInsightsRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/cabinet': typeof CabinetRouteWithChildren
+  '/cabinet': typeof CabinetRoute
+  '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
-  '/cabinet/insights': typeof CabinetInsightsRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -75,9 +75,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/cabinet': typeof CabinetRouteWithChildren
+  '/cabinet': typeof CabinetRoute
+  '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
-  '/cabinet/insights': typeof CabinetInsightsRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -87,8 +87,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cabinet'
+    | '/insights'
     | '/set-password'
-    | '/cabinet/insights'
     | '/chat/$giftId'
     | '/user/$userId'
     | '/api/public/telegram/webhook'
@@ -96,8 +96,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cabinet'
+    | '/insights'
     | '/set-password'
-    | '/cabinet/insights'
     | '/chat/$giftId'
     | '/user/$userId'
     | '/api/public/telegram/webhook'
@@ -105,8 +105,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cabinet'
+    | '/insights'
     | '/set-password'
-    | '/cabinet/insights'
     | '/chat/$giftId'
     | '/user/$userId'
     | '/api/public/telegram/webhook'
@@ -114,7 +114,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CabinetRoute: typeof CabinetRouteWithChildren
+  CabinetRoute: typeof CabinetRoute
+  InsightsRoute: typeof InsightsRoute
   SetPasswordRoute: typeof SetPasswordRoute
   ChatGiftIdRoute: typeof ChatGiftIdRoute
   UserUserIdRoute: typeof UserUserIdRoute
@@ -128,6 +129,13 @@ declare module '@tanstack/react-router' {
       path: '/set-password'
       fullPath: '/set-password'
       preLoaderRoute: typeof SetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cabinet': {
@@ -158,13 +166,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatGiftIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cabinet/insights': {
-      id: '/cabinet/insights'
-      path: '/insights'
-      fullPath: '/cabinet/insights'
-      preLoaderRoute: typeof CabinetInsightsRouteImport
-      parentRoute: typeof CabinetRoute
-    }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
       path: '/api/public/telegram/webhook'
@@ -175,20 +176,10 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface CabinetRouteChildren {
-  CabinetInsightsRoute: typeof CabinetInsightsRoute
-}
-
-const CabinetRouteChildren: CabinetRouteChildren = {
-  CabinetInsightsRoute: CabinetInsightsRoute,
-}
-
-const CabinetRouteWithChildren =
-  CabinetRoute._addFileChildren(CabinetRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CabinetRoute: CabinetRouteWithChildren,
+  CabinetRoute: CabinetRoute,
+  InsightsRoute: InsightsRoute,
   SetPasswordRoute: SetPasswordRoute,
   ChatGiftIdRoute: ChatGiftIdRoute,
   UserUserIdRoute: UserUserIdRoute,
@@ -197,3 +188,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
