@@ -14,6 +14,7 @@ import {
   updateGift,
   deleteGift,
 } from "@/lib/cozy.functions";
+import { getMyWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
