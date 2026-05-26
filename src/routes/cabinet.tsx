@@ -295,7 +295,7 @@ function CabinetPage() {
                     <PostedGiftItem
                       key={g.id}
                       gift={g}
-                      editable={sec.title === "Выложенные"}
+                      editable={sec.title === "Активные"}
                       onChanged={(action, id, patch) => {
                         if (action === "delete") {
                           setPosted((prev) => prev.filter((x) => x.id !== id));
