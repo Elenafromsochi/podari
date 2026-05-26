@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as CabinetRouteImport } from './routes/cabinet'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UserUserIdRouteImport } from './routes/user.$userId'
@@ -19,6 +20,11 @@ import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/publi
 const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
   path: '/set-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CabinetRoute = CabinetRouteImport.update({
@@ -51,6 +57,7 @@ const ApiPublicTelegramWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
+  '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
+  '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cabinet': typeof CabinetRoute
+  '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cabinet'
+    | '/insights'
     | '/set-password'
     | '/chat/$giftId'
     | '/user/$userId'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cabinet'
+    | '/insights'
     | '/set-password'
     | '/chat/$giftId'
     | '/user/$userId'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cabinet'
+    | '/insights'
     | '/set-password'
     | '/chat/$giftId'
     | '/user/$userId'
@@ -103,6 +115,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CabinetRoute: typeof CabinetRoute
+  InsightsRoute: typeof InsightsRoute
   SetPasswordRoute: typeof SetPasswordRoute
   ChatGiftIdRoute: typeof ChatGiftIdRoute
   UserUserIdRoute: typeof UserUserIdRoute
@@ -116,6 +129,13 @@ declare module '@tanstack/react-router' {
       path: '/set-password'
       fullPath: '/set-password'
       preLoaderRoute: typeof SetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cabinet': {
@@ -159,6 +179,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CabinetRoute: CabinetRoute,
+  InsightsRoute: InsightsRoute,
   SetPasswordRoute: SetPasswordRoute,
   ChatGiftIdRoute: ChatGiftIdRoute,
   UserUserIdRoute: UserUserIdRoute,
