@@ -184,39 +184,42 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
         )}
       </section>
 
-      {/* Balance widgets */}
       <section className="mb-5 grid grid-cols-2 gap-3">
-        <div className="rounded-3xl border bg-card p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Опыт
-          </p>
+        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
+          <div className="absolute right-2.5 top-2.5">
+            <HelpPopover
+              label="Опыт"
+              hint={`За каждое действие начисляются баллы Опыта:\n+20 за публикацию подарка\n+10 за бронирование\n+80 за вручённый подарок\n+5 или +20 за отзыв\n+50 за приглашённого друга\n\nОпыт нельзя потратить — он копится и поднимает уровень.`}
+            />
+          </div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Опыт</p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-2xl font-semibold tracking-tight">{user.xp}</span>
             <span className="text-xs text-muted-foreground">XP</span>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-700"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
           <p className="mt-1.5 text-[10.5px] text-muted-foreground">
             до уровня {user.level + 1}: {Math.max(0, next - user.xp)} XP
           </p>
         </div>
-        <div className="rounded-3xl border bg-card p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Баланс
-          </p>
+        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
+          <div className="absolute right-2.5 top-2.5">
+            <HelpPopover
+              label="Подарочные баллы"
+              hint={`Подарочные баллы — валюта для получения подарков.\n\nНачисляются:\n+0.2 за публикацию подарка\n+0.8 когда твой подарок принят получателем\n+1 за приглашённого друга\n\nСписываются (замораживаются), когда забираешь чужой подарок. Если сделка отменена — балл возвращается.`}
+            />
+          </div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Баланс</p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-2xl font-semibold tracking-tight">{user.balance}</span>
             <span className="text-xs text-muted-foreground">баллов</span>
           </div>
-          <p className="mt-3 text-[11px] leading-tight text-muted-foreground">
-            🎁 на новые подарки
-          </p>
+          <p className="mt-3 text-[11px] leading-tight text-muted-foreground">🎁 на новые подарки</p>
         </div>
       </section>
+
 
       {/* Activity sub-tabs */}
       <section>
