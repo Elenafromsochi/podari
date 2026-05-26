@@ -13,10 +13,12 @@ interface Props {
   onGive: () => void;
   onReceive: () => void;
   onPickGift: (giftId: string) => void;
+  onCreateWish?: () => void;
+  onOpenWish?: (wishId: string) => void;
   initialTab?: AppTab;
 }
 
-export function AppShell({ user, onGive, onReceive, onPickGift, initialTab = "home" }: Props) {
+export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, onOpenWish, initialTab = "home" }: Props) {
   const [tab, setTab] = useState<AppTab>(initialTab);
   const [unreadChats, setUnreadChats] = useState(0);
   const [achievementsBadge, setAchievementsBadge] = useState(0);
