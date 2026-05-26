@@ -239,6 +239,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       </section>
 
 
+      {/* Пригласить друга — компактно */}
+      <InviteButtons userId={user.user_id} />
+
       {/* Загадать желание CTA */}
       {onCreateWish && (
         <button
