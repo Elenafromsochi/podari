@@ -208,7 +208,7 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
       <section>
         <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
           {([
-            ["posted", "Выложенные"],
+            ["posted", "Активные"],
             ["gifted", "Подаренные"],
             ["received", "Полученные"],
           ] as const).map(([k, label]) => {
