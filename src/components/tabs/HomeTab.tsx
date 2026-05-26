@@ -196,9 +196,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
       {/* Feed */}
       <section>
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Лента подарков</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Уже подарили</h2>
           <span className="text-xs text-muted-foreground">
-            {gifts ? `${filtered.length} активных` : ""}
+            {gifts ? `${filtered.length}` : ""}
           </span>
         </div>
 
@@ -210,12 +210,12 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-            Ничего не найдено 🌿
+            Пока никто ничего не подарил 🌱
           </div>
         ) : (
           <ul className="space-y-3">
             {filtered.map((g) => (
-              <SwipeGiftCard key={g.id} gift={g} onReserve={() => onPickGift(g.id)} />
+              <GiftedCard key={g.id} gift={g} />
             ))}
           </ul>
         )}
@@ -223,6 +223,64 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
     </div>
   );
 }
+
+function GiftedCard({ gift }: { gift: Gift }) {
+  return (
+    <li>
+      <article className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+        {gift.image_url ? (
+          <img
+            src={gift.image_url}
+            alt={gift.title}
+            className="h-20 w-20 shrink-0 rounded-xl object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+            🎁
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-semibold leading-tight">
+            {gift.title}
+          </div>
+          {gift.description && (
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              {gift.description}
+            </p>
+          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {gift.owner_id ? (
+              <Link
+                to="/user/$userId"
+                params={{ userId: gift.owner_id }}
+                onClick={() => haptic("light")}
+                className="font-medium text-foreground/80 hover:underline"
+              >
+                {gift.owner_name} →
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground/80">{gift.owner_name}</span>
+            )}
+            <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
+              ур. {gift.owner_level ?? 1}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-mint/60 px-1.5 py-0.5 text-[10px] font-medium text-mint-foreground">
+              подарено
+            </span>
+          </div>
+          {gift.owner_id && (
+            <Link
+              to="/user/$userId"
+              params={{ owner_id: gift.owner_id } as never}
+            />
+          )}
+        </div>
+      </article>
+    </li>
+  );
+}
+
 
 function SwipeGiftCard({ gift, onReserve }: { gift: Gift; onReserve: () => void }) {
   const [dx, setDx] = useState(0);
