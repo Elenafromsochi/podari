@@ -10,6 +10,8 @@ import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
 import { AuthFlow } from "@/components/AuthFlow";
+import { PublishSuccess } from "@/components/PublishSuccess";
+import { pickRandom, PUBLISH_THANKS_TITLES, PUBLISH_THANKS_DESCRIPTIONS } from "@/lib/random-copy";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,7 @@ type Flow =
   | { kind: "none" }
   | { kind: "give_chip" }
   | { kind: "give_form"; presetHint: string | null; giftKind: import("@/lib/gift-kinds").GiftKind }
+  | { kind: "publish_success" }
   | { kind: "receive" }
   | { kind: "chat"; giftId: string; txId: string };
 
@@ -167,12 +170,20 @@ function Index() {
           onDone={async () => {
             burstConfetti();
             haptic("success");
-            toast.success("+20 Опыта и +0.2 подарочных балла начислено ✨", {
-              description: "Подарок размещён в игровом мире",
+            toast.success(pickRandom(PUBLISH_THANKS_TITLES), {
+              description: pickRandom(PUBLISH_THANKS_DESCRIPTIONS),
             });
             await refreshUser();
-            setFlow({ kind: "none" });
+            setFlow({ kind: "publish_success" });
           }}
+        />
+      )}
+
+      {flow.kind === "publish_success" && (
+        <PublishSuccess
+          onGiveAnother={() => setFlow({ kind: "give_chip" })}
+          onReceive={() => setFlow({ kind: "receive" })}
+          onHome={() => setFlow({ kind: "none" })}
         />
       )}
 

@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Mic, MicOff, Search, Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  pickRandom,
+  HOME_TAGLINES,
+  GIVE_SUBTITLES,
+  RECEIVE_SUBTITLES,
+  FEED_TITLES,
+} from "@/lib/random-copy";
 
 type Gift = {
   id: string;
@@ -41,6 +48,11 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
   const [query, setQuery] = useState("");
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
+
+  const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
+  const giveSub = useMemo(() => pickRandom(GIVE_SUBTITLES), []);
+  const receiveSub = useMemo(() => pickRandom(RECEIVE_SUBTITLES), []);
+  const feedTitle = useMemo(() => pickRandom(FEED_TITLES), []);
 
   useEffect(() => {
     (async () => {
@@ -120,14 +132,15 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-7">
       {/* Greeting */}
-      <header className="mb-5 flex items-center justify-between">
-        <div>
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Привет
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">{userName} ✨</h1>
+          <p className="mt-1 text-xs leading-snug text-muted-foreground">{tagline}</p>
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-peach shadow-sm">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-peach shadow-sm">
           <Sparkles className="h-5 w-5 text-peach-foreground" />
         </div>
       </header>
@@ -147,7 +160,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           </div>
           <div className="mt-6">
             <div className="text-[15px] font-semibold leading-tight">✨ Подарить</div>
-            <div className="text-xs opacity-75">подарок миру</div>
+            <div className="text-xs opacity-75">{giveSub}</div>
           </div>
           <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-background/20 blur-2xl transition group-hover:scale-125" />
         </button>
@@ -164,7 +177,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           </div>
           <div className="mt-6">
             <div className="text-[15px] font-semibold leading-tight">🎁 Забрать</div>
-            <div className="text-xs opacity-75">что-то приятное</div>
+            <div className="text-xs opacity-75">{receiveSub}</div>
           </div>
           <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-background/20 blur-2xl transition group-hover:scale-125" />
         </button>
@@ -196,7 +209,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
       {/* Feed */}
       <section>
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Уже подарили</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{feedTitle}</h2>
           <span className="text-xs text-muted-foreground">
             {gifts ? `${filtered.length}` : ""}
           </span>
