@@ -12,6 +12,8 @@ export interface UserProfile {
   balance: number;
   xp: number;
   level: number;
+  password_set: boolean;
+  telegram_username: string | null;
 }
 
 export async function loadUser(): Promise<UserProfile | null> {
@@ -19,7 +21,7 @@ export async function loadUser(): Promise<UserProfile | null> {
   if (!user) return null;
   const { data } = await supabase
     .from("profiles")
-    .select("user_id, display_name, balance, xp, level")
+    .select("user_id, display_name, balance, xp, level, password_set, telegram_username")
     .eq("user_id", user.id)
     .maybeSingle();
   const profile = (data as UserProfile) ?? null;
