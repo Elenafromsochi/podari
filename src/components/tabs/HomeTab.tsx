@@ -249,24 +249,21 @@ function GiftedCard({ gift }: { gift: Gift }) {
               {gift.description}
             </p>
           )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {gift.owner_id ? (
               <Link
                 to="/user/$userId"
                 params={{ userId: gift.owner_id }}
                 onClick={() => haptic("light")}
-                className="font-medium text-foreground/80 hover:underline"
+                className="text-[15px] font-semibold leading-tight text-lavender-foreground bg-lavender/70 hover:bg-lavender rounded-lg px-2 py-0.5 transition"
               >
-                {gift.owner_name} →
+                {gift.owner_name}
               </Link>
             ) : (
-              <span className="font-medium text-foreground/80">{gift.owner_name}</span>
+              <span className="text-[15px] font-semibold leading-tight">{gift.owner_name}</span>
             )}
             <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
               ур. {gift.owner_level ?? 1}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-mint/60 px-1.5 py-0.5 text-[10px] font-medium text-mint-foreground">
-              подарено
             </span>
           </div>
         </div>
@@ -274,4 +271,5 @@ function GiftedCard({ gift }: { gift: Gift }) {
     </li>
   );
 }
+
 
