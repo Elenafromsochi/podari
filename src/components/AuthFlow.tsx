@@ -396,7 +396,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   // -------- Render --------
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 py-8">
-      {(step === "password" || step === "twofa" || step === "tg_code") && (
+      {(step === "password" || step === "twofa" || step === "tg_code" || step === "tg_register") && (
         <button
           onClick={() => setStep("intro")}
           className="mb-4 inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
