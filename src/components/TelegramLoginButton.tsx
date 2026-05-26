@@ -65,10 +65,17 @@ export function TelegramLoginButton({ onAuth }: Props) {
 
   if (!isSupportedHost) {
     return (
-      <div className="rounded-2xl border border-dashed border-muted-foreground/30 bg-muted/30 p-3 text-center text-xs text-muted-foreground">
-        Быстрый вход «через Telegram в один клик» доступен на{" "}
-        <span className="font-medium text-foreground">podari.lovable.app</span>.
-        Здесь используй вход по @username и паролю ↓
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center text-xs text-muted-foreground">
+        <p>
+          Вход через Telegram работает только на основном домене{" "}
+          <span className="font-medium text-foreground">podari.lovable.app</span>.
+        </p>
+        <a
+          href="https://podari.lovable.app/"
+          className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm"
+        >
+          Открыть podari.lovable.app
+        </a>
       </div>
     );
   }
