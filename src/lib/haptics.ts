@@ -12,10 +12,10 @@ const PATTERNS: Record<HapticKind, number | number[]> = {
 
 export function haptic(kind: HapticKind = "light") {
   if (typeof navigator === "undefined") return;
-  const v = (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate;
-  if (!v) return;
+  const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
+  if (typeof nav.vibrate !== "function") return;
   try {
-    v.call(navigator, PATTERNS[kind]);
+    nav.vibrate(PATTERNS[kind]);
   } catch {
     /* noop */
   }
