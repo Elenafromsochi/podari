@@ -159,9 +159,10 @@ function Index() {
           giftKind={giveKind}
           onDone={async () => {
             burstConfetti();
-            toast.success("+20 Опыта начислено ✨", {
+            toast.success("+20 Опыта и +0.2 подарочных балла начислено ✨", {
               description: "Подарок размещён в игровом мире",
             });
+
             await refreshUser();
             update({ step: "give_done" });
           }}
