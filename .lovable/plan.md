@@ -1,48 +1,47 @@
-# Фикс ошибки «This page didn't load»
+Обновлю тексты подсказок в `src/components/tabs/ProfileTab.tsx` (компонент `ProfileTab`, два `HelpPopover` — «Уровень» и «Подарочные баллы»). Бизнес-логика и начисления в коде не трогаю — это только правки описаний.
 
-## Что произошло
+## 1. Подсказка «Подарочные баллы» (баланс)
 
-После добавления Telegram Login Widget главная страница `/` падает с клиентской ошибкой:
+Убрать строку «+1 за приглашённого друга» из списка начислений (это ошибка — пригласившему идёт только опыт, а 1 балл получает сам приглашённый друг как бонус новичка, и в баланс пригласившего он не попадает).
+
+Новый текст:
 
 ```
-Module "crypto" has been externalized for browser compatibility.
-Cannot access "crypto.createHash" in client code.
-  at src/lib/telegram-widget.functions.ts:3
+Подарочные баллы — валюта для получения подарков.
+
+Начисляются:
++0.2 за публикацию подарка
++0.8 когда твой подарок принят получателем
++1 новому другу при регистрации по твоему приглашению (тебе за приглашение идёт только опыт)
+
+Списываются (замораживаются), когда забираешь чужой подарок. Если сделка отменена — балл возвращается.
 ```
 
-Файл `telegram-widget.functions.ts` импортируется в `AuthFlow.tsx` (через `useServerFn(widgetSignIn)` / `useServerFn(widgetCompleteRegistration)`). Сплиттер TanStack должен был удалить серверные импорты (`crypto`, `client.server`, `@supabase/supabase-js`) из клиентского бандла, но не смог — потому что в файле помимо двух `createServerFn` лежат «толстые» хелперы на модульном уровне (`verifyWidgetSignature`, `signRegistrationTicket`, `verifyRegistrationTicket`, `userEmail`, `userPassword`, `anonClient`, `rememberTrustedDevice`, `issueMagicLink`, `safeEqualHex`). Правило стека: `.functions.ts` должен содержать **только** декларации server-fn и их импорты.
+## 2. Подсказка «Уровень»
 
-## Исправление
+Добавить к каждому уровню, какие категории подарков открываются.
 
-### 1. Создать `src/lib/telegram-widget.server.ts`
+Новый текст:
 
-Расширение `.server.ts` — жёсткая граница: бандлер откажется тянуть этот файл в клиентский бандл. Туда переезжают все хелперы и серверные импорты:
+```
+Уровень растёт по мере накопления Опыта и открывает новые категории подарков.
 
-- `crypto` (`createHash`, `createHmac`, `timingSafeEqual`)
-- `@supabase/supabase-js` (`createClient` для `anonClient`)
-- `@/integrations/supabase/client.server` (`supabaseAdmin`)
-- константы (`TRUSTED_DAYS`, `WIDGET_AUTH_MAX_AGE_SEC`, `REG_TICKET_TTL_MS`)
-- функции: `userEmail`, `userPassword`, `anonClient`, `safeEqualHex`, `verifyWidgetSignature`, `signRegistrationTicket`, `verifyRegistrationTicket`, `rememberTrustedDevice`, `issueMagicLink`
+1 уровень — 0–199 XP
+Доступно: вещи
 
-### 2. Оставить `src/lib/telegram-widget.functions.ts` тонким
+2 уровень — 200–499 XP
+Открывается: услуги, время специалистов, гайды и инфопродукты
 
-Файл содержит только:
+3 уровень — 500–999 XP
+Открывается: мероприятия и совместные активности
 
-- `import { createServerFn } from "@tanstack/react-start"`
-- `import { z } from "zod"`
-- `import { ... } from "./telegram-widget.server"` (только то, что нужно внутри `.handler()`)
-- `widgetPayloadSchema` (zod-схема — безопасна для клиента)
-- две декларации `createServerFn`: `widgetSignIn` и `widgetCompleteRegistration`
+4 уровень — 1000–1699 XP
+Открывается: премиальные подарки и эксклюзивные предложения
 
-Внутри `.handler()` всё то же, только вызовы хелперов теперь импортируются из `.server.ts`.
+5 уровень — 1700–2499 XP
+Открывается: всё доступно, статус амбассадора сообщества
+```
 
-### 3. Что НЕ трогаем
+## Уточнение
 
-- `AuthFlow.tsx` — импорты `widgetSignIn`/`widgetCompleteRegistration` остаются как есть.
-- `TelegramLoginButton.tsx` — без изменений.
-- Поведение виджета, набор полей, текст, шаг `tg_register`, RLS, миграции — всё без изменений.
-
-## Проверка
-
-- Перезагрузить `/` в превью — ошибка про `crypto` должна исчезнуть, страница рендерится.
-- Внутри handler-функций логика та же → flow Telegram-виджета и регистрации не меняется.
+Уровни 4 и 5 ты подробно не назвала («и так далее»). Я предложил выше разумные формулировки в духе уже обсуждённого. Если для 4 и 5 у тебя есть конкретные категории — скажи, поправлю перед записью.
