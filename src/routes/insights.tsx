@@ -27,7 +27,7 @@ import {
   Gift,
 } from "lucide-react";
 
-export const Route = createFileRoute("/cabinet/insights")({
+export const Route = createFileRoute("/insights")({
   head: () => ({ meta: [{ title: "Insights · Подари" }, { name: "robots", content: "noindex" }] }),
   component: InsightsPage,
 });
