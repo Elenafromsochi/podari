@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,6 +41,8 @@ function UserProfilePage() {
   const [active, setActive] = useState<Gift[] | null>(null);
   const [given, setGiven] = useState<Gift[] | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
 
   useEffect(() => {
     (async () => {
@@ -113,42 +115,59 @@ function UserProfilePage() {
           <p className="text-sm text-muted-foreground">Пока нет активных подарков.</p>
         ) : (
           <ul className="space-y-3">
-            {active.map((g) => (
-              <li key={g.id}>
-                <article className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
-                  {g.image_url ? (
-                    <img
-                      src={g.image_url}
-                      alt={g.title}
-                      className="h-20 w-20 shrink-0 rounded-xl object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-                      🎁
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[15px] font-semibold leading-tight">
-                      {g.title}
-                    </div>
-                    {g.description && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                        {g.description}
-                      </p>
-                    )}
-                    <Button
-                      size="sm"
-                      className="mt-2 h-8 rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-                      disabled={claiming === g.id}
-                      onClick={() => handleClaim(g.id)}
+            {active.map((g) => {
+              const isOpen = !!expanded[g.id];
+              return (
+                <li key={g.id}>
+                  <article className="rounded-2xl border bg-card p-3 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((s) => ({ ...s, [g.id]: !s[g.id] }))}
+                      className="flex w-full items-start gap-3 text-left"
+                      aria-expanded={isOpen}
                     >
-                      {claiming === g.id ? "Забираем…" : "Забрать подарок"}
-                    </Button>
-                  </div>
-                </article>
-              </li>
-            ))}
+                      {g.image_url ? (
+                        <img
+                          src={g.image_url}
+                          alt={g.title}
+                          className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+                          🎁
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-1">
+                          <div className={`flex-1 text-[15px] font-semibold leading-tight ${isOpen ? "" : "truncate"}`}>
+                            {g.title}
+                          </div>
+                          <ChevronDown
+                            className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </div>
+                        {g.description && (
+                          <p className={`mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap ${isOpen ? "" : "line-clamp-2"}`}>
+                            {g.description}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                    <div className="mt-2 pl-[92px]">
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+                        disabled={claiming === g.id}
+                        onClick={() => handleClaim(g.id)}
+                      >
+                        {claiming === g.id ? "Забираем…" : "Забрать подарок"}
+                      </Button>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
