@@ -1,10 +1,13 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { claimGift } from "@/lib/cozy.functions";
+import { haptic } from "@/lib/haptics";
 
 export const Route = createFileRoute("/user/$userId")({
   component: UserProfilePage,
@@ -26,13 +29,18 @@ type Gift = {
   status: string;
 };
 
+const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
+const ACTIVE_TX_KEY = "cozygift_active_tx";
+
 function UserProfilePage() {
   const { userId } = Route.useParams();
   const navigate = useNavigate();
+  const claim = useServerFn(claimGift);
   const [name, setName] = useState<string>("Гость");
   const [level, setLevel] = useState<number>(1);
-  const [available, setAvailable] = useState<Gift[] | null>(null);
+  const [active, setActive] = useState<Gift[] | null>(null);
   const [given, setGiven] = useState<Gift[] | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,13 +57,38 @@ function UserProfilePage() {
         .in("status", ["available", "gifted"])
         .order("created_at", { ascending: false });
       const rows = (data as Gift[]) ?? [];
-      setAvailable(rows.filter((g) => g.status === "available"));
+      setActive(rows.filter((g) => g.status === "available"));
       setGiven(rows.filter((g) => g.status === "gifted"));
     })();
   }, [userId]);
 
+  const handleClaim = async (giftId: string) => {
+    setClaiming(giftId);
+    try {
+      const res = await claim({ data: { gift_id: giftId } });
+      localStorage.setItem(ACTIVE_CHAT_KEY, giftId);
+      localStorage.setItem(ACTIVE_TX_KEY, res.transaction_id);
+      haptic("success");
+      toast.success("−1 балл заморожен • Безопасная сделка 🔒", {
+        description: "Открываем чат с дарителем",
+      });
+      navigate({ to: "/" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("ALREADY_TAKEN"))
+        toast.error("Подарок уже забрали", { description: "Выбери другой 💚" });
+      else if (msg.includes("OWN_GIFT"))
+        toast.error("Это твой подарок", { description: "Своё забрать нельзя 🙂" });
+      else if (msg.includes("INSUFFICIENT_BALANCE"))
+        toast.error("Недостаточно баллов", { description: "Подари что-нибудь, чтобы заработать" });
+      else toast.error("Не получилось забрать подарок", { description: msg });
+    } finally {
+      setClaiming(null);
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-4">
+    <div className="mx-auto w-full max-w-md space-y-4 px-5 pb-8 pt-5">
       <button
         onClick={() => navigate({ to: "/" })}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -73,59 +106,95 @@ function UserProfilePage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="pt-2 text-lg font-medium">Выложенные подарки</h2>
-        {available === null ? (
-          <Skeleton className="h-32 w-full" />
-        ) : available.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Пока нет доступных подарков.</p>
+        <h2 className="pt-2 text-lg font-semibold tracking-tight">Активные подарки</h2>
+        {active === null ? (
+          <Skeleton className="h-24 w-full rounded-2xl" />
+        ) : active.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Пока нет активных подарков.</p>
         ) : (
-          <div className="space-y-3">
-            {available.map((g) => (
-              <Card key={g.id} className="overflow-hidden p-0">
-                {g.image_url ? (
-                  <img src={g.image_url} alt={g.title} className="aspect-square w-full object-cover" />
-                ) : (
-                  <div className="flex aspect-square w-full items-center justify-center bg-muted text-[9rem]">🎁</div>
-                )}
-                <div className="space-y-2 p-4">
-                  <div className="text-xl font-semibold leading-tight break-words">{g.title}</div>
-                  {g.description && (
-                    <p className="whitespace-pre-wrap break-words text-base text-muted-foreground">
-                      {g.description}
-                    </p>
+          <ul className="space-y-3">
+            {active.map((g) => (
+              <li key={g.id}>
+                <article className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+                  {g.image_url ? (
+                    <img
+                      src={g.image_url}
+                      alt={g.title}
+                      className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+                      🎁
+                    </div>
                   )}
-                  <Link to="/" className="mt-2 inline-block text-sm text-primary hover:underline">
-                    Перейти в ленту, чтобы забрать →
-                  </Link>
-                </div>
-              </Card>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[15px] font-semibold leading-tight">
+                      {g.title}
+                    </div>
+                    {g.description && (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {g.description}
+                      </p>
+                    )}
+                    <Button
+                      size="sm"
+                      className="mt-2 h-8 rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+                      disabled={claiming === g.id}
+                      onClick={() => handleClaim(g.id)}
+                    >
+                      {claiming === g.id ? "Забираем…" : "Забрать подарок"}
+                    </Button>
+                  </div>
+                </article>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="pt-2 text-lg font-medium">Уже подарено</h2>
+        <h2 className="pt-2 text-lg font-semibold tracking-tight">Уже подарено</h2>
         {given === null ? (
-          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full rounded-2xl" />
         ) : given.length === 0 ? (
           <p className="text-sm text-muted-foreground">Пока не подарил ни одного подарка.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <ul className="space-y-3">
             {given.map((g) => (
-              <Card key={g.id} className="overflow-hidden p-0 opacity-90">
-                {g.image_url ? (
-                  <img src={g.image_url} alt={g.title} className="aspect-square w-full object-cover" />
-                ) : (
-                  <div className="flex aspect-square w-full items-center justify-center bg-muted text-5xl">🎁</div>
-                )}
-                <div className="p-2">
-                  <div className="line-clamp-2 text-sm font-medium leading-tight break-words">{g.title}</div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">подарено</div>
-                </div>
-              </Card>
+              <li key={g.id}>
+                <article className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm opacity-90">
+                  {g.image_url ? (
+                    <img
+                      src={g.image_url}
+                      alt={g.title}
+                      className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+                      🎁
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[15px] font-semibold leading-tight">
+                      {g.title}
+                    </div>
+                    {g.description && (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {g.description}
+                      </p>
+                    )}
+                    <div className="mt-1.5">
+                      <span className="inline-flex items-center rounded-full bg-mint/60 px-1.5 py-0.5 text-[10px] font-medium text-mint-foreground">
+                        подарено
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
     </div>
