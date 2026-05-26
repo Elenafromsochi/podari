@@ -212,33 +212,71 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
         </button>
       </div>
 
-      {/* Feed */}
-      <section>
-        <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">{feedTitle}</h2>
-          <span className="text-xs text-muted-foreground">
-            {gifts ? `${filtered.length}` : ""}
-          </span>
-        </div>
+      {/* Feed tabs */}
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl border bg-muted/60 p-1">
+        {([
+          ["gifts", "🎁 Подарки"],
+          ["wishes", "✨ Желания"],
+        ] as const).map(([k, label]) => {
+          const active = feedTab === k;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => {
+                if (!active) {
+                  haptic("select");
+                  setFeedTab(k);
+                }
+              }}
+              className={`rounded-xl px-2 py-1.5 text-[12.5px] font-medium transition-all duration-300 ${
+                active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
-        {!gifts ? (
-          <div className="space-y-3">
-            <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-24 w-full rounded-2xl" />
+      {feedTab === "gifts" ? (
+        <section>
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">{feedTitle}</h2>
+            <span className="text-xs text-muted-foreground">
+              {gifts ? `${filtered.length}` : ""}
+            </span>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-            Пока никто ничего не подарил 🌱
+
+          {!gifts ? (
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
+              Пока никто ничего не подарил 🌱
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {filtered.map((g) => (
+                <GiftedCard key={g.id} gift={g} />
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <section>
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">{wishesTitle}</h2>
           </div>
-        ) : (
-          <ul className="space-y-3">
-            {filtered.map((g) => (
-              <GiftedCard key={g.id} gift={g} />
-            ))}
-          </ul>
-        )}
-      </section>
+          <WishesFeed
+            onCreate={() => onCreateWish?.()}
+            onOpen={(id) => onOpenWish?.(id)}
+          />
+        </section>
+      )}
     </div>
   );
 }
