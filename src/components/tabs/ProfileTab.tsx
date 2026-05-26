@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy, BarChart3 } from "lucide-react";
+import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy, BarChart3, Copy, Send, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useNavigate, Link } from "@tanstack/react-router";
