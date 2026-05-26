@@ -4,6 +4,7 @@ import { HomeTab } from "@/components/tabs/HomeTab";
 import { ProfileTab } from "@/components/tabs/ProfileTab";
 import { ChatsTab } from "@/components/tabs/ChatsTab";
 import { getUnreadCounts } from "@/lib/cozy.functions";
+import { touchLastSeen } from "@/lib/last-seen.functions";
 import { useServerFn } from "@tanstack/react-start";
 import type { UserProfile } from "@/lib/auth-state";
 
@@ -20,6 +21,14 @@ export function AppShell({ user, onGive, onReceive, onPickGift, initialTab = "ho
   const [unreadChats, setUnreadChats] = useState(0);
   const [achievementsBadge, setAchievementsBadge] = useState(0);
   const unreadFn = useServerFn(getUnreadCounts);
+  const touchFn = useServerFn(touchLastSeen);
+
+  useEffect(() => {
+    touchFn({}).catch(() => {});
+    const id = window.setInterval(() => touchFn({}).catch(() => {}), 5 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [touchFn]);
+
 
   useEffect(() => {
     let alive = true;
