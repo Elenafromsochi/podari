@@ -242,7 +242,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       {feedTab === "gifts" ? (
         <section>
           <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">{feedTitle}</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Подаренные подарки</h2>
             <span className="text-xs text-muted-foreground">
               {gifts ? `${filtered.length}` : ""}
             </span>
