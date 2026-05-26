@@ -1,17 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { Sparkles, Send, ArrowLeft, ShieldCheck } from "lucide-react";
+import {
+  Sparkles,
+  Send,
+  ArrowLeft,
+  ShieldCheck,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
 import {
   startTelegramLogin,
   pollTelegramLogin,
   verifyTelegramCode,
 } from "@/lib/telegram-auth.functions";
+import {
+  loginWithPassword,
+  confirmDeviceCode,
+} from "@/lib/password-auth.functions";
+import { getDeviceId, getDeviceLabel } from "@/lib/device-id";
 
-type Step = "intro" | "code";
+type Step = "intro" | "password" | "twofa" | "tg_code";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
@@ -19,22 +35,36 @@ interface Props {
 }
 
 export function AuthFlow({ onAuthed, initialNonce }: Props) {
-  const [step, setStep] = useState<Step>(initialNonce ? "code" : "intro");
+  const [step, setStep] = useState<Step>(initialNonce ? "tg_code" : "intro");
   const [loading, setLoading] = useState(false);
 
+  // password step
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [remember, setRemember] = useState(true);
+
+  // 2fa
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [twofaOtp, setTwofaOtp] = useState(["", "", "", ""]);
+  const twofaInputsRef = useRef<Array<HTMLInputElement | null>>([]);
+
+  // telegram-fallback
   const [nonce, setNonce] = useState<string | null>(initialNonce ?? null);
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [botUsername, setBotUsername] = useState<string>("Podari_podarki_bot");
   const [codeSent, setCodeSent] = useState(!!initialNonce);
-
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+  const [tgOtp, setTgOtp] = useState(["", "", "", ""]);
+  const tgInputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   const start = useServerFn(startTelegramLogin);
   const poll = useServerFn(pollTelegramLogin);
   const verify = useServerFn(verifyTelegramCode);
+  const loginFn = useServerFn(loginWithPassword);
+  const confirmFn = useServerFn(confirmDeviceCode);
 
-  const beginLogin = async () => {
+  // -------- Telegram fallback flow (новый юзер / забыл пароль) --------
+  const beginTelegramLogin = async () => {
     if (loading) return;
     setLoading(true);
     try {
@@ -47,9 +77,8 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setDeepLink(res.deep_link);
       setBotUsername(res.bot_username);
       setCodeSent(false);
-      setOtp(["", "", "", ""]);
-      setStep("code");
-      // open Telegram
+      setTgOtp(["", "", "", ""]);
+      setStep("tg_code");
       if (typeof window !== "undefined") {
         window.open(res.deep_link, "_blank", "noopener,noreferrer");
       }
@@ -62,9 +91,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     }
   };
 
-  // Poll for "bot already sent the code" — чтобы показать пользователю подсказку
+  // Poll
   useEffect(() => {
-    if (step !== "code" || !nonce || codeSent) return;
+    if (step !== "tg_code" || !nonce || codeSent) return;
     let stop = false;
     const tick = async () => {
       try {
@@ -72,10 +101,8 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
         if (stop) return;
         if (r.status === "code_sent") {
           setCodeSent(true);
-          toast.success("Код отправлен в Telegram", {
-            description: "Проверь чат с ботом",
-          });
-          inputsRef.current[0]?.focus();
+          toast.success("Код отправлен в Telegram");
+          tgInputsRef.current[0]?.focus();
         }
       } catch {
         /* ignore */
@@ -89,24 +116,16 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     };
   }, [step, nonce, codeSent, poll]);
 
-  const setDigit = (i: number, v: string) => {
+  const setTgDigit = (i: number, v: string) => {
     const d = v.replace(/\D/g, "").slice(-1);
-    const next = [...otp];
+    const next = [...tgOtp];
     next[i] = d;
-    setOtp(next);
-    if (d && i < 3) inputsRef.current[i + 1]?.focus();
-    if (next.every((x) => x !== "")) {
-      submitCode(next.join(""));
-    }
+    setTgOtp(next);
+    if (d && i < 3) tgInputsRef.current[i + 1]?.focus();
+    if (next.every((x) => x !== "")) submitTgCode(next.join(""));
   };
 
-  const onKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otp[i] && i > 0) {
-      inputsRef.current[i - 1]?.focus();
-    }
-  };
-
-  const submitCode = async (code: string) => {
+  const submitTgCode = async (code: string) => {
     if (!nonce) return;
     setLoading(true);
     try {
@@ -131,16 +150,120 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       else if (msg.includes("NONCE_EXPIRED")) text = "Код истёк — начни заново";
       else if (msg.includes("NONCE_CONSUMED")) text = "Код уже использован";
       toast.error(text);
-      setOtp(["", "", "", ""]);
-      inputsRef.current[0]?.focus();
+      setTgOtp(["", "", "", ""]);
+      tgInputsRef.current[0]?.focus();
     } finally {
       setLoading(false);
     }
   };
 
+  // -------- Password flow --------
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    const nick = username.trim().replace(/^@/, "");
+    if (nick.length < 1) {
+      toast.error("Укажи свой @username из Telegram");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("Пароль должен быть не короче 8 символов");
+      return;
+    }
+    setLoading(true);
+    try {
+      const device_id = getDeviceId();
+      const device_label = getDeviceLabel();
+      const res = await loginFn({
+        data: { username: nick, password, device_id, device_label },
+      });
+      if (res.status === "ok") {
+        await setTelegramSession(res.access_token, res.refresh_token);
+        const profile = await loadUser();
+        if (!profile) throw new Error("Профиль не загружен");
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.4 } });
+        toast.success(`С возвращением, ${profile.display_name} 💚`);
+        onAuthed(profile, false);
+        return;
+      }
+      // need_2fa
+      setChallengeId(res.challenge_id);
+      setTwofaOtp(["", "", "", ""]);
+      setStep("twofa");
+      toast.success("Код отправлен в Telegram-бот", {
+        description: "Открой чат с ботом, чтобы увидеть код",
+      });
+      setTimeout(() => twofaInputsRef.current[0]?.focus(), 100);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось войти";
+      if (msg.includes("INVALID_CREDENTIALS"))
+        text = "Неверный @username или пароль";
+      else if (msg.includes("PASSWORD_NOT_SET"))
+        text =
+          "Для этого аккаунта пароль ещё не задан. Войди через Telegram и установи пароль.";
+      else if (msg.includes("TELEGRAM_SEND_FAILED"))
+        text = "Не удалось отправить код в Telegram. Открой бота и нажми Start.";
+      toast.error(text);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setTwofaDigit = (i: number, v: string) => {
+    const d = v.replace(/\D/g, "").slice(-1);
+    const next = [...twofaOtp];
+    next[i] = d;
+    setTwofaOtp(next);
+    if (d && i < 3) twofaInputsRef.current[i + 1]?.focus();
+    if (next.every((x) => x !== "")) submitTwofa(next.join(""));
+  };
+
+  const submitTwofa = async (code: string) => {
+    if (!challengeId) return;
+    setLoading(true);
+    try {
+      const { access_token, refresh_token } = await confirmFn({
+        data: {
+          challenge_id: challengeId,
+          code,
+          device_id: getDeviceId(),
+          device_label: getDeviceLabel(),
+          remember,
+        },
+      });
+      await setTelegramSession(access_token, refresh_token);
+      const profile = await loadUser();
+      if (!profile) throw new Error("Профиль не загружен");
+      confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 } });
+      toast.success(
+        remember
+          ? `${profile.display_name}, устройство запомнено на 30 дней 💚`
+          : `Привет, ${profile.display_name} 💚`,
+      );
+      onAuthed(profile, false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось подтвердить код";
+      if (msg.includes("WRONG_CODE")) text = "Неверный код";
+      else if (msg.includes("CHALLENGE_EXPIRED"))
+        text = "Код истёк — начни вход заново";
+      else if (msg.includes("CHALLENGE_CONSUMED"))
+        text = "Код уже использован";
+      else if (msg.includes("TOO_MANY_ATTEMPTS"))
+        text = "Слишком много попыток — начни вход заново";
+      toast.error(text);
+      setTwofaOtp(["", "", "", ""]);
+      twofaInputsRef.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -------- Render --------
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 py-8">
-      {step === "code" && (
+      {(step === "password" || step === "twofa" || step === "tg_code") && (
         <button
           onClick={() => setStep("intro")}
           className="mb-4 inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -156,40 +279,201 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
               <Sparkles className="h-8 w-8 text-peach-foreground" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Добро пожаловать в «Подари» 🎁
+              Вход в «Подари» 🎁
             </h1>
             <p className="text-balance text-sm text-muted-foreground">
               Сервис, где люди дарят друг другу время, вещи и заботу.
-              Вход — через Telegram, без паролей.
             </p>
           </div>
 
-          <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Как это работает</p>
-            <ol className="mt-2 list-decimal space-y-1 pl-5">
-              <li>Жмёшь кнопку ниже — откроется наш бот в Telegram</li>
-              <li>В боте нажми <b>Start</b></li>
-              <li>Бот пришлёт 4-значный код</li>
-              <li>Введи код здесь — и ты внутри</li>
-            </ol>
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={() => setStep("password")}
+              className="h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
+            >
+              <Lock className="mr-2 h-5 w-5" />
+              Войти по паролю
+            </Button>
+
+            <Button
+              onClick={beginTelegramLogin}
+              disabled={loading}
+              variant="outline"
+              className="h-12 rounded-2xl text-sm font-medium"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Я тут впервые / забыл пароль
+            </Button>
           </div>
 
-          <Button
-            onClick={beginLogin}
-            disabled={loading}
-            className="h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90 disabled:opacity-50"
-          >
-            <Send className="mr-2 h-5 w-5" />
-            {loading ? "Готовим вход..." : "Войти через Telegram"}
-          </Button>
+          <div className="rounded-2xl bg-muted/40 p-4 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Как это устроено</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>Вход — по @username из Telegram и паролю</li>
+              <li>На новом устройстве — код подтверждения в Telegram-бот</li>
+              <li>Знакомое устройство сервис запомнит на 30 дней</li>
+            </ul>
+          </div>
 
           <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • без паролей • без спама
+            <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • без спама
           </p>
         </div>
       )}
 
-      {step === "code" && (
+      {step === "password" && (
+        <form onSubmit={submitPassword} className="flex flex-1 flex-col gap-5">
+          <div className="flex flex-col items-center gap-2 pt-2 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-mint shadow-sm">
+              <Lock className="h-7 w-7 text-mint-foreground" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Войти по паролю
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Введи свой @username из Telegram и пароль
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="username">@username Telegram</Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                @
+              </span>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) =>
+                  setUsername(e.target.value.replace(/^@/, ""))
+                }
+                placeholder="ivan_petrov"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                disabled={loading}
+                className="h-12 rounded-xl pl-7 text-base"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="pwd">Пароль</Label>
+            <div className="relative">
+              <Input
+                id="pwd"
+                type={showPwd ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="не короче 8 символов"
+                autoComplete="current-password"
+                disabled={loading}
+                className="h-12 rounded-xl pr-12 text-base"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+                aria-label={showPwd ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]"
+            />
+            <span>
+              Запомнить это устройство на 30 дней (без кода из Telegram при
+              следующем входе)
+            </span>
+          </label>
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
+          >
+            {loading ? "Проверяем..." : "Войти"}
+          </Button>
+
+          <button
+            type="button"
+            onClick={beginTelegramLogin}
+            className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Забыл пароль / войти через Telegram
+          </button>
+        </form>
+      )}
+
+      {step === "twofa" && (
+        <div className="flex flex-1 flex-col gap-5">
+          <div className="flex flex-col items-center gap-2 pt-2 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-peach shadow-sm">
+              <KeyRound className="h-7 w-7 text-peach-foreground" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Подтверждение нового устройства
+            </h1>
+            <p className="text-balance text-sm text-muted-foreground">
+              Мы отправили 4-значный код в наш{" "}
+              <a
+                href="https://t.me/Podari_podarki_bot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                Telegram-бот
+              </a>
+              . Открой чат с ним и введи код здесь.
+            </p>
+          </div>
+
+          <div className="flex justify-center gap-3">
+            {twofaOtp.map((d, i) => (
+              <input
+                key={i}
+                ref={(el) => {
+                  twofaInputsRef.current[i] = el;
+                }}
+                inputMode="numeric"
+                maxLength={1}
+                value={d}
+                onChange={(e) => setTwofaDigit(i, e.target.value)}
+                disabled={loading}
+                className="h-14 w-12 rounded-2xl border border-input bg-background text-center text-2xl font-semibold shadow-sm outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/40 disabled:opacity-50"
+              />
+            ))}
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]"
+            />
+            <span>Запомнить это устройство на 30 дней</span>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setStep("password")}
+            className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            ← Вернуться к вводу пароля
+          </button>
+        </div>
+      )}
+
+      {step === "tg_code" && (
         <div className="flex flex-1 flex-col gap-6">
           <div className="flex flex-col items-center gap-3 pt-4 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">
@@ -215,17 +499,16 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           </div>
 
           <div className="flex justify-center gap-3">
-            {otp.map((d, i) => (
+            {tgOtp.map((d, i) => (
               <input
                 key={i}
                 ref={(el) => {
-                  inputsRef.current[i] = el;
+                  tgInputsRef.current[i] = el;
                 }}
                 inputMode="numeric"
                 maxLength={1}
                 value={d}
-                onChange={(e) => setDigit(i, e.target.value)}
-                onKeyDown={(e) => onKeyDown(i, e)}
+                onChange={(e) => setTgDigit(i, e.target.value)}
                 disabled={loading}
                 className="h-14 w-12 rounded-2xl border border-input bg-background text-center text-2xl font-semibold shadow-sm outline-none transition focus:border-mint focus:ring-2 focus:ring-mint/40 disabled:opacity-50"
               />
