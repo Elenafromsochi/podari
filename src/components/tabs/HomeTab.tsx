@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mic, MicOff, Search, Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WishesFeed } from "@/components/WishesFeed";
 import {
   pickRandom,
   HOME_TAGLINES,
   GIVE_SUBTITLES,
   RECEIVE_SUBTITLES,
   FEED_TITLES,
+  WISH_FEED_TITLES,
 } from "@/lib/random-copy";
 
 type Gift = {
