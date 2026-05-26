@@ -59,19 +59,31 @@ function nextLevelProgress(xp: number, level: number) {
 interface Props {
   user: UserProfile;
   onUnreadAchievements?: (n: number) => void;
+  onCreateWish?: () => void;
+  onOpenWish?: (wishId: string) => void;
 }
 
-export function ProfileTab({ user, onUnreadAchievements }: Props) {
+type MyWish = {
+  id: string;
+  title: string;
+  category: string;
+  image_url: string | null;
+  status: string;
+};
+
+export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish }: Props) {
   const navigate = useNavigate();
   const [achOpen, setAchOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityKey>("posted");
   const [posted, setPosted] = useState<Gift[] | null>(null);
   const [gifted, setGifted] = useState<TxRow[] | null>(null);
   const [received, setReceived] = useState<TxRow[] | null>(null);
+  const [myWishes, setMyWishes] = useState<MyWish[] | null>(null);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
+  const myWishesFn = useServerFn(getMyWishes);
   const rolesFn = useServerFn(getMyRoles);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
