@@ -265,31 +265,39 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
           </div>
         ) : (
           <ul key={activity} className="achievements-list space-y-2">
-            {list.map((g) => (
-              <li
-                key={g.id}
-                className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
-              >
-                {g.image_url ? (
-                  <img
-                    src={g.image_url}
-                    alt={g.title}
-                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                    🎁
+            {list.map((g) =>
+              activity === "posted" ? (
+                <EditableActiveItem
+                  key={g.id}
+                  gift={g}
+                  onUpdated={(patch) =>
+                    setPosted((prev) => (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)))
+                  }
+                  onDeleted={() => setPosted((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
+                />
+              ) : (
+                <li
+                  key={g.id}
+                  className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
+                >
+                  {g.image_url ? (
+                    <img src={g.image_url} alt={g.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                      🎁
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{g.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{g.category}</p>
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{g.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{g.category}</p>
-                </div>
-              </li>
-            ))}
+                </li>
+              ),
+            )}
           </ul>
         )}
       </section>
+
 
       <div className="mt-8">
         <AlertDialog>
