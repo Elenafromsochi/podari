@@ -57,6 +57,7 @@ export type Database = {
           id: string
           user_a: string | null
           user_b: string | null
+          wish_id: string | null
         }
         Insert: {
           created_at?: string
@@ -64,6 +65,7 @@ export type Database = {
           id?: string
           user_a?: string | null
           user_b?: string | null
+          wish_id?: string | null
         }
         Update: {
           created_at?: string
@@ -71,6 +73,7 @@ export type Database = {
           id?: string
           user_a?: string | null
           user_b?: string | null
+          wish_id?: string | null
         }
         Relationships: [
           {
@@ -421,6 +424,72 @@ export type Database = {
         }
         Relationships: []
       }
+      wish_transactions: {
+        Row: {
+          created_at: string
+          giver_id: string
+          handover_requested_at: string | null
+          id: string
+          status: string
+          wish_id: string
+          wisher_id: string
+        }
+        Insert: {
+          created_at?: string
+          giver_id: string
+          handover_requested_at?: string | null
+          id?: string
+          status?: string
+          wish_id: string
+          wisher_id: string
+        }
+        Update: {
+          created_at?: string
+          giver_id?: string
+          handover_requested_at?: string | null
+          id?: string
+          status?: string
+          wish_id?: string
+          wisher_id?: string
+        }
+        Relationships: []
+      }
+      wishes: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          owner_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          owner_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          owner_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       profiles_public: {
@@ -452,6 +521,10 @@ export type Database = {
       apply_referral_bonus: { Args: { _new_user: string }; Returns: undefined }
       calc_level: { Args: { _xp: number }; Returns: number }
       cancel_claim: { Args: { _transaction_id: string }; Returns: undefined }
+      cancel_wish_claim: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
       claim_gift: {
         Args: { _gift_id: string }
         Returns: {
@@ -463,9 +536,20 @@ export type Database = {
         Args: { _transaction_id: string }
         Returns: undefined
       }
+      confirm_wish_received: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
       decline_handover: {
         Args: { _transaction_id: string }
         Returns: undefined
+      }
+      fulfill_wish: {
+        Args: { _wish_id: string }
+        Returns: {
+          chat_id: string
+          transaction_id: string
+        }[]
       }
       get_public_profiles: {
         Args: { _user_ids: string[] }
@@ -483,7 +567,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      publish_wish: {
+        Args: {
+          _category: string
+          _description: string
+          _image_url: string
+          _title: string
+        }
+        Returns: string
+      }
       request_handover: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
+      request_wish_handover: {
         Args: { _transaction_id: string }
         Returns: undefined
       }
