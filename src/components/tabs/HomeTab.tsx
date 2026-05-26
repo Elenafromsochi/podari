@@ -48,7 +48,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
       let q = supabase
         .from("gifts")
         .select("id,title,description,category,image_url,cost,owner_id,created_at")
-        .eq("status", "available")
+        .eq("status", "gifted")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false })
         .limit(40);
@@ -72,6 +72,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
         })),
       );
+
     })();
   }, []);
 
