@@ -14,6 +14,7 @@ import {
   updateGift,
   deleteGift,
 } from "@/lib/cozy.functions";
+import { getMyWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -58,19 +59,31 @@ function nextLevelProgress(xp: number, level: number) {
 interface Props {
   user: UserProfile;
   onUnreadAchievements?: (n: number) => void;
+  onCreateWish?: () => void;
+  onOpenWish?: (wishId: string) => void;
 }
 
-export function ProfileTab({ user, onUnreadAchievements }: Props) {
+type MyWish = {
+  id: string;
+  title: string;
+  category: string;
+  image_url: string | null;
+  status: string;
+};
+
+export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish }: Props) {
   const navigate = useNavigate();
   const [achOpen, setAchOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityKey>("posted");
   const [posted, setPosted] = useState<Gift[] | null>(null);
   const [gifted, setGifted] = useState<TxRow[] | null>(null);
   const [received, setReceived] = useState<TxRow[] | null>(null);
+  const [myWishes, setMyWishes] = useState<MyWish[] | null>(null);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
+  const myWishesFn = useServerFn(getMyWishes);
   const rolesFn = useServerFn(getMyRoles);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
@@ -90,12 +103,13 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
 
   useEffect(() => {
     (async () => {
-      const [p, g, r] = await Promise.all([postedFn(), giftedFn(), receivedFn()]);
+      const [p, g, r, w] = await Promise.all([postedFn(), giftedFn(), receivedFn(), myWishesFn()]);
       setPosted((p as Gift[]) ?? []);
       setGifted((g as TxRow[]) ?? []);
       setReceived((r as TxRow[]) ?? []);
+      setMyWishes((w as MyWish[]) ?? []);
     })();
-  }, [postedFn, giftedFn, receivedFn]);
+  }, [postedFn, giftedFn, receivedFn, myWishesFn]);
 
   const toggleAch = () => {
     haptic("select");
@@ -225,8 +239,71 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
       </section>
 
 
-      {/* Activity sub-tabs */}
+      {/* Загадать желание CTA */}
+      {onCreateWish && (
+        <button
+          type="button"
+          onClick={() => {
+            haptic("medium");
+            onCreateWish();
+          }}
+          className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-peach px-4 py-3 text-left text-peach-foreground shadow-sm transition active:scale-[0.98]"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
+            <span className="block text-xs opacity-75">−0.2 балла • +10 опыта</span>
+          </span>
+        </button>
+      )}
+
+      {/* Мои желания */}
+      <section className="mb-5">
+        <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
+        {!myWishes ? (
+          <Skeleton className="h-16 w-full rounded-2xl" />
+        ) : myWishes.length === 0 ? (
+          <div className="rounded-2xl border bg-card p-4 text-center text-xs text-muted-foreground">
+            Пока не загадано ни одного желания
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {myWishes.map((w) => (
+              <li key={w.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic("select");
+                    onOpenWish?.(w.id);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.98]"
+                >
+                  {w.image_url ? (
+                    <img src={w.image_url} alt={w.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
+                      ✨
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{w.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{w.category}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Мои подарки */}
       <section>
+        <h2 className="mb-3 text-lg font-semibold tracking-tight">Мои подарки</h2>
         <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
           {([
             ["posted", "Активные"],

@@ -79,7 +79,12 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
           />
         )}
         {tab === "profile" && (
-          <ProfileTab user={user} onUnreadAchievements={setAchievementsBadge} />
+          <ProfileTab
+            user={user}
+            onUnreadAchievements={setAchievementsBadge}
+            onCreateWish={onCreateWish}
+            onOpenWish={onOpenWish}
+          />
         )}
         {tab === "chats" && <ChatsTab />}
       </div>
