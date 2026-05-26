@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy } from "lucide-react";
+import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy, BarChart3 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 import type { UserProfile } from "@/lib/auth-state";
 import { signOut } from "@/lib/auth-state";
+import { getMyRoles } from "@/lib/roles.functions";
 import { Achievements, useAchievements } from "@/components/Achievements";
 import {
   getMyPostedGifts,
