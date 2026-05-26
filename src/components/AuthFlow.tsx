@@ -67,11 +67,134 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const [tgOtp, setTgOtp] = useState(["", "", "", ""]);
   const tgInputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
+  // Telegram widget registration
+  const [regTicket, setRegTicket] = useState<string | null>(null);
+  const [regPreview, setRegPreview] = useState<{
+    telegram_id: number;
+    username: string | null;
+    first_name: string | null;
+    photo_url: string | null;
+  } | null>(null);
+  const [regDisplayName, setRegDisplayName] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regShowPwd, setRegShowPwd] = useState(false);
+
   const start = useServerFn(startTelegramLogin);
   const poll = useServerFn(pollTelegramLogin);
   const verify = useServerFn(verifyTelegramCode);
   const loginFn = useServerFn(loginWithPassword);
   const confirmFn = useServerFn(confirmDeviceCode);
+  const widgetSignInFn = useServerFn(widgetSignIn);
+  const widgetCompleteFn = useServerFn(widgetCompleteRegistration);
+
+  // -------- Telegram Login Widget --------
+  const handleWidgetAuth = async (payload: TelegramWidgetPayload) => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await widgetSignInFn({
+        data: {
+          payload: payload as unknown as Record<string, unknown>,
+          device_id: getDeviceId(),
+          device_label: getDeviceLabel(),
+        },
+      });
+      if (res.status === "ok") {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: res.token_hash,
+          type: "magiclink",
+        });
+        if (error) throw new Error(error.message);
+        const profile = await loadUser();
+        if (!profile) throw new Error("Профиль не загружен");
+        confetti({ particleCount: 120, spread: 85, origin: { y: 0.4 } });
+        toast.success(`С возвращением, ${profile.display_name} 💚`);
+        onAuthed(profile, false);
+        return;
+      }
+      // need_registration
+      setRegTicket(res.ticket);
+      setRegPreview(res.preview);
+      setRegDisplayName(
+        res.preview.first_name || res.preview.username || "Гость",
+      );
+      setRegPassword("");
+      setStep("tg_register");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось войти через Telegram";
+      if (msg.includes("WIDGET_BAD_SIGNATURE"))
+        text = "Не удалось проверить подпись Telegram";
+      else if (msg.includes("WIDGET_EXPIRED"))
+        text = "Подтверждение Telegram устарело — попробуй ещё раз";
+      else if (msg.includes("WIDGET_NOT_CONFIGURED"))
+        text = "Виджет Telegram временно недоступен";
+      toast.error(text);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading || !regTicket) return;
+    const name = regDisplayName.trim();
+    if (name.length < 1) {
+      toast.error("Укажи имя");
+      return;
+    }
+    if (regPassword.length < 8) {
+      toast.error("Пароль должен быть не короче 8 символов");
+      return;
+    }
+    setLoading(true);
+    try {
+      const referrer_id =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cozygift_pending_ref")
+          : null;
+      const res = await widgetCompleteFn({
+        data: {
+          ticket: regTicket,
+          display_name: name,
+          password: regPassword,
+          device_id: getDeviceId(),
+          device_label: getDeviceLabel(),
+          referrer_id,
+        },
+      });
+
+      if ("access_token" in res && res.access_token) {
+        await setTelegramSession(res.access_token, res.refresh_token);
+      } else if ("token_hash" in res && res.token_hash) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: res.token_hash,
+          type: "magiclink",
+        });
+        if (error) throw new Error(error.message);
+      }
+
+      const profile = await loadUser();
+      if (!profile) throw new Error("Профиль не загружен");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cozygift_pending_ref");
+      }
+      confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
+      toast.success(`Добро пожаловать, ${profile.display_name} 💚`);
+      onAuthed(profile, !res.already_existed);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось завершить регистрацию";
+      if (msg.includes("TICKET_EXPIRED"))
+        text = "Подтверждение устарело — нажми «Войти через Telegram» ещё раз";
+      else if (msg.includes("TICKET_"))
+        text = "Подпись подтверждения не сошлась — попробуй ещё раз";
+      toast.error(text);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // -------- Telegram fallback flow (новый юзер / забыл пароль) --------
   const beginTelegramLogin = async () => {
