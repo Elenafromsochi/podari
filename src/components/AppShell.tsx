@@ -74,6 +74,8 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
             onGive={onGive}
             onReceive={onReceive}
             onPickGift={onPickGift}
+            onCreateWish={onCreateWish}
+            onOpenWish={onOpenWish}
           />
         )}
         {tab === "profile" && (
