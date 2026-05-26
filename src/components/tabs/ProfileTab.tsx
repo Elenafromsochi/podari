@@ -303,7 +303,15 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
       </section>
 
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-3">
+        {isAdmin && (
+          <Link
+            to="/insights"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-400/40 bg-indigo-500/5 py-3 text-sm font-medium text-indigo-600 transition active:scale-[0.98]"
+          >
+            <BarChart3 className="h-4 w-4" /> Insights (админ)
+          </Link>
+        )}
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button
