@@ -326,3 +326,170 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
     </div>
   );
 }
+
+function HelpPopover({ label, hint }: { label: string; hint: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`Подробнее: ${label}`}
+        className="text-muted-foreground/80 transition hover:text-foreground"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <HelpCircle className="h-3.5 w-3.5" />
+      </PopoverTrigger>
+      <PopoverContent side="bottom" className="w-72 whitespace-pre-line text-xs leading-relaxed">
+        {hint}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function EditableActiveItem({
+  gift,
+  onUpdated,
+  onDeleted,
+}: {
+  gift: Gift;
+  onUpdated: (patch: Partial<Gift>) => void;
+  onDeleted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [title, setTitle] = useState(gift.title);
+  const [category, setCategory] = useState(gift.category);
+  const [description, setDescription] = useState(gift.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const updateFn = useServerFn(updateGift);
+  const deleteFn = useServerFn(deleteGift);
+  const canModify = gift.status === "available";
+
+  const handleSave = async () => {
+    if (!title.trim() || !category.trim()) {
+      toast.error("Заполни название и категорию");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateFn({
+        data: {
+          id: gift.id,
+          title: title.trim(),
+          category: category.trim(),
+          description: description.trim() || null,
+        },
+      });
+      onUpdated({
+        title: title.trim(),
+        category: category.trim(),
+        description: description.trim() || null,
+      });
+      toast.success("Подарок обновлён ✨");
+      setOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("GIFT_IN_DEAL")) toast.error("Нельзя изменить: подарок уже в сделке");
+      else toast.error("Не удалось сохранить", { description: msg });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteFn({ data: { id: gift.id } });
+      onDeleted();
+      toast.success("Подарок удалён");
+      setConfirmOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("GIFT_IN_DEAL")) toast.error("Нельзя удалить: подарок уже в сделке");
+      else toast.error("Не удалось удалить", { description: msg });
+    }
+  };
+
+  return (
+    <li className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+      {gift.image_url ? (
+        <img src={gift.image_url} alt={gift.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+      ) : (
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{gift.title}</p>
+        <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
+      </div>
+      {canModify && (
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Редактировать подарок"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            aria-label="Удалить подарок"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Редактировать подарок</DialogTitle>
+            <DialogDescription>Изменения видны сразу всем пользователям</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`g-title-${gift.id}`}>Название</Label>
+              <Input id={`g-title-${gift.id}`} value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`g-cat-${gift.id}`}>Категория</Label>
+              <Input id={`g-cat-${gift.id}`} value={category} onChange={(e) => setCategory(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`g-desc-${gift.id}`}>Описание</Label>
+              <Textarea
+                id={`g-desc-${gift.id}`}
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+              Отмена
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Сохраняем…" : "Сохранить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Подарок «{gift.title}» исчезнет из ленты. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </li>
+  );
+}
+
