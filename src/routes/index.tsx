@@ -41,7 +41,10 @@ type Flow =
   | { kind: "give_form"; presetHint: string | null; giftKind: import("@/lib/gift-kinds").GiftKind }
   | { kind: "publish_success" }
   | { kind: "receive" }
-  | { kind: "chat"; giftId: string; txId: string };
+  | { kind: "chat"; giftId: string; txId: string }
+  | { kind: "wish_form" }
+  | { kind: "wish_details"; wishId: string }
+  | { kind: "wish_chat"; wishId: string; txId: string };
 
 const burstConfetti = () => {
   const opts = { spread: 80, ticks: 200, gravity: 0.9, scalar: 1.1 } as const;
