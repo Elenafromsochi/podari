@@ -1,0 +1,166 @@
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { fulfillWish, deleteWish } from "@/lib/wishes.functions";
+import { haptic } from "@/lib/haptics";
+
+type Wish = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  image_url: string | null;
+  status: string;
+  owner_id: string;
+  created_at: string;
+};
+
+interface Props {
+  wishId: string;
+  onBack: () => void;
+  onFulfilled: (txId: string, chatId: string, wishId: string) => void;
+  onDeleted: () => void;
+}
+
+export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
+  const [wish, setWish] = useState<Wish | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
+  const [ownerName, setOwnerName] = useState<string>("Гость");
+  const [loading, setLoading] = useState(false);
+  const fulfillFn = useServerFn(fulfillWish);
+  const deleteFn = useServerFn(deleteWish);
+
+  useEffect(() => {
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      setMeId(u.user?.id ?? null);
+      const { data } = await supabase
+        .from("wishes")
+        .select("id,title,description,category,image_url,status,owner_id,created_at")
+        .eq("id", wishId)
+        .maybeSingle();
+      setWish(data as Wish | null);
+      if (data?.owner_id) {
+        const { data: profs } = await supabase.rpc("get_public_profiles", {
+          _user_ids: [data.owner_id],
+        });
+        const list = (profs ?? []) as Array<{ display_name: string }>;
+        setOwnerName(list[0]?.display_name || "Гость");
+      }
+    })();
+  }, [wishId]);
+
+  const isOwn = !!(meId && wish && wish.owner_id === meId);
+  const isOpen = wish?.status === "open";
+
+  const handleFulfill = async () => {
+    setLoading(true);
+    try {
+      const res = await fulfillFn({ data: { wish_id: wishId } });
+      haptic("success");
+      toast.success("Чат с пожелателем открыт 💚");
+      onFulfilled(res.transaction_id, res.chat_id, wishId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("ALREADY_TAKEN")) toast.error("Это пожелание уже исполняют");
+      else if (msg.includes("OWN_WISH")) toast.error("Это твоё пожелание 🙂");
+      else toast.error("Не получилось", { description: msg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Снять пожелание с публикации?")) return;
+    try {
+      await deleteFn({ data: { wish_id: wishId } });
+      toast.success("Пожелание удалено");
+      onDeleted();
+    } catch (e) {
+      toast.error("Не удалось удалить", { description: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  if (!wish) {
+    return (
+      <div className="mx-auto w-full max-w-md px-5 py-8">
+        <button onClick={onBack} className="mb-4 text-sm text-muted-foreground">← Назад</button>
+        <p className="text-sm text-muted-foreground">Загружаем…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-md px-5 py-6">
+      <button onClick={onBack} className="mb-4 text-sm text-muted-foreground hover:text-foreground">
+        ← Назад
+      </button>
+
+      <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+        {wish.image_url ? (
+          <img src={wish.image_url} alt={wish.title} className="h-56 w-full object-cover" />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center bg-peach/40 text-6xl">✨</div>
+        )}
+        <div className="p-5">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {wish.category}
+            </span>
+            {!isOpen && (
+              <span className="rounded-full bg-mint/60 px-2 py-0.5 text-[11px] font-semibold text-mint-foreground">
+                {wish.status === "reserved" ? "В работе" : "Исполнено"}
+              </span>
+            )}
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight">{wish.title}</h1>
+          {wish.description && (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">{wish.description}</p>
+          )}
+          <div className="mt-4 text-sm">
+            <span className="text-muted-foreground">Пожелатель: </span>
+            <Link
+              to="/user/$userId"
+              params={{ userId: wish.owner_id }}
+              className="font-semibold text-primary hover:underline"
+            >
+              {ownerName}
+            </Link>
+          </div>
+
+          <div className="mt-6 space-y-2">
+            {isOwn ? (
+              <>
+                {isOpen && (
+                  <Button onClick={handleDelete} variant="outline" className="w-full rounded-2xl">
+                    Снять с публикации
+                  </Button>
+                )}
+                {!isOpen && (
+                  <p className="rounded-2xl bg-muted p-3 text-center text-xs text-muted-foreground">
+                    Это твоё пожелание — следи за ним в «Моих пожеланиях».
+                  </p>
+                )}
+              </>
+            ) : isOpen ? (
+              <Button
+                onClick={handleFulfill}
+                disabled={loading}
+                className="w-full rounded-2xl bg-mint text-mint-foreground hover:bg-mint/90"
+              >
+                🎁 {loading ? "Открываем чат…" : "Исполнить пожелание"}
+              </Button>
+            ) : (
+              <p className="rounded-2xl bg-muted p-3 text-center text-xs text-muted-foreground">
+                Уже исполняют — пожалуйста, найди другое 💚
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
