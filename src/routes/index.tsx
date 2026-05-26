@@ -11,7 +11,10 @@ import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
 import { ChatScreen } from "@/components/ChatScreen";
 import { AuthFlow } from "@/components/AuthFlow";
 import { PublishSuccess } from "@/components/PublishSuccess";
-import { pickRandom, PUBLISH_THANKS_TITLES, PUBLISH_THANKS_DESCRIPTIONS } from "@/lib/random-copy";
+import { WishForm } from "@/components/WishForm";
+import { WishDetails } from "@/components/WishDetails";
+import { WishChatScreen } from "@/components/WishChatScreen";
+import { pickRandom, PUBLISH_THANKS_TITLES, PUBLISH_THANKS_DESCRIPTIONS, WISH_PUBLISH_THANKS } from "@/lib/random-copy";
 import {
   Dialog,
   DialogContent,
