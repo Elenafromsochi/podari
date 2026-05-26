@@ -157,6 +157,48 @@ function Index() {
           onGive={() => setFlow({ kind: "give_chip" })}
           onReceive={() => setFlow({ kind: "receive" })}
           onPickGift={handlePickGift}
+          onCreateWish={() => setFlow({ kind: "wish_form" })}
+          onOpenWish={(wishId) => setFlow({ kind: "wish_details", wishId })}
+        />
+      )}
+
+      {flow.kind === "wish_form" && (
+        <WishForm
+          onBack={() => setFlow({ kind: "none" })}
+          onDone={async (id) => {
+            burstConfetti();
+            haptic("success");
+            toast.success(pickRandom(WISH_PUBLISH_THANKS), {
+              description: "Любой пользователь может откликнуться ✨",
+            });
+            await refreshUser();
+            setFlow({ kind: "wish_details", wishId: id });
+          }}
+        />
+      )}
+
+      {flow.kind === "wish_details" && (
+        <WishDetails
+          wishId={flow.wishId}
+          onBack={() => setFlow({ kind: "none" })}
+          onFulfilled={(txId, _chatId, wishId) =>
+            setFlow({ kind: "wish_chat", wishId, txId })
+          }
+          onDeleted={() => setFlow({ kind: "none" })}
+        />
+      )}
+
+      {flow.kind === "wish_chat" && (
+        <WishChatScreen
+          wishId={flow.wishId}
+          transactionId={flow.txId}
+          onBack={() => setFlow({ kind: "none" })}
+          onCompleted={async () => {
+            burstConfetti();
+            haptic("success");
+            await refreshUser();
+            setFlow({ kind: "none" });
+          }}
         />
       )}
 
