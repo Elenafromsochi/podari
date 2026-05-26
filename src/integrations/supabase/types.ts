@@ -91,6 +91,8 @@ export type Database = {
           device_id: string
           expires_at: string
           id: string
+          pending_access_token: string | null
+          pending_refresh_token: string | null
           user_id: string
         }
         Insert: {
@@ -101,6 +103,8 @@ export type Database = {
           device_id: string
           expires_at?: string
           id?: string
+          pending_access_token?: string | null
+          pending_refresh_token?: string | null
           user_id: string
         }
         Update: {
@@ -111,6 +115,8 @@ export type Database = {
           device_id?: string
           expires_at?: string
           id?: string
+          pending_access_token?: string | null
+          pending_refresh_token?: string | null
           user_id?: string
         }
         Relationships: []
