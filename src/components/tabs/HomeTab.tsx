@@ -160,7 +160,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           </div>
           <div className="mt-6">
             <div className="text-[15px] font-semibold leading-tight">✨ Подарить</div>
-            <div className="text-xs opacity-75">подарок миру</div>
+            <div className="text-xs opacity-75">{giveSub}</div>
           </div>
           <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-background/20 blur-2xl transition group-hover:scale-125" />
         </button>
@@ -177,7 +177,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           </div>
           <div className="mt-6">
             <div className="text-[15px] font-semibold leading-tight">🎁 Забрать</div>
-            <div className="text-xs opacity-75">что-то приятное</div>
+            <div className="text-xs opacity-75">{receiveSub}</div>
           </div>
           <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-background/20 blur-2xl transition group-hover:scale-125" />
         </button>
@@ -209,7 +209,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
       {/* Feed */}
       <section>
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Уже подарили</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{feedTitle}</h2>
           <span className="text-xs text-muted-foreground">
             {gifts ? `${filtered.length}` : ""}
           </span>
