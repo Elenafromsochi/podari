@@ -117,9 +117,20 @@ function Index() {
         onAuthed={(u) => {
           setPendingLoginNonce(null);
           setUser(u);
+          if (!u.password_set) {
+            navigate({ to: "/set-password" });
+          }
         }}
       />
     );
+  }
+
+  if (!user.password_set) {
+    // Обязательная установка пароля для существующих пользователей
+    if (typeof window !== "undefined") {
+      navigate({ to: "/set-password" });
+    }
+    return null;
   }
 
   const update = (patch: Partial<GameState>) => {
