@@ -159,9 +159,10 @@ function Index() {
           giftKind={giveKind}
           onDone={async () => {
             burstConfetti();
-            toast.success("+20 Опыта начислено ✨", {
+            toast.success("+20 Опыта и +0.2 подарочных балла начислено ✨", {
               description: "Подарок размещён в игровом мире",
             });
+
             await refreshUser();
             update({ step: "give_done" });
           }}
@@ -173,7 +174,7 @@ function Index() {
           <div className="text-5xl">🎉</div>
           <h2 className="text-2xl font-semibold">Подарок размещён!</h2>
           <p className="rounded-xl bg-mint/40 px-4 py-3 text-sm text-foreground">
-            +20 Опыта начислено ✨
+            +20 Опыта и +0.2 подарочных балла начислено ✨
           </p>
           <p className="text-balance text-muted-foreground">
             Для равновесия системы — выбери себе подарок. Дарить и получать одинаково важно 💚
