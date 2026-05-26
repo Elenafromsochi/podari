@@ -1,10 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 const BOT_USERNAME = "Podari_podarki_bot";
-
-// Домены, на которых виджет реально работает (привязаны в BotFather).
-// preview-домены сюда не входят — Telegram отклонит подпись.
-const SUPPORTED_HOSTS = ["podari.lovable.app"];
 
 export interface TelegramWidgetPayload {
   id: number;
@@ -28,13 +24,9 @@ declare global {
 
 export function TelegramLoginButton({ onAuth }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isSupportedHost, setIsSupportedHost] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const ok = SUPPORTED_HOSTS.includes(window.location.hostname);
-    setIsSupportedHost(ok);
-    if (!ok) return;
 
     // Глобальный callback (виджет вызовет его по имени)
     window.__podariTgOnAuth = (user) => onAuth(user);
@@ -58,27 +50,6 @@ export function TelegramLoginButton({ onAuth }: Props) {
       container.innerHTML = "";
     };
   }, [onAuth]);
-
-  if (isSupportedHost === null) {
-    return <div className="h-12" />;
-  }
-
-  if (!isSupportedHost) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center text-xs text-muted-foreground">
-        <p>
-          Вход через Telegram работает только на основном домене{" "}
-          <span className="font-medium text-foreground">podari.lovable.app</span>.
-        </p>
-        <a
-          href="https://podari.lovable.app/"
-          className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm"
-        >
-          Открыть podari.lovable.app
-        </a>
-      </div>
-    );
-  }
 
   return <div ref={containerRef} className="flex justify-center" />;
 }
