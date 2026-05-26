@@ -603,7 +603,7 @@ function InviteButtons({ userId }: { userId: string }) {
 
   const shareTg = () => {
     haptic("medium");
-    const text = "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚";
+    const text = "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
     if (typeof window !== "undefined") window.open(url, "_blank");
   };
