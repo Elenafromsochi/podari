@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { AppShell } from "@/components/AppShell";
-import { DemoResetButton } from "@/components/DemoResetButton";
+
 import { GiveGiftChips } from "@/components/GiveGiftChips";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
@@ -141,7 +141,6 @@ function Index() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <DemoResetButton />
 
       {flow.kind === "none" && (
         <AppShell
