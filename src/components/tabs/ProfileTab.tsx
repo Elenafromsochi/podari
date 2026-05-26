@@ -71,6 +71,9 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
+  const rolesFn = useServerFn(getMyRoles);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
 
   const { items: achievements } = useAchievements();
   // «Новые» = открытые, которые пользователь ещё не видел в этой сессии
