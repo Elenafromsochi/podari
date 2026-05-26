@@ -673,6 +673,84 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           )}
         </div>
       )}
+
+      {step === "tg_register" && regPreview && (
+        <form onSubmit={submitRegistration} className="flex flex-1 flex-col gap-5">
+          <div className="flex flex-col items-center gap-2 pt-2 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-mint shadow-sm">
+              <UserCheck className="h-7 w-7 text-mint-foreground" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Подтверди данные
+            </h1>
+            <p className="text-balance text-sm text-muted-foreground">
+              Telegram передал нам твой профиль. Проверь имя и придумай пароль —
+              он понадобится, чтобы заходить без Telegram.
+            </p>
+          </div>
+
+          {regPreview.photo_url && (
+            <img
+              src={regPreview.photo_url}
+              alt=""
+              className="mx-auto h-16 w-16 rounded-full border border-border object-cover"
+            />
+          )}
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="reg_name">Имя</Label>
+            <Input
+              id="reg_name"
+              value={regDisplayName}
+              onChange={(e) => setRegDisplayName(e.target.value)}
+              maxLength={80}
+              disabled={loading}
+              className="h-12 rounded-xl text-base"
+            />
+            {regPreview.username && (
+              <p className="text-xs text-muted-foreground">
+                @username: <span className="font-medium text-foreground">@{regPreview.username}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="reg_pwd">Придумай пароль</Label>
+            <div className="relative">
+              <Input
+                id="reg_pwd"
+                type={regShowPwd ? "text" : "password"}
+                value={regPassword}
+                onChange={(e) => setRegPassword(e.target.value)}
+                placeholder="не короче 8 символов"
+                autoComplete="new-password"
+                disabled={loading}
+                className="h-12 rounded-xl pr-12 text-base"
+              />
+              <button
+                type="button"
+                onClick={() => setRegShowPwd((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+                aria-label={regShowPwd ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {regShowPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Дальше сможешь заходить и через кнопку Telegram, и по @username + паролю.
+            </p>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
+          >
+            {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}
+          </Button>
+        </form>
+      )}
     </div>
   );
 }
