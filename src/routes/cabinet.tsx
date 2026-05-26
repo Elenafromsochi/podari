@@ -368,7 +368,7 @@ function CabinetPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Выйти из аккаунта?</AlertDialogTitle>
               <AlertDialogDescription>
-                Сессия будет сброшена. Чтобы вернуться, потребуется снова войти по номеру телефона.
+                Сессия будет сброшена. Чтобы вернуться, потребуется снова войти по @username и паролю.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -82,6 +82,45 @@ export type Database = {
           },
         ]
       }
+      device_login_codes: {
+        Row: {
+          attempts: number
+          code: string
+          consumed_at: string | null
+          created_at: string
+          device_id: string
+          expires_at: string
+          id: string
+          pending_access_token: string | null
+          pending_refresh_token: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          consumed_at?: string | null
+          created_at?: string
+          device_id: string
+          expires_at?: string
+          id?: string
+          pending_access_token?: string | null
+          pending_refresh_token?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          consumed_at?: string | null
+          created_at?: string
+          device_id?: string
+          expires_at?: string
+          id?: string
+          pending_access_token?: string | null
+          pending_refresh_token?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       gifts: {
         Row: {
           category: string
@@ -169,6 +208,7 @@ export type Database = {
           display_name: string
           id: string
           level: number
+          password_set: boolean
           referred_by: string | null
           telegram_id: number | null
           telegram_username: string | null
@@ -182,6 +222,7 @@ export type Database = {
           display_name?: string
           id?: string
           level?: number
+          password_set?: boolean
           referred_by?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
@@ -195,6 +236,7 @@ export type Database = {
           display_name?: string
           id?: string
           level?: number
+          password_set?: boolean
           referred_by?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
@@ -303,6 +345,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trusted_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          expires_at: string
+          label: string | null
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          expires_at: string
+          label?: string | null
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          expires_at?: string
+          label?: string | null
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_achievements: {
         Row: {
