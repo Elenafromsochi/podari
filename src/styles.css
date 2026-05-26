@@ -116,3 +116,15 @@
     font-feature-settings: "ss01", "cv11";
   }
 }
+
+/* Премиальное мягкое проявление с размытием — для раскрывающихся блоков и смены табов */
+@keyframes blurReveal {
+  from { opacity: 0; filter: blur(12px); transform: translateY(4px); }
+  to   { opacity: 1; filter: blur(0);    transform: translateY(0);   }
+}
+
+.achievements-list,
+.tab-reveal {
+  animation: blurReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
