@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LogOut, Sparkles, Trophy } from "lucide-react";
+import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -10,9 +10,17 @@ import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
+  updateGift,
+  deleteGift,
 } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
 
 type Gift = {
   id: string;
@@ -135,7 +144,12 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
             )}
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
               <Sparkles className="h-3.5 w-3.5 text-primary" /> Уровень {user.level}
+              <HelpPopover
+                label="Уровень"
+                hint={`Уровень растёт по мере накопления Опыта:\n1 уровень — от 0 до 199 XP\n2 уровень — от 200 до 499 XP\n3 уровень — от 500 до 999 XP\n4 уровень — от 1000 до 1699 XP\n5 уровень — от 1700 до 2499 XP`}
+              />
             </div>
+
           </div>
         </div>
       </section>
@@ -170,39 +184,42 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
         )}
       </section>
 
-      {/* Balance widgets */}
       <section className="mb-5 grid grid-cols-2 gap-3">
-        <div className="rounded-3xl border bg-card p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Опыт
-          </p>
+        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
+          <div className="absolute right-2.5 top-2.5">
+            <HelpPopover
+              label="Опыт"
+              hint={`За каждое действие начисляются баллы Опыта:\n+20 за публикацию подарка\n+10 за бронирование\n+80 за вручённый подарок\n+5 или +20 за отзыв\n+50 за приглашённого друга\n\nОпыт нельзя потратить — он копится и поднимает уровень.`}
+            />
+          </div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Опыт</p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-2xl font-semibold tracking-tight">{user.xp}</span>
             <span className="text-xs text-muted-foreground">XP</span>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-700"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
           <p className="mt-1.5 text-[10.5px] text-muted-foreground">
             до уровня {user.level + 1}: {Math.max(0, next - user.xp)} XP
           </p>
         </div>
-        <div className="rounded-3xl border bg-card p-4 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Баланс
-          </p>
+        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
+          <div className="absolute right-2.5 top-2.5">
+            <HelpPopover
+              label="Подарочные баллы"
+              hint={`Подарочные баллы — валюта для получения подарков.\n\nНачисляются:\n+0.2 за публикацию подарка\n+0.8 когда твой подарок принят получателем\n+1 за приглашённого друга\n\nСписываются (замораживаются), когда забираешь чужой подарок. Если сделка отменена — балл возвращается.`}
+            />
+          </div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Баланс</p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-2xl font-semibold tracking-tight">{user.balance}</span>
             <span className="text-xs text-muted-foreground">баллов</span>
           </div>
-          <p className="mt-3 text-[11px] leading-tight text-muted-foreground">
-            🎁 на новые подарки
-          </p>
+          <p className="mt-3 text-[11px] leading-tight text-muted-foreground">🎁 на новые подарки</p>
         </div>
       </section>
+
 
       {/* Activity sub-tabs */}
       <section>
@@ -248,31 +265,39 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
           </div>
         ) : (
           <ul key={activity} className="achievements-list space-y-2">
-            {list.map((g) => (
-              <li
-                key={g.id}
-                className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
-              >
-                {g.image_url ? (
-                  <img
-                    src={g.image_url}
-                    alt={g.title}
-                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                    🎁
+            {list.map((g) =>
+              activity === "posted" ? (
+                <EditableActiveItem
+                  key={g.id}
+                  gift={g}
+                  onUpdated={(patch) =>
+                    setPosted((prev) => (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)))
+                  }
+                  onDeleted={() => setPosted((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
+                />
+              ) : (
+                <li
+                  key={g.id}
+                  className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
+                >
+                  {g.image_url ? (
+                    <img src={g.image_url} alt={g.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                      🎁
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{g.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{g.category}</p>
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{g.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{g.category}</p>
-                </div>
-              </li>
-            ))}
+                </li>
+              ),
+            )}
           </ul>
         )}
       </section>
+
 
       <div className="mt-8">
         <AlertDialog>
@@ -301,3 +326,170 @@ export function ProfileTab({ user, onUnreadAchievements }: Props) {
     </div>
   );
 }
+
+function HelpPopover({ label, hint }: { label: string; hint: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`Подробнее: ${label}`}
+        className="text-muted-foreground/80 transition hover:text-foreground"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <HelpCircle className="h-3.5 w-3.5" />
+      </PopoverTrigger>
+      <PopoverContent side="bottom" className="w-72 whitespace-pre-line text-xs leading-relaxed">
+        {hint}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function EditableActiveItem({
+  gift,
+  onUpdated,
+  onDeleted,
+}: {
+  gift: Gift;
+  onUpdated: (patch: Partial<Gift>) => void;
+  onDeleted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [title, setTitle] = useState(gift.title);
+  const [category, setCategory] = useState(gift.category);
+  const [description, setDescription] = useState(gift.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const updateFn = useServerFn(updateGift);
+  const deleteFn = useServerFn(deleteGift);
+  const canModify = gift.status === "available";
+
+  const handleSave = async () => {
+    if (!title.trim() || !category.trim()) {
+      toast.error("Заполни название и категорию");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateFn({
+        data: {
+          id: gift.id,
+          title: title.trim(),
+          category: category.trim(),
+          description: description.trim() || null,
+        },
+      });
+      onUpdated({
+        title: title.trim(),
+        category: category.trim(),
+        description: description.trim() || null,
+      });
+      toast.success("Подарок обновлён ✨");
+      setOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("GIFT_IN_DEAL")) toast.error("Нельзя изменить: подарок уже в сделке");
+      else toast.error("Не удалось сохранить", { description: msg });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteFn({ data: { id: gift.id } });
+      onDeleted();
+      toast.success("Подарок удалён");
+      setConfirmOpen(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("GIFT_IN_DEAL")) toast.error("Нельзя удалить: подарок уже в сделке");
+      else toast.error("Не удалось удалить", { description: msg });
+    }
+  };
+
+  return (
+    <li className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+      {gift.image_url ? (
+        <img src={gift.image_url} alt={gift.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+      ) : (
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{gift.title}</p>
+        <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
+      </div>
+      {canModify && (
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Редактировать подарок"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            aria-label="Удалить подарок"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Редактировать подарок</DialogTitle>
+            <DialogDescription>Изменения видны сразу всем пользователям</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`g-title-${gift.id}`}>Название</Label>
+              <Input id={`g-title-${gift.id}`} value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`g-cat-${gift.id}`}>Категория</Label>
+              <Input id={`g-cat-${gift.id}`} value={category} onChange={(e) => setCategory(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`g-desc-${gift.id}`}>Описание</Label>
+              <Textarea
+                id={`g-desc-${gift.id}`}
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+              Отмена
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Сохраняем…" : "Сохранить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Подарок «{gift.title}» исчезнет из ленты. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </li>
+  );
+}
+
