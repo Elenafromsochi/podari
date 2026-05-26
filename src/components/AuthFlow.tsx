@@ -10,12 +10,14 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  UserCheck,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
+import { supabase } from "@/integrations/supabase/client";
 import {
   startTelegramLogin,
   pollTelegramLogin,
@@ -25,9 +27,17 @@ import {
   loginWithPassword,
   confirmDeviceCode,
 } from "@/lib/password-auth.functions";
+import {
+  widgetSignIn,
+  widgetCompleteRegistration,
+} from "@/lib/telegram-widget.functions";
 import { getDeviceId, getDeviceLabel } from "@/lib/device-id";
+import {
+  TelegramLoginButton,
+  type TelegramWidgetPayload,
+} from "@/components/TelegramLoginButton";
 
-type Step = "intro" | "password" | "twofa" | "tg_code";
+type Step = "intro" | "password" | "twofa" | "tg_code" | "tg_register";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
