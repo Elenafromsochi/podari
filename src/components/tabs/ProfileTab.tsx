@@ -103,12 +103,13 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
   useEffect(() => {
     (async () => {
-      const [p, g, r] = await Promise.all([postedFn(), giftedFn(), receivedFn()]);
+      const [p, g, r, w] = await Promise.all([postedFn(), giftedFn(), receivedFn(), myWishesFn()]);
       setPosted((p as Gift[]) ?? []);
       setGifted((g as TxRow[]) ?? []);
       setReceived((r as TxRow[]) ?? []);
+      setMyWishes((w as MyWish[]) ?? []);
     })();
-  }, [postedFn, giftedFn, receivedFn]);
+  }, [postedFn, giftedFn, receivedFn, myWishesFn]);
 
   const toggleAch = () => {
     haptic("select");
