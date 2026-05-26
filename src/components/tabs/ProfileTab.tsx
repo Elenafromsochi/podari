@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy, BarChart3 } from "lucide-react";
+import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy, BarChart3, Copy, Send, Check } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useNavigate, Link } from "@tanstack/react-router";
@@ -238,6 +238,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         </div>
       </section>
 
+
+      {/* Пригласить друга — компактно */}
+      <InviteButtons userId={user.user_id} />
 
       {/* Загадать желание CTA */}
       {onCreateWish && (
@@ -581,4 +584,49 @@ function EditableActiveItem({
     </li>
   );
 }
+
+function InviteButtons({ userId }: { userId: string }) {
+  const [copied, setCopied] = useState(false);
+  const link = `https://podari.lovable.app/?ref=${userId}`;
+
+  const copy = async () => {
+    haptic("select");
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success("Ссылка скопирована 💚", { description: "Другу +1 балл, тебе +50 опыта" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Не удалось скопировать");
+    }
+  };
+
+  const shareTg = () => {
+    haptic("medium");
+    const text = "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚";
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    if (typeof window !== "undefined") window.open(url, "_blank");
+  };
+
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        onClick={shareTg}
+        className="flex items-center justify-center gap-1.5 rounded-2xl bg-lavender px-3 py-2.5 text-xs font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
+      >
+        <Send className="h-3.5 w-3.5" /> Пригласить в Telegram
+      </button>
+      <button
+        type="button"
+        onClick={copy}
+        className="flex items-center justify-center gap-1.5 rounded-2xl border bg-card px-3 py-2.5 text-xs font-semibold shadow-sm transition active:scale-[0.98]"
+      >
+        {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+        {copied ? "Скопировано" : "Скопировать ссылку"}
+      </button>
+    </div>
+  );
+}
+
 
