@@ -48,7 +48,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
       let q = supabase
         .from("gifts")
         .select("id,title,description,category,image_url,cost,owner_id,created_at")
-        .eq("status", "available")
+        .eq("status", "gifted")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false })
         .limit(40);
@@ -72,6 +72,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
         })),
       );
+
     })();
   }, []);
 
@@ -195,9 +196,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
       {/* Feed */}
       <section>
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Лента подарков</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Уже подарили</h2>
           <span className="text-xs text-muted-foreground">
-            {gifts ? `${filtered.length} активных` : ""}
+            {gifts ? `${filtered.length}` : ""}
           </span>
         </div>
 
@@ -209,12 +210,12 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-            Ничего не найдено 🌿
+            Пока никто ничего не подарил 🌱
           </div>
         ) : (
           <ul className="space-y-3">
             {filtered.map((g) => (
-              <SwipeGiftCard key={g.id} gift={g} onReserve={() => onPickGift(g.id)} />
+              <GiftedCard key={g.id} gift={g} />
             ))}
           </ul>
         )}
@@ -223,116 +224,54 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
   );
 }
 
-function SwipeGiftCard({ gift, onReserve }: { gift: Gift; onReserve: () => void }) {
-  const [dx, setDx] = useState(0);
-  const startX = useRef<number | null>(null);
-  const triggered = useRef(false);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    startX.current = e.clientX;
-    triggered.current = false;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (startX.current == null) return;
-    const d = Math.max(-20, Math.min(160, e.clientX - startX.current));
-    setDx(d);
-    if (!triggered.current && d > 110) {
-      triggered.current = true;
-      haptic("success");
-      setTimeout(() => {
-        setDx(0);
-        startX.current = null;
-        onReserve();
-      }, 120);
-    }
-  };
-  const onPointerEnd = () => {
-    if (!triggered.current) setDx(0);
-    startX.current = null;
-  };
-
-  const progress = Math.min(1, Math.max(0, dx / 110));
-
+function GiftedCard({ gift }: { gift: Gift }) {
   return (
-    <li className="relative overflow-hidden rounded-2xl">
-      {/* Swipe reveal layer */}
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-end rounded-2xl bg-gradient-to-r from-transparent via-mint/50 to-mint pr-5 text-mint-foreground"
-        style={{ opacity: progress }}
-      >
-        <span className="text-sm font-semibold">🔒 В резерв</span>
-      </div>
-
-      <article
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-        style={{
-          transform: `translateX(${dx}px)`,
-          transition: dx === 0 ? "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
-          touchAction: "pan-y",
-        }}
-        className="relative flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-sm"
-      >
-        <div className="flex gap-3">
-          {gift.image_url ? (
-            <img
-              src={gift.image_url}
-              alt={gift.title}
-              className="h-20 w-20 shrink-0 rounded-xl object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-              🎁
-            </div>
+    <li>
+      <article className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+        {gift.image_url ? (
+          <img
+            src={gift.image_url}
+            alt={gift.title}
+            className="h-20 w-20 shrink-0 rounded-xl object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+            🎁
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-semibold leading-tight">
+            {gift.title}
+          </div>
+          {gift.description && (
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              {gift.description}
+            </p>
           )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[15px] font-semibold leading-tight">
-              {gift.title}
-            </div>
-            {gift.description && (
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                {gift.description}
-              </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {gift.owner_id ? (
+              <Link
+                to="/user/$userId"
+                params={{ userId: gift.owner_id }}
+                onClick={() => haptic("light")}
+                className="font-medium text-foreground/80 hover:underline"
+              >
+                {gift.owner_name} →
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground/80">{gift.owner_name}</span>
             )}
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-              {gift.owner_id ? (
-                <Link
-                  to="/user/$userId"
-                  params={{ userId: gift.owner_id }}
-                  className="font-medium text-foreground/80 hover:underline"
-                >
-                  {gift.owner_name}
-                </Link>
-              ) : (
-                <span className="font-medium text-foreground/80">{gift.owner_name}</span>
-              )}
-              <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
-                ур. {gift.owner_level ?? 1}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                {gift.category}
-              </span>
-            </div>
+            <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
+              ур. {gift.owner_level ?? 1}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-mint/60 px-1.5 py-0.5 text-[10px] font-medium text-mint-foreground">
+              подарено
+            </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            haptic("success");
-            onReserve();
-          }}
-          className="w-full rounded-xl bg-mint py-2.5 text-sm font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98]"
-        >
-          🎁 Забрать за {gift.cost ?? 1} балл
-        </button>
-        <p className="text-center text-[10px] text-muted-foreground/70">
-          💡 свайп вправо для быстрого резерва
-        </p>
       </article>
     </li>
   );
 }
+
