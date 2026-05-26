@@ -43,18 +43,22 @@ interface Props {
   onGive: () => void;
   onReceive: () => void;
   onPickGift: (giftId: string) => void;
+  onCreateWish?: () => void;
+  onOpenWish?: (wishId: string) => void;
 }
 
-export function HomeTab({ userName, onGive, onReceive, onPickGift }: Props) {
+export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish, onOpenWish }: Props) {
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [query, setQuery] = useState("");
   const [listening, setListening] = useState(false);
+  const [feedTab, setFeedTab] = useState<"gifts" | "wishes">("gifts");
   const recRef = useRef<SR | null>(null);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
   const giveSub = useMemo(() => pickRandom(GIVE_SUBTITLES), []);
   const receiveSub = useMemo(() => pickRandom(RECEIVE_SUBTITLES), []);
   const feedTitle = useMemo(() => pickRandom(FEED_TITLES), []);
+  const wishesTitle = useMemo(() => pickRandom(WISH_FEED_TITLES), []);
 
   useEffect(() => {
     (async () => {
