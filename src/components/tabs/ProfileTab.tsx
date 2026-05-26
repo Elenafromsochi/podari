@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LogOut, Sparkles, Trophy } from "lucide-react";
+import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -10,9 +10,17 @@ import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
+  updateGift,
+  deleteGift,
 } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
 
 type Gift = {
   id: string;
