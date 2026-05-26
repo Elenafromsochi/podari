@@ -420,6 +420,19 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           </div>
 
           <div className="flex flex-col gap-3">
+            {/* Telegram Login Widget — быстрый вход в 1 клик */}
+            <div className="flex flex-col items-center gap-2">
+              <TelegramLoginButton onAuth={handleWidgetAuth} />
+            </div>
+
+            <div className="flex items-center gap-3 py-1">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                или
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
             <Button
               onClick={() => setStep("password")}
               className="h-14 rounded-2xl bg-mint text-base font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
