@@ -16,34 +16,40 @@ export type Database = {
     Tables: {
       auth_nonces: {
         Row: {
+          approved_at: string | null
           code: string | null
           consumed_at: string | null
           created_at: string
           expires_at: string
           nonce: string
           referrer_id: string | null
+          rejected_at: string | null
           telegram_first_name: string | null
           telegram_id: number | null
           telegram_username: string | null
         }
         Insert: {
+          approved_at?: string | null
           code?: string | null
           consumed_at?: string | null
           created_at?: string
           expires_at?: string
           nonce: string
           referrer_id?: string | null
+          rejected_at?: string | null
           telegram_first_name?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
         }
         Update: {
+          approved_at?: string | null
           code?: string | null
           consumed_at?: string | null
           created_at?: string
           expires_at?: string
           nonce?: string
           referrer_id?: string | null
+          rejected_at?: string | null
           telegram_first_name?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
