@@ -171,12 +171,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               telegram_id: from.id,
               telegram_username: from.username ?? null,
               telegram_first_name: from.first_name ?? null,
+              approved_at: new Date().toISOString(),
             })
             .eq("nonce", nonce);
 
-          await sendConfirmPrompt(chatId, nonce);
+          await sendLoginConfirmed(chatId);
           return Response.json({ ok: true });
         }
+
 
         await sendTgMessage(
           chatId,
