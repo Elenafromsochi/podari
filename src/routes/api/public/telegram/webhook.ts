@@ -112,15 +112,17 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                   telegram_id: from.id,
                   telegram_username: from.username ?? null,
                   telegram_first_name: from.first_name ?? null,
+                  approved_at: new Date().toISOString(),
                 });
               if (!nErr) {
                 await sendTgMessage(
                   chatId,
-                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку и подтверди вход:\n${APP_URL}/?login=${nonce}\n\nПосле входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
+                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку, ты уже вошёл:\n${APP_URL}/?login=${nonce}\n\nТебе зачислится +1 балл, а пригласившему +50 опыта.`,
                 );
-                await sendConfirmPrompt(chatId, nonce);
+                await sendLoginConfirmed(chatId);
                 return Response.json({ ok: true });
               }
+
             }
             await sendTgMessage(
               chatId,
