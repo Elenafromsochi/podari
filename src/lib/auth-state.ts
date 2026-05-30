@@ -1,6 +1,7 @@
 // Telegram-based auth wrapper over Supabase.
-// Реальный логин — через server function verifyTelegramCode (см. telegram-auth.functions.ts),
-// которая создаёт/находит supabase-пользователя по telegram_id и возвращает access/refresh токены.
+// Реальный логин — через completeTelegramLogin (см. telegram-auth.functions.ts):
+// пользователь подтверждает вход в боте, а серверная функция создаёт/находит
+// supabase-юзера по telegram_id и возвращает access/refresh токены.
 // Здесь — только утилиты загрузки/выхода и тип профиля.
 
 import { supabase } from "@/integrations/supabase/client";
