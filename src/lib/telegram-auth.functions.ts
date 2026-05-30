@@ -8,7 +8,7 @@ const BOT_USERNAME = "Podari_podarki_bot";
 const NONCE_TTL_MS = 5 * 60 * 1000;
 
 function makeNonce() {
-  return randomBytes(9).toString("base64url"); // ~12 chars, URL-safe
+  return randomBytes(9).toString("base64url");
 }
 
 function userPassword(tgId: number) {
@@ -22,7 +22,7 @@ function userEmail(tgId: number) {
   return `tg_${tgId}@tg.podari.local`;
 }
 
-/** Шаг 1: фронтенд просит nonce, открывает deep-link на бота. */
+/** Шаг 1: фронт просит nonce, открывает deep-link на бота. */
 export const startTelegramLogin = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
@@ -51,7 +51,7 @@ export const startTelegramLogin = createServerFn({ method: "POST" })
     };
   });
 
-/** Шаг 2: фронтенд опрашивает — пользователь уже нажал Start? */
+/** Шаг 2: фронт опрашивает статус подтверждения в боте. */
 export const pollTelegramLogin = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({ nonce: z.string().min(8).max(32) }).parse(input),
@@ -59,34 +59,30 @@ export const pollTelegramLogin = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: row } = await supabaseAdmin
       .from("auth_nonces")
-      .select("code, telegram_id, expires_at, consumed_at")
+      .select("telegram_id, expires_at, consumed_at, approved_at, rejected_at")
       .eq("nonce", data.nonce)
       .maybeSingle();
 
     if (!row) return { status: "not_found" as const };
     if (row.consumed_at) return { status: "consumed" as const };
+    if (row.rejected_at) return { status: "rejected" as const };
     if (new Date(row.expires_at).getTime() < Date.now())
       return { status: "expired" as const };
-    if (row.code && row.telegram_id)
-      return { status: "code_sent" as const };
+    if (row.approved_at) return { status: "approved" as const };
+    if (row.telegram_id) return { status: "opened" as const };
     return { status: "waiting" as const };
   });
 
-/** Шаг 3: пользователь ввёл код из Telegram — выдаём сессию. */
-export const verifyTelegramCode = createServerFn({ method: "POST" })
+/** Шаг 3: пользователь подтвердил вход в боте — выдаём сессию. */
+export const completeTelegramLogin = createServerFn({ method: "POST" })
   .inputValidator((input) =>
-    z
-      .object({
-        nonce: z.string().min(8).max(32),
-        code: z.string().regex(/^\d{4}$/),
-      })
-      .parse(input),
+    z.object({ nonce: z.string().min(8).max(32) }).parse(input),
   )
   .handler(async ({ data }) => {
     const { data: row, error: rowErr } = await supabaseAdmin
       .from("auth_nonces")
       .select(
-        "nonce, code, telegram_id, telegram_username, telegram_first_name, expires_at, consumed_at, referrer_id",
+        "nonce, telegram_id, telegram_username, telegram_first_name, expires_at, consumed_at, approved_at, rejected_at, referrer_id",
       )
       .eq("nonce", data.nonce)
       .maybeSingle();
@@ -97,10 +93,11 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     }
     if (!row) throw new Error("NONCE_NOT_FOUND");
     if (row.consumed_at) throw new Error("NONCE_CONSUMED");
+    if (row.rejected_at) throw new Error("NONCE_REJECTED");
     if (new Date(row.expires_at).getTime() < Date.now())
       throw new Error("NONCE_EXPIRED");
-    if (!row.code || !row.telegram_id) throw new Error("WAITING_FOR_TELEGRAM");
-    if (row.code !== data.code) throw new Error("WRONG_CODE");
+    if (!row.approved_at || !row.telegram_id)
+      throw new Error("NOT_APPROVED");
 
     const tgId = Number(row.telegram_id);
     const displayName =
@@ -108,7 +105,6 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     const email = userEmail(tgId);
     const password = userPassword(tgId);
 
-    // Try sign-in; if fails — create user.
     const anon = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_PUBLISHABLE_KEY!,
@@ -117,8 +113,9 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     let session = (await anon.auth.signInWithPassword({ email, password }))
       .data.session;
 
-    // Look up pending referral: сначала из nonce (ссылка из приложения), потом из webhook (deep-link бота)
-    let referredBy: string | null = (row as { referrer_id?: string | null }).referrer_id ?? null;
+    // Pending referral: nonce → webhook fallback
+    let referredBy: string | null =
+      (row as { referrer_id?: string | null }).referrer_id ?? null;
     if (!referredBy) {
       const { data: refRow } = await supabaseAdmin
         .from("telegram_referrals")
@@ -154,7 +151,6 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
       session = r.data.session;
     }
 
-    // Sync profile fields
     await supabaseAdmin
       .from("profiles")
       .update({
@@ -164,9 +160,7 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
       })
       .eq("user_id", session.user.id);
 
-    // Referral bonus — только для нового пользователя и только если referrer ≠ сам себе
     if (isNewUser && referredBy && referredBy !== session.user.id) {
-      // На случай, если handle_new_user не подтянул (не должно случаться, но страхуемся)
       await supabaseAdmin
         .from("profiles")
         .update({ referred_by: referredBy })
@@ -175,14 +169,12 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
       await supabaseAdmin.rpc("apply_referral_bonus", {
         _new_user: session.user.id,
       });
-      // Подчищаем pending-запись, чтобы не сработала повторно
       await supabaseAdmin
         .from("telegram_referrals")
         .delete()
         .eq("telegram_id", tgId);
     }
 
-    // Mark nonce consumed
     await supabaseAdmin
       .from("auth_nonces")
       .update({ consumed_at: new Date().toISOString() })
@@ -191,5 +183,6 @@ export const verifyTelegramCode = createServerFn({ method: "POST" })
     return {
       access_token: session.access_token,
       refresh_token: session.refresh_token,
+      is_new: isNewUser,
     };
   });
