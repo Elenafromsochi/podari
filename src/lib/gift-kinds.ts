@@ -35,7 +35,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "💼",
     label: "Своя услуга / время специалиста",
     shortLabel: "Услуги и время",
-    minLevel: 2,
+    minLevel: 1,
     hints: [
       "Часовая консультация по карьере и резюме",
       "Помогу собрать капсульный гардероб",
