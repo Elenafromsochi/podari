@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+const APP_URL = "https://podari.lovable.app";
+
 function deriveWebhookSecret(apiKey: string) {
   return createHash("sha256")
     .update(`telegram-webhook:${apiKey}`)
@@ -14,21 +16,40 @@ function safeEqual(a: string, b: string) {
   return A.length === B.length && timingSafeEqual(A, B);
 }
 
-async function sendTgMessage(chatId: number, text: string) {
+async function tgCall(method: string, body: Record<string, unknown>) {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
   const TELEGRAM_API_KEY = process.env.TELEGRAM_API_KEY;
   if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
     console.error("Telegram secrets missing");
     return;
   }
-  await fetch("https://connector-gateway.lovable.dev/telegram/sendMessage", {
+  await fetch(`https://connector-gateway.lovable.dev/telegram/${method}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "X-Connection-Api-Key": TELEGRAM_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify(body),
+  });
+}
+
+async function sendTgMessage(chatId: number, text: string) {
+  await tgCall("sendMessage", { chat_id: chatId, text });
+}
+
+async function sendConfirmPrompt(chatId: number, nonce: string) {
+  await tgCall("sendMessage", {
+    chat_id: chatId,
+    text: "🎁 Подари\nПодтверди вход в приложение:",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "✅ Это я", callback_data: `approve:${nonce}` },
+          { text: "🚫 Не я", callback_data: `reject:${nonce}` },
+        ],
+      ],
+    },
   });
 }
 
@@ -48,6 +69,89 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         }
 
         const update = await request.json();
+
+        // ── Inline-кнопки: подтверждение/отклонение входа ──
+        const cb = update.callback_query;
+        if (cb) {
+          const cbId: string = cb.id;
+          const fromId: number | undefined = cb.from?.id;
+          const data: string = cb.data ?? "";
+          const [action, nonce] = data.split(":");
+          const chatId: number | undefined = cb.message?.chat?.id;
+          const messageId: number | undefined = cb.message?.message_id;
+
+          if (!nonce || !fromId) {
+            await tgCall("answerCallbackQuery", { callback_query_id: cbId });
+            return Response.json({ ok: true });
+          }
+
+          const { data: row } = await supabaseAdmin
+            .from("auth_nonces")
+            .select("nonce, telegram_id, expires_at, consumed_at, approved_at, rejected_at")
+            .eq("nonce", nonce)
+            .maybeSingle();
+
+          if (!row || row.consumed_at || row.approved_at || row.rejected_at) {
+            await tgCall("answerCallbackQuery", {
+              callback_query_id: cbId,
+              text: "Эта ссылка уже использована",
+            });
+            return Response.json({ ok: true });
+          }
+          if (new Date(row.expires_at).getTime() < Date.now()) {
+            await tgCall("answerCallbackQuery", {
+              callback_query_id: cbId,
+              text: "Ссылка истекла, запроси новую",
+            });
+            return Response.json({ ok: true });
+          }
+          if (Number(row.telegram_id) !== fromId) {
+            await tgCall("answerCallbackQuery", {
+              callback_query_id: cbId,
+              text: "Эта ссылка не для тебя",
+            });
+            return Response.json({ ok: true });
+          }
+
+          if (action === "approve") {
+            await supabaseAdmin
+              .from("auth_nonces")
+              .update({ approved_at: new Date().toISOString() })
+              .eq("nonce", nonce);
+            await tgCall("answerCallbackQuery", {
+              callback_query_id: cbId,
+              text: "Готово ✅",
+            });
+            if (chatId && messageId) {
+              await tgCall("editMessageText", {
+                chat_id: chatId,
+                message_id: messageId,
+                text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
+              });
+            }
+          } else if (action === "reject") {
+            await supabaseAdmin
+              .from("auth_nonces")
+              .update({ rejected_at: new Date().toISOString() })
+              .eq("nonce", nonce);
+            await tgCall("answerCallbackQuery", {
+              callback_query_id: cbId,
+              text: "Вход отклонён",
+            });
+            if (chatId && messageId) {
+              await tgCall("editMessageText", {
+                chat_id: chatId,
+                message_id: messageId,
+                text: "🚫 Вход отклонён. Если это был не ты — всё в порядке.",
+              });
+            }
+          } else {
+            await tgCall("answerCallbackQuery", { callback_query_id: cbId });
+          }
+          return Response.json({ ok: true });
+        }
+
+        // ── Обычные сообщения ──
         const msg = update.message ?? update.edited_message;
         const text: string = msg?.text ?? "";
         const chatId: number | undefined = msg?.chat?.id;
@@ -57,7 +161,6 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true, ignored: true });
         }
 
-        // /start <param>  — param может быть nonce для логина, либо ref_<uuid> для реферала
         const m = text.match(/^\/start(?:\s+(\S+))?/);
         if (m) {
           const param = m[1];
@@ -77,17 +180,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                   { onConflict: "telegram_id" },
                 );
 
-              // Сразу выдаём код — чтобы пользователь не возвращался в приложение за новым nonce
               const { randomBytes } = await import("crypto");
               const nonce = randomBytes(9).toString("base64url");
-              const code = String(Math.floor(1000 + Math.random() * 9000));
               const { error: nErr } = await supabaseAdmin
                 .from("auth_nonces")
                 .insert({
                   nonce,
                   expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
                   referrer_id: refId,
-                  code,
                   telegram_id: from.id,
                   telegram_username: from.username ?? null,
                   telegram_first_name: from.first_name ?? null,
@@ -95,14 +195,15 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               if (!nErr) {
                 await sendTgMessage(
                   chatId,
-                  `Привет! 💚 Тебя пригласили в «Подари».\n\nТвой код для входа: ${code}\n\nОткрой ссылку и введи код: https://podari.lovable.app/?login=${nonce}\n\nКод действует 5 минут. После входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
+                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку и подтверди вход:\n${APP_URL}/?login=${nonce}\n\nПосле входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
                 );
+                await sendConfirmPrompt(chatId, nonce);
                 return Response.json({ ok: true });
               }
             }
             await sendTgMessage(
               chatId,
-              `Привет! 💚\nТебя пригласили в «Подари». Открой https://podari.lovable.app/ и войди через Telegram.`,
+              `Привет! 💚\nТебя пригласили в «Подари». Открой ${APP_URL}/ и нажми «Войти через Telegram».`,
             );
             return Response.json({ ok: true });
           }
@@ -116,10 +217,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           }
 
           const nonce = param;
-          // Find nonce
           const { data: row } = await supabaseAdmin
             .from("auth_nonces")
-            .select("nonce, expires_at, consumed_at")
+            .select("nonce, expires_at, consumed_at, approved_at, rejected_at")
             .eq("nonce", nonce)
             .maybeSingle();
 
@@ -130,33 +230,28 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             );
             return Response.json({ ok: true });
           }
-          if (row.consumed_at) {
+          if (row.consumed_at || row.approved_at || row.rejected_at) {
             await sendTgMessage(chatId, `Эта ссылка уже использована.`);
             return Response.json({ ok: true });
           }
           if (new Date(row.expires_at).getTime() < Date.now()) {
             await sendTgMessage(
               chatId,
-              `Срок ссылки истёк. Запроси новый код в приложении.`,
+              `Срок ссылки истёк. Запроси новый вход в приложении.`,
             );
             return Response.json({ ok: true });
           }
 
-          const code = String(Math.floor(1000 + Math.random() * 9000));
           await supabaseAdmin
             .from("auth_nonces")
             .update({
-              code,
               telegram_id: from.id,
               telegram_username: from.username ?? null,
               telegram_first_name: from.first_name ?? null,
             })
             .eq("nonce", nonce);
 
-          await sendTgMessage(
-            chatId,
-            `🎁 Подари\nТвой код для входа: ${code}\n\nВведи его на странице входа: https://podari.lovable.app/\n\nКод действует 5 минут.`,
-          );
+          await sendConfirmPrompt(chatId, nonce);
           return Response.json({ ok: true });
         }
 
