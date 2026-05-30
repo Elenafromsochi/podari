@@ -342,16 +342,16 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
         </div>
       )}
 
-      <div className="flex items-center gap-2 border-t bg-card px-3 py-3">
+      <div className="sticky bottom-0 z-10 flex items-center gap-2 border-t-2 border-primary/20 bg-card px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
-          placeholder="Напишите сообщение"
-          className="flex-1 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          placeholder="Напишите сообщение…"
+          className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        <Button size="icon" className="rounded-full" onClick={() => send(text)}>
-          <Send className="h-4 w-4" />
+        <Button size="icon" className="h-12 w-12 shrink-0 rounded-full shadow-md" onClick={() => send(text)}>
+          <Send className="h-5 w-5" />
         </Button>
       </div>
 
