@@ -63,86 +63,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         const update = await request.json();
 
-        // ── Inline-кнопки: подтверждение/отклонение входа ──
-        const cb = update.callback_query;
-        if (cb) {
-          const cbId: string = cb.id;
-          const fromId: number | undefined = cb.from?.id;
-          const data: string = cb.data ?? "";
-          const [action, nonce] = data.split(":");
-          const chatId: number | undefined = cb.message?.chat?.id;
-          const messageId: number | undefined = cb.message?.message_id;
-
-          if (!nonce || !fromId) {
-            await tgCall("answerCallbackQuery", { callback_query_id: cbId });
-            return Response.json({ ok: true });
-          }
-
-          const { data: row } = await supabaseAdmin
-            .from("auth_nonces")
-            .select("nonce, telegram_id, expires_at, consumed_at, approved_at, rejected_at")
-            .eq("nonce", nonce)
-            .maybeSingle();
-
-          if (!row || row.consumed_at || row.approved_at || row.rejected_at) {
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Эта ссылка уже использована",
-            });
-            return Response.json({ ok: true });
-          }
-          if (new Date(row.expires_at).getTime() < Date.now()) {
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Ссылка истекла, запроси новую",
-            });
-            return Response.json({ ok: true });
-          }
-          if (Number(row.telegram_id) !== fromId) {
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Эта ссылка не для тебя",
-            });
-            return Response.json({ ok: true });
-          }
-
-          if (action === "approve") {
-            await supabaseAdmin
-              .from("auth_nonces")
-              .update({ approved_at: new Date().toISOString() })
-              .eq("nonce", nonce);
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Готово ✅",
-            });
-            if (chatId && messageId) {
-              await tgCall("editMessageText", {
-                chat_id: chatId,
-                message_id: messageId,
-                text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
-              });
-            }
-          } else if (action === "reject") {
-            await supabaseAdmin
-              .from("auth_nonces")
-              .update({ rejected_at: new Date().toISOString() })
-              .eq("nonce", nonce);
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Вход отклонён",
-            });
-            if (chatId && messageId) {
-              await tgCall("editMessageText", {
-                chat_id: chatId,
-                message_id: messageId,
-                text: "🚫 Вход отклонён. Если это был не ты — всё в порядке.",
-              });
-            }
-          } else {
-            await tgCall("answerCallbackQuery", { callback_query_id: cbId });
-          }
+        // Колбэки больше не используем — авто-подтверждение по /start
+        if (update.callback_query) {
+          await tgCall("answerCallbackQuery", {
+            callback_query_id: update.callback_query.id,
+          });
           return Response.json({ ok: true });
         }
+
 
         // ── Обычные сообщения ──
         const msg = update.message ?? update.edited_message;
