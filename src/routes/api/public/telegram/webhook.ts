@@ -38,20 +38,13 @@ async function sendTgMessage(chatId: number, text: string) {
   await tgCall("sendMessage", { chat_id: chatId, text });
 }
 
-async function sendConfirmPrompt(chatId: number, nonce: string) {
+async function sendLoginConfirmed(chatId: number) {
   await tgCall("sendMessage", {
     chat_id: chatId,
-    text: "🎁 Подари\nПодтверди вход в приложение:",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: "✅ Это я", callback_data: `approve:${nonce}` },
-          { text: "🚫 Не я", callback_data: `reject:${nonce}` },
-        ],
-      ],
-    },
+    text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
   });
 }
+
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
@@ -70,86 +63,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         const update = await request.json();
 
-        // ── Inline-кнопки: подтверждение/отклонение входа ──
-        const cb = update.callback_query;
-        if (cb) {
-          const cbId: string = cb.id;
-          const fromId: number | undefined = cb.from?.id;
-          const data: string = cb.data ?? "";
-          const [action, nonce] = data.split(":");
-          const chatId: number | undefined = cb.message?.chat?.id;
-          const messageId: number | undefined = cb.message?.message_id;
-
-          if (!nonce || !fromId) {
-            await tgCall("answerCallbackQuery", { callback_query_id: cbId });
-            return Response.json({ ok: true });
-          }
-
-          const { data: row } = await supabaseAdmin
-            .from("auth_nonces")
-            .select("nonce, telegram_id, expires_at, consumed_at, approved_at, rejected_at")
-            .eq("nonce", nonce)
-            .maybeSingle();
-
-          if (!row || row.consumed_at || row.approved_at || row.rejected_at) {
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Эта ссылка уже использована",
-            });
-            return Response.json({ ok: true });
-          }
-          if (new Date(row.expires_at).getTime() < Date.now()) {
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Ссылка истекла, запроси новую",
-            });
-            return Response.json({ ok: true });
-          }
-          if (Number(row.telegram_id) !== fromId) {
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Эта ссылка не для тебя",
-            });
-            return Response.json({ ok: true });
-          }
-
-          if (action === "approve") {
-            await supabaseAdmin
-              .from("auth_nonces")
-              .update({ approved_at: new Date().toISOString() })
-              .eq("nonce", nonce);
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Готово ✅",
-            });
-            if (chatId && messageId) {
-              await tgCall("editMessageText", {
-                chat_id: chatId,
-                message_id: messageId,
-                text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
-              });
-            }
-          } else if (action === "reject") {
-            await supabaseAdmin
-              .from("auth_nonces")
-              .update({ rejected_at: new Date().toISOString() })
-              .eq("nonce", nonce);
-            await tgCall("answerCallbackQuery", {
-              callback_query_id: cbId,
-              text: "Вход отклонён",
-            });
-            if (chatId && messageId) {
-              await tgCall("editMessageText", {
-                chat_id: chatId,
-                message_id: messageId,
-                text: "🚫 Вход отклонён. Если это был не ты — всё в порядке.",
-              });
-            }
-          } else {
-            await tgCall("answerCallbackQuery", { callback_query_id: cbId });
-          }
+        // Колбэки больше не используем — авто-подтверждение по /start
+        if (update.callback_query) {
+          await tgCall("answerCallbackQuery", {
+            callback_query_id: update.callback_query.id,
+          });
           return Response.json({ ok: true });
         }
+
 
         // ── Обычные сообщения ──
         const msg = update.message ?? update.edited_message;
@@ -191,15 +112,17 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                   telegram_id: from.id,
                   telegram_username: from.username ?? null,
                   telegram_first_name: from.first_name ?? null,
+                  approved_at: new Date().toISOString(),
                 });
               if (!nErr) {
                 await sendTgMessage(
                   chatId,
-                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку и подтверди вход:\n${APP_URL}/?login=${nonce}\n\nПосле входа тебе зачислится +1 балл, а пригласившему +50 опыта.`,
+                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку, ты уже вошёл:\n${APP_URL}/?login=${nonce}\n\nТебе зачислится +1 балл, а пригласившему +50 опыта.`,
                 );
-                await sendConfirmPrompt(chatId, nonce);
+                await sendLoginConfirmed(chatId);
                 return Response.json({ ok: true });
               }
+
             }
             await sendTgMessage(
               chatId,
@@ -248,12 +171,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               telegram_id: from.id,
               telegram_username: from.username ?? null,
               telegram_first_name: from.first_name ?? null,
+              approved_at: new Date().toISOString(),
             })
             .eq("nonce", nonce);
 
-          await sendConfirmPrompt(chatId, nonce);
+          await sendLoginConfirmed(chatId);
           return Response.json({ ok: true });
         }
+
 
         await sendTgMessage(
           chatId,
