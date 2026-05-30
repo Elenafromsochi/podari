@@ -38,20 +38,13 @@ async function sendTgMessage(chatId: number, text: string) {
   await tgCall("sendMessage", { chat_id: chatId, text });
 }
 
-async function sendConfirmPrompt(chatId: number, nonce: string) {
+async function sendLoginConfirmed(chatId: number) {
   await tgCall("sendMessage", {
     chat_id: chatId,
-    text: "🎁 Подари\nПодтверди вход в приложение:",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: "✅ Это я", callback_data: `approve:${nonce}` },
-          { text: "🚫 Не я", callback_data: `reject:${nonce}` },
-        ],
-      ],
-    },
+    text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
   });
 }
+
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
