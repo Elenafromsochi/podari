@@ -113,7 +113,7 @@ export function ChatScreen({
       setMeId(myId);
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,image_url,owner_id")
+        .select("id,title,description,image_url,owner_id")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
