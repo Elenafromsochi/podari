@@ -262,9 +262,11 @@ export function ReceiveGiftFlow({
           ← Назад
         </button>
 
-        <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm">
-          🎉 У тебя есть подарочные баллы. Категории открываются по уровню — твой сейчас: <b>{userLevel}</b>.
-        </div>
+        {GIFT_KINDS.some((k) => userLevel < k.minLevel) && (
+          <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm">
+            🎉 У тебя есть подарочные баллы. Категории открываются по уровню — твой сейчас: <b>{userLevel}</b>.
+          </div>
+        )}
 
         <h2 className="mb-1 text-2xl font-semibold">Что бы тебе хотелось?</h2>
         <p className="mb-4 text-sm text-muted-foreground">
