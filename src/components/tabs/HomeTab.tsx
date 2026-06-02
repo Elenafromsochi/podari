@@ -205,7 +205,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
       </div>
 
       {feedTab === "gifts" ? (
-        <section>
+        <section data-tour="feed-gifts">
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Уже нашли хозяев</h2>
             <span className="text-xs text-muted-foreground">
@@ -232,7 +232,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           )}
         </section>
       ) : (
-        <section>
+        <section data-tour="feed-wishes">
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
           </div>
