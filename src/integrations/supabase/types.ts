@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          image_path: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auth_nonces: {
         Row: {
           approved_at: string | null
