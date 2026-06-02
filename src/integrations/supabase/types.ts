@@ -526,6 +526,10 @@ export type Database = {
     Functions: {
       apply_referral_bonus: { Args: { _new_user: string }; Returns: undefined }
       calc_level: { Args: { _xp: number }; Returns: number }
+      cancel_by_sender: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
       cancel_claim: { Args: { _transaction_id: string }; Returns: undefined }
       cancel_wish_claim: {
         Args: { _transaction_id: string }

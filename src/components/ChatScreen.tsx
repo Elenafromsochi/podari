@@ -15,8 +15,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  cancelBySender,
   cancelClaim,
   confirmHandover,
   declineHandover,
@@ -52,11 +54,15 @@ function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
     </span>
   );
 }
-type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
+type Gift = { id: string; title: string; description?: string | null; image_url: string | null; owner_id: string | null };
 
-const AUTO_MESSAGES = [
+const RECEIVER_HINTS = [
   "Мне понравился ваш подарок. Как могу его забрать? 😊",
-  "Расскажите подробнее про ваш подарок, а именно… 💬",
+  "Расскажите подробнее о вашем подарке, а именно… ",
+];
+const OWNER_HINTS = [
+  "Здравствуйте! Спасибо, что выбрали подарок 💚",
+  "Когда вам удобно его забрать?",
 ];
 
 
@@ -90,6 +96,7 @@ export function ChatScreen({
 
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
+  const cancelBySenderFn = useServerFn(cancelBySender);
   const sendMessageFn = useServerFn(sendChatMessage);
   const requestHandoverFn = useServerFn(requestHandover);
   const confirmHandoverFn = useServerFn(confirmHandover);
@@ -106,7 +113,7 @@ export function ChatScreen({
       setMeId(myId);
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,image_url,owner_id")
+        .select("id,title,description,image_url,owner_id")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
@@ -337,64 +344,132 @@ export function ChatScreen({
     }
   };
 
+  const handleCancelBySender = async () => {
+    if (cancelled || handedOver) return;
+    try {
+      await cancelBySenderFn({ data: { transaction_id: transactionId } });
+    } catch (e) {
+      toast.error("Не удалось отказаться", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+      return;
+    }
+    toast.success("Вы отказались от дарения", {
+      description: "Подарок снова в активных, баллы возвращены получателю",
+    });
+    setTimeout(() => navigate({ to: "/cabinet" }), 800);
+  };
 
+  const hints = isOwner ? OWNER_HINTS : RECEIVER_HINTS;
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-background">
-      <div className="flex items-center gap-3 border-b px-4 py-3">
-        <button onClick={onBack} className="text-sm text-muted-foreground underline-offset-4 hover:underline">←</button>
-        {gift?.image_url ? (
-          <img src={gift.image_url} alt={gift.title} className="h-10 w-10 rounded-lg object-cover" />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">🎁</div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">
-            {isOwner ? "Чат с получателем" : "Чат с дарителем"}
-            {partner && (
+      {/* Шапка */}
+      <div className="border-b bg-card/60 px-4 pb-3 pt-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            aria-label="Назад"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-base text-muted-foreground transition hover:bg-muted"
+          >
+            ←
+          </button>
+          {gift?.image_url ? (
+            <img src={gift.image_url} alt={gift.title} className="h-11 w-11 rounded-xl object-cover" />
+          ) : (
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-semibold">
+              {isOwner ? "Получатель" : "Даритель"}
+              {partner && (
+                <>
+                  {": "}
+                  <Link
+                    to="/user/$userId"
+                    params={{ userId: partner.id }}
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    {partner.name}
+                  </Link>
+                </>
+              )}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              🎁 {gift?.title ?? "Подарок"}
+              {gift?.description ? ` — ${gift.description}` : ""}
+            </div>
+          </div>
+        </div>
+
+        {/* Кнопки действия по роли */}
+        {!cancelled && !handedOver && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {isOwner ? (
               <>
-                {": "}
-                <Link
-                  to="/user/$userId"
-                  params={{ userId: partner.id }}
-                  className="text-primary underline-offset-2 hover:underline"
+                <Button
+                  size="sm"
+                  disabled={!!handoverRequestedAt}
+                  onClick={handleRequestHandover}
+                  className="h-9 flex-1 rounded-full bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
                 >
-                  {partner.name}
-                </Link>
+                  <Check className="mr-1 h-4 w-4" />
+                  {handoverRequestedAt ? "Ожидаем подтверждения…" : "Подтвердить передачу"}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-9 flex-1 rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
+                    >
+                      <X className="mr-1 h-4 w-4" /> Отказаться от дарения
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Отказаться от дарения?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Подарок снова станет активным, а замороженные баллы вернутся получателю.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Отмена</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleCancelBySender}>Подтвердить</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-9 w-full rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
+                  >
+                    <X className="mr-1 h-4 w-4" /> Отказаться от подарка
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Отказаться от подарка?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Замороженные баллы вернутся вам, а подарок снова станет доступным другим.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCancel}>Отказаться</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
-          <div className="truncate text-xs text-muted-foreground">{gift?.title ?? "Подарок"}</div>
-        </div>
-        {isOwner ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={handedOver || cancelled || !!handoverRequestedAt}
-            onClick={handleRequestHandover}
-            className="rounded-full"
-          >
-            <Check className="h-4 w-4" />
-            {handedOver
-              ? "Получено"
-              : handoverRequestedAt
-                ? "Ожидаем..."
-                : "Подтвердить получение"}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={cancelled || handedOver}
-            onClick={handleCancel}
-            className="rounded-full"
-          >
-            <X className="h-4 w-4" />
-            {cancelled ? "Отказано" : "Отказаться"}
-          </Button>
         )}
       </div>
 
+      {/* Сообщения: я — зелёный с белым текстом, собеседник — белый с тёмным */}
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">
@@ -403,8 +478,10 @@ export function ChatScreen({
         )}
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.from === "me" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
-              m.from === "me" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+              m.from === "me"
+                ? "bg-emerald-600 text-white"
+                : "bg-card text-foreground border"
             }`}>
               <Linkified text={m.text} isMe={m.from === "me"} />
             </div>
@@ -412,12 +489,20 @@ export function ChatScreen({
         ))}
       </div>
 
-      {!isOwner && !handedOver && !cancelled && (
+      {/* Подсказки готовых сообщений */}
+      {!handedOver && !cancelled && (
         <div className="flex gap-2 overflow-x-auto px-4 pb-2">
-          {AUTO_MESSAGES.map((s) => (
+          {hints.map((s) => (
             <button
               key={s}
-              onClick={() => send(s)}
+              onClick={() => {
+                // если шаблон заканчивается на "…" — даём пользователю дописать
+                if (s.trim().endsWith("…")) {
+                  setText(s);
+                } else {
+                  send(s);
+                }
+              }}
               disabled={!chatId}
               className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
             >
@@ -427,18 +512,23 @@ export function ChatScreen({
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 flex items-center gap-2 border-t-2 border-primary/20 bg-card px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
+      <div className="sticky bottom-0 z-10 flex items-center gap-2 border-t-2 border-emerald-600/30 bg-card px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
           placeholder="Напишите сообщение…"
-          className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
         />
-        <Button size="icon" className="h-12 w-12 shrink-0 rounded-full shadow-md" onClick={() => send(text)}>
+        <Button
+          size="icon"
+          className="h-12 w-12 shrink-0 rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700"
+          onClick={() => send(text)}
+        >
           <Send className="h-5 w-5" />
         </Button>
       </div>
+
 
 
       <AlertDialog open={showReceiverConfirm} onOpenChange={setShowReceiverConfirm}>
