@@ -149,7 +149,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
             <Sparkles className="h-8 w-8 text-peach-foreground" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Вход в «Подари» 🎁
+            Выбери свой первый подарок 🎁
           </h1>
           <p className="text-balance text-sm text-muted-foreground">
             Один клик — подтверждение в Telegram-боте.
@@ -159,7 +159,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
         <div className="flex flex-col items-center gap-3">
           {phase === "idle" && (
             <Button size="lg" className="w-full" onClick={startLogin}>
-              Войти через Telegram
+              Авторизоваться через Телеграм
             </Button>
           )}
 
