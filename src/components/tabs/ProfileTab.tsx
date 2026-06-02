@@ -190,6 +190,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       </section>
 
 
+      <div data-tour="profile-zone">
       {/* Мои желания */}
       <section className="mb-5">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
