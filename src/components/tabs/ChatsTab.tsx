@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Search } from "lucide-react";
 import { getMyChats } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
