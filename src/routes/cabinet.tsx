@@ -394,8 +394,10 @@ function CabinetPage() {
         </AlertDialog>
       </div>
     </div>
+    </GlobalChrome>
   );
 }
+
 
 function ChatGroup({
   title,
