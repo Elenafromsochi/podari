@@ -18,7 +18,7 @@ import {
 import { getMyWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,14 +48,8 @@ type Gift = {
 type TxRow = { id: string; status: string; gift: Gift | null };
 type ActivityKey = "posted" | "gifted" | "received";
 
-// Уровневая шкала из ТЗ кабинета
-const LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1700, 2500];
-function nextLevelProgress(xp: number, level: number) {
-  const cur = LEVEL_THRESHOLDS[level - 1] ?? 0;
-  const next = LEVEL_THRESHOLDS[level] ?? cur + 1000;
-  const pct = Math.min(100, Math.max(0, ((xp - cur) / (next - cur)) * 100));
-  return { pct, next };
-}
+// Правила XP/уровней теперь живут в поповере на верхней плашке (AppHeader).
+
 
 interface Props {
   user: UserProfile;
@@ -139,7 +133,8 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
     }
   };
 
-  const { pct, next } = nextLevelProgress(user.xp, user.level);
+
+
 
   const giftsFor = (k: ActivityKey): Gift[] => {
     if (k === "posted") return (posted ?? []).filter((g) => g.status !== "gifted");
