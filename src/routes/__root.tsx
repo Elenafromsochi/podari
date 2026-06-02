@@ -123,6 +123,7 @@ function RootComponent() {
       <Outlet />
       <GlobalNotifications />
       <LevelUpModal />
+      <TourOverlay />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
 
