@@ -130,20 +130,37 @@ export function AppHeader({ user }: Props) {
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="shrink-0 text-[10.5px] font-medium text-muted-foreground">
+            <span className="relative shrink-0 text-[10.5px] font-medium text-muted-foreground">
               {user.xp} XP
+              {xpFx.map((f) => (
+                <span
+                  key={f.id}
+                  className={`balance-fx absolute left-1/2 -top-1 text-[11px] font-semibold ${f.positive ? "text-emerald-600" : "text-rose-500"}`}
+                >
+                  {f.text}
+                </span>
+              ))}
             </span>
             <InfoDot label="Опыт (XP)" content={XP_INFO} />
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 rounded-xl bg-mint/50 px-2 py-1 text-mint-foreground">
+        <div className="relative flex shrink-0 items-center gap-1 rounded-xl bg-mint/50 px-2 py-1 text-mint-foreground">
           <span className="text-sm">🎁</span>
           <span className="text-[13px] font-semibold tabular-nums">
             {Number(user.balance).toFixed(1)}
           </span>
           <InfoDot label="Подарочные баллы" content={BALANCE_INFO} />
+          {balFx.map((f) => (
+            <span
+              key={f.id}
+              className={`balance-fx absolute left-1/2 -top-2 text-[11px] font-semibold ${f.positive ? "text-emerald-600" : "text-rose-500"}`}
+            >
+              {f.text}
+            </span>
+          ))}
         </div>
+
       </div>
     </header>
   );
