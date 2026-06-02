@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BottomNav, type AppTab } from "@/components/BottomNav";
+import { AppHeader } from "@/components/AppHeader";
 import { HomeTab } from "@/components/tabs/HomeTab";
 import { ProfileTab } from "@/components/tabs/ProfileTab";
 import { ChatsTab } from "@/components/tabs/ChatsTab";
