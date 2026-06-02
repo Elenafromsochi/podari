@@ -82,6 +82,7 @@ function Index() {
       if (!mounted) return;
       setUser(u);
       setAuthChecked(true);
+      if (u) startTourForUser(u.user_id, u.xp, false);
     })();
     if (typeof window !== "undefined") {
       const giftId = localStorage.getItem(ACTIVE_CHAT_KEY);
