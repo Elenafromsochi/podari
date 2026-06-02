@@ -12,8 +12,8 @@ import { getHomeStats } from "@/lib/cozy.functions";
 import {
   pickRandom,
   HOME_TAGLINES,
-  GIVE_SUBTITLES,
-  RECEIVE_SUBTITLES,
+  GIVE_EXAMPLES,
+  RECEIVE_EXAMPLES,
 } from "@/lib/random-copy";
 
 type Gift = {
