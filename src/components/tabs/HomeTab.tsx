@@ -97,9 +97,6 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           <h1 className="text-2xl font-semibold tracking-tight">{userName}</h1>
           <p className="mt-1 text-xs leading-snug text-muted-foreground">{tagline}</p>
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-peach shadow-sm">
-          <Sparkles className="h-5 w-5 text-peach-foreground" />
-        </div>
       </header>
 
       {/* Action duo — сразу под приветствием */}
