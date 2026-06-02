@@ -58,7 +58,20 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
           <Skeleton className="h-24 w-full rounded-2xl" />
           <Skeleton className="h-24 w-full rounded-2xl" />
         </div>
-      ) : wishes.length === 0 ? (
+      ) : (
+        (() => {
+          const q = (searchQuery ?? "").trim().toLowerCase();
+          const list = q
+            ? wishes.filter(
+                (w) =>
+                  w.title.toLowerCase().includes(q) ||
+                  (w.description && w.description.toLowerCase().includes(q)) ||
+                  w.owner_name.toLowerCase().includes(q) ||
+                  w.category.toLowerCase().includes(q),
+              )
+            : wishes;
+          if (list.length === 0) {
+            return (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
           Пока никто ничего не пожелал. Будь первым ✨
         </div>
