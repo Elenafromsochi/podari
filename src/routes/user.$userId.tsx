@@ -233,6 +233,54 @@ function UserProfilePage() {
           </ul>
         )}
       </section>
+
+      <section className="space-y-3">
+        <h2 className="pt-2 text-lg font-semibold tracking-tight">Загаданные желания</h2>
+        {wishes === null ? (
+          <Skeleton className="h-24 w-full rounded-2xl" />
+        ) : wishes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Пока ничего не загадал.</p>
+        ) : (
+          <ul className="space-y-3">
+            {wishes.map((w) => (
+              <li key={w.id}>
+                <article className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+                  {w.image_url ? (
+                    <img
+                      src={w.image_url}
+                      alt={w.title}
+                      className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-3xl">
+                      ✨
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[15px] font-semibold leading-tight">
+                      {w.title}
+                    </div>
+                    {w.description && (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {w.description}
+                      </p>
+                    )}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                        {w.category}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
+                        загадано
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
