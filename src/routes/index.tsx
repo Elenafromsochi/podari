@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { AppShell } from "@/components/AppShell";
+import { GlobalChrome } from "@/components/GlobalChrome";
+
 
 import { GiveGiftChips } from "@/components/GiveGiftChips";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
