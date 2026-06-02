@@ -18,17 +18,6 @@ type ChatItem = {
 
 type Filter = "givers" | "receivers" | "archive";
 
-type SR = {
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onend: (() => void) | null;
-  onerror: ((e: unknown) => void) | null;
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-};
-
 function timeAgo(iso?: string | null) {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
