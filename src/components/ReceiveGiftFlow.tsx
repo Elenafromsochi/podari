@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
 
 
