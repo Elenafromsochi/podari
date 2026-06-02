@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
+import { emitTour } from "@/lib/tour";
 
 
 function timeAgo(iso?: string | null): string {
