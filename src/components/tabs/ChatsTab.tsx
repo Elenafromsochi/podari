@@ -74,13 +74,7 @@ export function ChatsTab() {
     return [...archiveG, ...archiveR];
   }, [filter, givers, receivers, archiveG, archiveR]);
 
-  const q = query.trim().toLowerCase();
-  const list = q
-    ? base.filter(
-        (c) =>
-          c.gift_title.toLowerCase().includes(q) || c.other_name.toLowerCase().includes(q),
-      )
-    : base;
+  const list = base;
 
   const loading =
     (filter === "givers" && !givers) || (filter === "receivers" && !receivers);
