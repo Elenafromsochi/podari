@@ -88,22 +88,6 @@ export function ChatsTab() {
         </p>
       </header>
 
-      {/* Search */}
-      <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            filter === "archive"
-              ? "Глубокий поиск по архиву…"
-              : "Умный поиск по потребностям…"
-          }
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-        />
-      </div>
-
-
       {/* Segmented control */}
       <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
         {([
