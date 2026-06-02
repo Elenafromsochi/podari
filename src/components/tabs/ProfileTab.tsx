@@ -62,7 +62,10 @@ interface Props {
   onUnreadAchievements?: (n: number) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;
+  onGive?: () => void;
+  onReceive?: () => void;
 }
+
 
 type MyWish = {
   id: string;
@@ -72,7 +75,7 @@ type MyWish = {
   status: string;
 };
 
-export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish }: Props) {
+export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish, onGive, onReceive }: Props) {
   const navigate = useNavigate();
   const [achOpen, setAchOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityKey>("posted");
