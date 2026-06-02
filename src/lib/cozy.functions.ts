@@ -148,14 +148,6 @@ export const claimGift = createServerFn({ method: "POST" })
       failOp("CLAIM_FAILED", error);
     }
     const first = Array.isArray(rows) ? rows[0] : rows;
-    if (first?.chat_id) {
-      const { error: messageError } = await supabase.from("messages").insert({
-        chat_id: first.chat_id as string,
-        sender_id: userId,
-        content: INITIAL_CHAT_MESSAGE,
-      });
-      if (messageError) failOp("MESSAGE_SEND_FAILED", messageError);
-    }
     return {
       transaction_id: first?.transaction_id as string,
       chat_id: first?.chat_id as string,
