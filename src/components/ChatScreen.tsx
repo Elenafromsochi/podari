@@ -108,6 +108,10 @@ export function ChatScreen({
   const cancelled = txStatus === "cancelled";
 
   useEffect(() => {
+    emitTour("chat-opened");
+  }, []);
+
+  useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       const myId = u.user?.id ?? null;
