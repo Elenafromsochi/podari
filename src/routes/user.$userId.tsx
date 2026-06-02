@@ -48,6 +48,7 @@ function UserProfilePage() {
   const [level, setLevel] = useState<number>(1);
   const [active, setActive] = useState<Gift[] | null>(null);
   const [given, setGiven] = useState<Gift[] | null>(null);
+  const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -69,6 +70,14 @@ function UserProfilePage() {
       const rows = (data as Gift[]) ?? [];
       setActive(rows.filter((g) => g.status === "available"));
       setGiven(rows.filter((g) => g.status === "gifted"));
+
+      const { data: wRows } = await supabase
+        .from("wishes")
+        .select("id,title,description,image_url,category")
+        .eq("owner_id", userId)
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+      setWishes((wRows as Wish[]) ?? []);
     })();
   }, [userId]);
 
