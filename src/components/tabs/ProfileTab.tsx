@@ -568,6 +568,7 @@ function InviteRow({
     <section className="mb-5 rounded-3xl border bg-card p-3 shadow-sm">
       <button
         type="button"
+        data-tour="invite-btn"
         onClick={shareTg}
         className="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
       >
