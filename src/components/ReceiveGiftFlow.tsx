@@ -296,6 +296,7 @@ export function ReceiveGiftFlow({
                   setKind(k.id);
                   setCategory(null);
                   setStep("categories");
+                  emitTour("kind-picked");
                 }}
                 aria-disabled={locked}
                 className={`relative rounded-2xl border bg-card p-4 text-left shadow-sm transition ${
