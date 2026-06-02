@@ -49,8 +49,16 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
-  const giveSub = useMemo(() => pickRandom(GIVE_SUBTITLES), []);
-  const receiveSub = useMemo(() => pickRandom(RECEIVE_SUBTITLES), []);
+  const [giveIdx, setGiveIdx] = useState(() => Math.floor(Math.random() * GIVE_EXAMPLES.length));
+  const [receiveIdx, setReceiveIdx] = useState(() => Math.floor(Math.random() * RECEIVE_EXAMPLES.length));
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setGiveIdx((i) => (i + 1) % GIVE_EXAMPLES.length);
+      setReceiveIdx((i) => (i + 1) % RECEIVE_EXAMPLES.length);
+    }, 2200);
+    return () => clearInterval(t);
+  }, []);
 
   // Лента уже подаренных подарков
   useEffect(() => {
