@@ -128,3 +128,15 @@
   animation: blurReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Всплывающие изменения баланса / опыта */
+@keyframes balanceFx {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.9); }
+  15%  { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -28px) scale(1); }
+}
+.balance-fx {
+  animation: balanceFx 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+
