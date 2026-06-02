@@ -318,7 +318,7 @@ export function ReceiveGiftFlow({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query && setStep("search")}
-            placeholder="Или опиши голосом, что тебе нужно…"
+            placeholder="Опиши, что тебе нужно…"
             className="flex-1 bg-transparent text-sm outline-none"
           />
           <button
