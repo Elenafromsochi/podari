@@ -377,6 +377,7 @@ export function ReceiveGiftFlow({
                   onClick={() => {
                     setCategory(cat);
                     setStep("feed");
+                    emitTour("subcat-picked");
                   }}
                   className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent"
                 >
