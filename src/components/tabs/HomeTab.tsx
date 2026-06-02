@@ -163,7 +163,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
 
       {/* Жизнь сервиса — компактная панель статистики */}
       {stats && (
-        <section className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
+        <section data-tour="home-stats" className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
           <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Жизнь сервиса
           </h2>
