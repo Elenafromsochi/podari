@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart, Search } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WishesFeed } from "@/components/WishesFeed";
