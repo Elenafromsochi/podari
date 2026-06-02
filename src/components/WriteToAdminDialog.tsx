@@ -83,6 +83,7 @@ export function WriteToAdminButton() {
       <DialogTrigger asChild>
         <button
           type="button"
+          data-tour="admin-btn"
           onClick={() => haptic("select")}
           className="inline-flex items-center gap-1.5 rounded-full bg-lavender/60 px-3 py-1.5 text-xs font-medium text-lavender-foreground transition active:scale-95"
         >
