@@ -208,6 +208,48 @@ export const cancelClaim = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Cancel by sender (даритель отказывается от дарения) ----------
+export const cancelBySender = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ transaction_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("cancel_by_sender", {
+      _transaction_id: data.transaction_id,
+    });
+    if (error) failOp("SENDER_CANCEL_FAILED", error);
+    return { ok: true };
+  });
+
+// ---------- Home stats (счётчики на главной, кэш 1 час) ----------
+type HomeStats = { active_gifts: number; gifted_total: number; wishes_fulfilled: number };
+const homeStatsCache: { value: HomeStats | null; at: number } = { value: null, at: 0 };
+
+export const getHomeStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<HomeStats> => {
+    const now = Date.now();
+    if (homeStatsCache.value && now - homeStatsCache.at < 60 * 60 * 1000) {
+      return homeStatsCache.value;
+    }
+    const { supabase } = context;
+    const [a, g, w] = await Promise.all([
+      supabase.from("gifts").select("id", { count: "exact", head: true }).eq("status", "available"),
+      supabase.from("gifts").select("id", { count: "exact", head: true }).eq("status", "gifted"),
+      supabase.from("wishes").select("id", { count: "exact", head: true }).eq("status", "fulfilled"),
+    ]);
+    const value: HomeStats = {
+      active_gifts: a.count ?? 0,
+      gifted_total: g.count ?? 0,
+      wishes_fulfilled: w.count ?? 0,
+    };
+    homeStatsCache.value = value;
+    homeStatsCache.at = now;
+    return value;
+  });
+
 // ---------- Review ----------
 export const submitReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
