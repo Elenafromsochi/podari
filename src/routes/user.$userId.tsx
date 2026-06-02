@@ -181,7 +181,7 @@ function UserProfilePage() {
                         disabled={claiming === g.id}
                         onClick={() => handleClaim(g.id)}
                       >
-                        {claiming === g.id ? "Забираем…" : "Забрать подарок"}
+                        {claiming === g.id ? "Получаем…" : "Получить подарок"}
                       </Button>
                     </div>
                   </article>

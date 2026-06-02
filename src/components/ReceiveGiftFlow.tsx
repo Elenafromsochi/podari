@@ -189,7 +189,7 @@ export function ReceiveGiftFlow({
         className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
         size="sm"
       >
-        🎁 Забрать за {g.cost ?? 1} балл
+        🎁 Получить за {g.cost ?? 1} балл
       </Button>
     </Card>
   );
