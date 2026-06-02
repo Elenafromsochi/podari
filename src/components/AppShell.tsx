@@ -90,8 +90,11 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
             onUnreadAchievements={setAchievementsBadge}
             onCreateWish={onCreateWish}
             onOpenWish={onOpenWish}
+            onGive={onGive}
+            onReceive={onReceive}
           />
         )}
+
         {tab === "chats" && <ChatsTab />}
       </div>
 

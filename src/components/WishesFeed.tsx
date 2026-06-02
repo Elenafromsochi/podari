@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LevelBadge } from "@/components/LevelBadge";
+
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles } from "lucide-react";
@@ -92,9 +94,8 @@ export function WishesFeed({ onOpen, onCreate }: Props) {
                     <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold text-lavender-foreground">
                       {w.owner_name}
                     </span>
-                    <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
-                      ур. {w.owner_level}
-                    </span>
+                    <LevelBadge level={w.owner_level} />
+
                     <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                       {w.category}
                     </span>

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, HelpCircle, LogOut, Pencil, Sparkles, Trash2, Trophy, BarChart3, Copy, Send, Check } from "lucide-react";
+import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useNavigate, Link } from "@tanstack/react-router";
 import type { UserProfile } from "@/lib/auth-state";
 import { signOut } from "@/lib/auth-state";
 import { getMyRoles } from "@/lib/roles.functions";
+
 import { Achievements, useAchievements } from "@/components/Achievements";
 import {
   getMyPostedGifts,
@@ -17,7 +18,7 @@ import {
 import { getMyWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,21 +48,18 @@ type Gift = {
 type TxRow = { id: string; status: string; gift: Gift | null };
 type ActivityKey = "posted" | "gifted" | "received";
 
-// Уровневая шкала из ТЗ кабинета
-const LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1700, 2500];
-function nextLevelProgress(xp: number, level: number) {
-  const cur = LEVEL_THRESHOLDS[level - 1] ?? 0;
-  const next = LEVEL_THRESHOLDS[level] ?? cur + 1000;
-  const pct = Math.min(100, Math.max(0, ((xp - cur) / (next - cur)) * 100));
-  return { pct, next };
-}
+// Правила XP/уровней теперь живут в поповере на верхней плашке (AppHeader).
+
 
 interface Props {
   user: UserProfile;
   onUnreadAchievements?: (n: number) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;
+  onGive?: () => void;
+  onReceive?: () => void;
 }
+
 
 type MyWish = {
   id: string;
@@ -71,7 +69,7 @@ type MyWish = {
   status: string;
 };
 
-export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish }: Props) {
+export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish, onGive, onReceive }: Props) {
   const navigate = useNavigate();
   const [achOpen, setAchOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityKey>("posted");
@@ -135,7 +133,8 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
     }
   };
 
-  const { pct, next } = nextLevelProgress(user.xp, user.level);
+
+
 
   const giftsFor = (k: ActivityKey): Gift[] => {
     if (k === "posted") return (posted ?? []).filter((g) => g.status !== "gifted");
@@ -145,32 +144,20 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   const loaded = posted && gifted && received;
   const list = giftsFor(activity);
 
-  const initial = (user.display_name || "?").trim().charAt(0).toUpperCase();
-
   return (
-    <div className="mx-auto w-full max-w-md px-5 pb-6 pt-7">
-      {/* Header */}
-      <section className="mb-4 rounded-3xl bg-gradient-to-br from-lavender/60 via-peach/40 to-mint/40 p-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background text-2xl font-semibold shadow-sm">
-            {initial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{user.display_name}</p>
-            {user.telegram_username && (
-              <p className="truncate text-xs text-muted-foreground">@{user.telegram_username}</p>
-            )}
-            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> Уровень {user.level}
-              <HelpPopover
-                label="Уровень"
-                hint={`Уровень растёт по мере накопления Опыта и открывает новые категории подарков.\n\n1 уровень — 0–199 XP\nДоступно: вещи\n\n2 уровень — 200–499 XP\nОткрывается: услуги, время специалистов, гайды и инфопродукты\n\n3 уровень — 500–999 XP\nОткрывается: мероприятия и совместные активности\n\n4 уровень — 1000–1699 XP\nОткрывается: премиальные подарки и эксклюзивные предложения\n\n5 уровень — 1700–2499 XP\nОткрывается: всё доступно, статус амбассадора сообщества`}
-              />
-            </div>
+    <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
+      {user.telegram_username && (
+        <p className="mb-3 text-xs text-muted-foreground">@{user.telegram_username}</p>
+      )}
 
-          </div>
-        </div>
-      </section>
+      {/* Пригласить друга + быстрые действия */}
+      <InviteRow
+        userId={user.user_id}
+        level={user.level}
+        onGive={onGive}
+        onReceive={onReceive}
+        onCreateWish={onCreateWish}
+      />
 
       {/* Achievements accordion */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
@@ -202,65 +189,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         )}
       </section>
 
-      <section className="mb-5 grid grid-cols-2 gap-3">
-        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
-          <div className="absolute right-2.5 top-2.5">
-            <HelpPopover
-              label="Опыт"
-              hint={`За каждое действие начисляются баллы Опыта:\n+20 за публикацию подарка\n+10 за бронирование\n+80 за вручённый подарок\n+5 или +20 за отзыв\n+50 за приглашённого друга\n\nОпыт нельзя потратить — он копится и поднимает уровень.`}
-            />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Опыт</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-2xl font-semibold tracking-tight">{user.xp}</span>
-            <span className="text-xs text-muted-foreground">XP</span>
-          </div>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-1.5 text-[10.5px] text-muted-foreground">
-            до уровня {user.level + 1}: {Math.max(0, next - user.xp)} XP
-          </p>
-        </div>
-        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
-          <div className="absolute right-2.5 top-2.5">
-            <HelpPopover
-              label="Подарочные баллы"
-              hint={`Подарочные баллы — валюта для получения подарков.\n\nНачисляются:\n+0.2 за публикацию подарка\n+0.8 когда твой подарок принят получателем\n+1 новому другу при регистрации по твоему приглашению (тебе за приглашение идёт только опыт)\n\nСписываются (замораживаются), когда забираешь чужой подарок. Если сделка отменена — балл возвращается.`}
-            />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Баланс</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-2xl font-semibold tracking-tight">{user.balance}</span>
-            <span className="text-xs text-muted-foreground">баллов</span>
-          </div>
-          <p className="mt-3 text-[11px] leading-tight text-muted-foreground">🎁 на новые подарки</p>
-        </div>
-      </section>
-
-
-      {/* Пригласить друга — компактно */}
-      <InviteButtons userId={user.user_id} />
-
-      {/* Загадать желание CTA */}
-      {onCreateWish && (
-        <button
-          type="button"
-          onClick={() => {
-            haptic("medium");
-            onCreateWish();
-          }}
-          className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-peach px-4 py-3 text-left text-peach-foreground shadow-sm transition active:scale-[0.98]"
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <span>
-            <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
-            <span className="block text-xs opacity-75">−0.2 балла • +10 опыта</span>
-          </span>
-        </button>
-      )}
 
       {/* Мои желания */}
       <section className="mb-5">
@@ -419,22 +347,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   );
 }
 
-function HelpPopover({ label, hint }: { label: string; hint: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger
-        aria-label={`Подробнее: ${label}`}
-        className="text-muted-foreground/80 transition hover:text-foreground"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <HelpCircle className="h-3.5 w-3.5" />
-      </PopoverTrigger>
-      <PopoverContent side="bottom" className="w-72 whitespace-pre-line text-xs leading-relaxed">
-        {hint}
-      </PopoverContent>
-    </Popover>
-  );
-}
+// Правила опыта/уровней теперь живут в поповере на верхней плашке (AppHeader),
+// поэтому HelpPopover из профиля убран — не дублируем правила в двух местах.
+
 
 function EditableActiveItem({
   gift,
@@ -585,48 +500,94 @@ function EditableActiveItem({
   );
 }
 
-function InviteButtons({ userId }: { userId: string }) {
-  const [copied, setCopied] = useState(false);
+function InviteRow({
+  userId,
+  level,
+  onGive,
+  onReceive,
+  onCreateWish,
+}: {
+  userId: string;
+  level: number;
+  onGive?: () => void;
+  onReceive?: () => void;
+  onCreateWish?: () => void;
+}) {
   const link = `https://podari.lovable.app/?ref=${userId}`;
-
-  const copy = async () => {
-    haptic("select");
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      toast.success("Ссылка скопирована 💚", { description: "Другу +1 балл, тебе +50 опыта" });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Не удалось скопировать");
-    }
-  };
 
   const shareTg = () => {
     haptic("medium");
-    const text = "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
+    const text =
+      "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
     if (typeof window !== "undefined") window.open(url, "_blank");
   };
 
+  const wishLocked = level < 3;
+
+  const Tile = ({
+    label,
+    emoji,
+    onClick,
+    locked = false,
+    lockHint,
+  }: {
+    label: string;
+    emoji: string;
+    onClick?: () => void;
+    locked?: boolean;
+    lockHint?: string;
+  }) => (
+    <button
+      type="button"
+      onClick={() => {
+        if (locked) {
+          toast(`🔒 ${label}`, {
+            description: lockHint ?? "Откроется чуть позже",
+          });
+          return;
+        }
+        haptic("medium");
+        onClick?.();
+      }}
+      className={`flex flex-col items-center gap-0.5 rounded-2xl border bg-card px-2 py-2.5 text-[11px] font-medium shadow-sm transition active:scale-[0.97] ${
+        locked ? "opacity-60" : "hover:bg-accent"
+      }`}
+    >
+      <span className="text-lg leading-none">{emoji}</span>
+      <span className="mt-0.5 text-[10.5px] leading-tight">{label}</span>
+      {locked && (
+        <span className="text-[9px] text-muted-foreground">🔒 ⭐ 3</span>
+      )}
+    </button>
+  );
+
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2">
+    <section className="mb-5 rounded-3xl border bg-card p-3 shadow-sm">
       <button
         type="button"
         onClick={shareTg}
-        className="flex items-center justify-center gap-1.5 rounded-2xl bg-lavender px-3 py-2.5 text-xs font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
+        className="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
       >
-        <Send className="h-3.5 w-3.5" /> Пригласить в Telegram
+        <Send className="h-4 w-4" /> Пригласить друга
       </button>
-      <button
-        type="button"
-        onClick={copy}
-        className="flex items-center justify-center gap-1.5 rounded-2xl border bg-card px-3 py-2.5 text-xs font-semibold shadow-sm transition active:scale-[0.98]"
-      >
-        {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-        {copied ? "Скопировано" : "Скопировать ссылку"}
-      </button>
-    </div>
+      <p className="mb-2.5 text-center text-[10.5px] text-muted-foreground">
+        Другу +1 балл, тебе +50 XP
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        <Tile label="Подарить" emoji="✨" onClick={onGive} />
+        <Tile label="Получить" emoji="🎁" onClick={onReceive} />
+        <Tile
+          label="Загадать желание"
+          emoji="💫"
+          onClick={onCreateWish}
+          locked={wishLocked}
+          lockHint="Откроется на 3 уровне. Дари и получай — и ты дойдёшь сюда!"
+        />
+      </div>
+    </section>
   );
 }
+
 
 

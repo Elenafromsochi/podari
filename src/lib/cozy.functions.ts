@@ -55,18 +55,32 @@ export const publishGift = createServerFn({ method: "POST" })
         gift_kind: GiftKind.default("used_item"),
         price_tier: PriceTier.default("under_3k"),
         price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
+        cost: z.number().int().min(1).max(5).default(1),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    // На первом уровне все могут размещать любые подарки до 3 000 ₽.
-    // Уровневые ограничения подключим позже, когда введём уровни 2+.
     void allowedForLevel;
-    // Игровая стоимость зависит от ценового тира:
-    //   under_3k   → 1 балл (базовый старт)
-    //   tier_3k_6k → 5 баллов (нужно подарить ~5 базовых подарков, чтобы накопить)
-    const cost = data.price_tier === "tier_3k_6k" ? 5 : 1;
+
+    // Серверная проверка: считаем среднюю стоимость похожих подарков (та же
+    // категория + тот же kind). Если у пользователя оценка сильно отличается
+    // от среднего (≥ 2 балла) и накопилось хотя бы 3 примера — ставим флаг
+    // cost_flag для администратора. Публикацию не блокируем.
+    let cost_flag = false;
+    const { data: similar } = await supabase
+      .from("gifts")
+      .select("cost")
+      .eq("gift_kind", data.gift_kind)
+      .eq("category", data.category);
+    const sample = (similar ?? [])
+      .map((r) => Number(r.cost))
+      .filter((n) => n >= 1 && n <= 5);
+    if (sample.length >= 3) {
+      const avg = sample.reduce((a, b) => a + b, 0) / sample.length;
+      if (Math.abs(avg - data.cost) >= 2) cost_flag = true;
+    }
+
     const { data: row, error } = await supabase
       .from("gifts")
       .insert({
@@ -75,17 +89,45 @@ export const publishGift = createServerFn({ method: "POST" })
         category: data.category,
         image_url: data.image_url ?? null,
         status: "available",
-        cost,
+        cost: data.cost,
         owner_id: userId,
         gift_kind: data.gift_kind,
         price_tier: data.price_tier,
         price_rub: data.price_rub ?? null,
+        cost_flag,
       })
       .select("id")
       .single();
     if (error) failOp("GIFT_SAVE_FAILED", error);
-    return { id: row.id };
+    return { id: row.id, cost_flag };
   });
+
+// ---------- Check gift cost average for soft warning ----------
+export const checkGiftCost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        gift_kind: GiftKind,
+        category: z.string().min(1).max(80),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: rows } = await supabase
+      .from("gifts")
+      .select("cost")
+      .eq("gift_kind", data.gift_kind)
+      .eq("category", data.category);
+    const sample = (rows ?? [])
+      .map((r) => Number(r.cost))
+      .filter((n) => n >= 1 && n <= 5);
+    if (sample.length < 3) return { avg: null as number | null, count: sample.length };
+    const avg = sample.reduce((a, b) => a + b, 0) / sample.length;
+    return { avg: Math.round(avg * 10) / 10, count: sample.length };
+  });
+
 
 // ---------- Claim ----------
 export const claimGift = createServerFn({ method: "POST" })

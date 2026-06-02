@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
+import { LevelBadge } from "@/components/LevelBadge";
+
 
 export const Route = createFileRoute("/user/$userId")({
   component: UserProfilePage,
@@ -120,8 +122,9 @@ function UserProfilePage() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold">{name}</h1>
-          <div className="text-sm text-muted-foreground">Уровень {level}</div>
+          <div className="mt-1"><LevelBadge level={level} size="md" /></div>
         </div>
+
       </div>
 
       <section className="space-y-3">

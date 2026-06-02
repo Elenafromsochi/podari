@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { publishGift } from "@/lib/cozy.functions";
+import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
 
-import type { GiftKind } from "@/lib/gift-kinds";
+import { COST_TIERS, type GiftKind } from "@/lib/gift-kinds";
 
 interface Props {
   onDone: (giftId: string) => void;
@@ -19,6 +20,7 @@ interface Props {
 export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [cost, setCost] = useState<number>(1);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const generateMeta = useServerFn(generateGiftMeta);
   const describeImage = useServerFn(describeGiftImage);
   const publishGiftFn = useServerFn(publishGift);
+  const checkCostFn = useServerFn(checkGiftCost);
 
   useEffect(() => {
     return () => {
@@ -79,18 +82,15 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
       setDescription((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
     };
     rec.onerror = (e: any) => {
-      // 'no-speech' и 'aborted' — это нормальные обрывы, не показываем ошибку
       if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
         setError("Ошибка распознавания. Попробуйте ещё раз.");
       }
     };
     rec.onend = () => {
-      // Авто-перезапуск, пока пользователь не нажал «Стоп»
       if (wantsRecordingRef.current) {
         try {
           rec.start();
         } catch {
-          // если не получилось — окончательно останавливаем
           wantsRecordingRef.current = false;
           setRecording(false);
           setInterimText("");
@@ -114,7 +114,6 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
       setRecording(false);
       setInterimText("");
       stopTimer();
-      // Закрепляем интерим в основном тексте
       baseTextRef.current = description ? description.trim() + " " : "";
       return;
     }
@@ -140,7 +139,6 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
 
   const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<string> =>
     new Promise((resolve) => {
@@ -198,6 +196,24 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
         data: { description: desc, hasImage: !!photoPreview },
       });
 
+      // Мягкая подсказка по средней оценке похожих подарков
+      try {
+        const avgRes = await checkCostFn({
+          data: { gift_kind: giftKind, category },
+        });
+        if (
+          avgRes &&
+          typeof avgRes.avg === "number" &&
+          Math.abs(avgRes.avg - cost) >= 2
+        ) {
+          toast(`⚖️ Похожие подарки обычно оценивают в ~${avgRes.avg} балл(ов)`, {
+            description: `Вы поставили ${cost} — публикуем как есть, модератор посмотрит позже.`,
+          });
+        }
+      } catch {
+        /* noop — это не критично для публикации */
+      }
+
       setStatus("💾 Сохраняем подарок...");
       const { id } = await publishGiftFn({
         data: {
@@ -206,6 +222,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           category,
           image_url: photoPreview,
           gift_kind: giftKind,
+          cost,
         },
       });
       onDone(id);
@@ -269,7 +286,6 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             )}
           </div>
 
-
           <div className="space-y-2">
             <Label htmlFor="desc">Описание</Label>
             <div className="flex gap-2">
@@ -318,7 +334,40 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
                 Нажмите 🎙️ и продиктуйте описание голосом. Можно делать паузы — запись не прервётся, пока не нажмёте «Стоп».
               </p>
             )}
+          </div>
 
+          {/* Cost / стоимость подарка в баллах */}
+          <div className="space-y-2">
+            <Label>Во сколько баллов оцениваешь подарок?</Label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {COST_TIERS.map((t) => {
+                const active = cost === t.cost;
+                return (
+                  <button
+                    key={t.cost}
+                    type="button"
+                    onClick={() => setCost(t.cost)}
+                    className={`flex flex-col items-center rounded-xl border px-1 py-2 text-[11px] font-medium transition ${
+                      active
+                        ? "border-primary bg-primary/10 text-foreground shadow-sm"
+                        : "border-input bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <span className="text-sm font-semibold">{t.cost}</span>
+                    <span className="text-[9px] opacity-70">
+                      {t.cost === 1 ? "балл" : t.cost < 5 ? "балла" : "баллов"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {COST_TIERS.find((t) => t.cost === cost)?.range}
+              {" · "}
+              <span className="opacity-70">
+                Чем выше оценка — тем больше баллов получит даритель при вручении.
+              </span>
+            </p>
           </div>
 
           {status && (
