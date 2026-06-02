@@ -19,6 +19,7 @@ const TABS: { id: AppTab; label: string; Icon: typeof Home }[] = [
 export function BottomNav({ active, onChange, unreadChats = 0, achievementsBadge = 0 }: Props) {
   return (
     <nav
+      data-tour="bottom-nav"
       className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-background/80 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
@@ -31,6 +32,7 @@ export function BottomNav({ active, onChange, unreadChats = 0, achievementsBadge
             <li key={id} className="flex-1">
               <button
                 type="button"
+                data-tour={`tab-${id}`}
                 onClick={() => {
                   if (!isActive) {
                     haptic("select");
