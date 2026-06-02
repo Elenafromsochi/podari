@@ -149,32 +149,20 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   const loaded = posted && gifted && received;
   const list = giftsFor(activity);
 
-  const initial = (user.display_name || "?").trim().charAt(0).toUpperCase();
-
   return (
-    <div className="mx-auto w-full max-w-md px-5 pb-6 pt-7">
-      {/* Header */}
-      <section className="mb-4 rounded-3xl bg-gradient-to-br from-lavender/60 via-peach/40 to-mint/40 p-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background text-2xl font-semibold shadow-sm">
-            {initial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{user.display_name}</p>
-            {user.telegram_username && (
-              <p className="truncate text-xs text-muted-foreground">@{user.telegram_username}</p>
-            )}
-            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> Уровень {user.level}
-              <HelpPopover
-                label="Уровень"
-                hint={`Уровень растёт по мере накопления Опыта и открывает новые категории подарков.\n\n1 уровень — 0–199 XP\nДоступно: вещи\n\n2 уровень — 200–499 XP\nОткрывается: услуги, время специалистов, гайды и инфопродукты\n\n3 уровень — 500–999 XP\nОткрывается: мероприятия и совместные активности\n\n4 уровень — 1000–1699 XP\nОткрывается: премиальные подарки и эксклюзивные предложения\n\n5 уровень — 1700–2499 XP\nОткрывается: всё доступно, статус амбассадора сообщества`}
-              />
-            </div>
+    <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
+      {user.telegram_username && (
+        <p className="mb-3 text-xs text-muted-foreground">@{user.telegram_username}</p>
+      )}
 
-          </div>
-        </div>
-      </section>
+      {/* Пригласить друга + быстрые действия */}
+      <InviteRow
+        userId={user.user_id}
+        level={user.level}
+        onGive={onGive}
+        onReceive={onReceive}
+        onCreateWish={onCreateWish}
+      />
 
       {/* Achievements accordion */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
@@ -206,65 +194,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         )}
       </section>
 
-      <section className="mb-5 grid grid-cols-2 gap-3">
-        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
-          <div className="absolute right-2.5 top-2.5">
-            <HelpPopover
-              label="Опыт"
-              hint={`За каждое действие начисляются баллы Опыта:\n+20 за публикацию подарка\n+10 за бронирование\n+80 за вручённый подарок\n+5 или +20 за отзыв\n+50 за приглашённого друга\n\nОпыт нельзя потратить — он копится и поднимает уровень.`}
-            />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Опыт</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-2xl font-semibold tracking-tight">{user.xp}</span>
-            <span className="text-xs text-muted-foreground">XP</span>
-          </div>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-1.5 text-[10.5px] text-muted-foreground">
-            до уровня {user.level + 1}: {Math.max(0, next - user.xp)} XP
-          </p>
-        </div>
-        <div className="relative rounded-3xl border bg-card p-4 shadow-sm">
-          <div className="absolute right-2.5 top-2.5">
-            <HelpPopover
-              label="Подарочные баллы"
-              hint={`Подарочные баллы — валюта для получения подарков.\n\nНачисляются:\n+0.2 за публикацию подарка\n+0.8 когда твой подарок принят получателем\n+1 новому другу при регистрации по твоему приглашению (тебе за приглашение идёт только опыт)\n\nСписываются (замораживаются), когда забираешь чужой подарок. Если сделка отменена — балл возвращается.`}
-            />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Баланс</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-2xl font-semibold tracking-tight">{user.balance}</span>
-            <span className="text-xs text-muted-foreground">баллов</span>
-          </div>
-          <p className="mt-3 text-[11px] leading-tight text-muted-foreground">🎁 на новые подарки</p>
-        </div>
-      </section>
-
-
-      {/* Пригласить друга — компактно */}
-      <InviteButtons userId={user.user_id} />
-
-      {/* Загадать желание CTA */}
-      {onCreateWish && (
-        <button
-          type="button"
-          onClick={() => {
-            haptic("medium");
-            onCreateWish();
-          }}
-          className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-peach px-4 py-3 text-left text-peach-foreground shadow-sm transition active:scale-[0.98]"
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <span>
-            <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
-            <span className="block text-xs opacity-75">−0.2 балла • +10 опыта</span>
-          </span>
-        </button>
-      )}
 
       {/* Мои желания */}
       <section className="mb-5">
