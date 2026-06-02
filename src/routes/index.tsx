@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { startTourForUser } from "@/lib/tour";
 import { claimGift } from "@/lib/cozy.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/haptics";
@@ -81,6 +82,7 @@ function Index() {
       if (!mounted) return;
       setUser(u);
       setAuthChecked(true);
+      if (u) startTourForUser(u.user_id, u.xp, false);
     })();
     if (typeof window !== "undefined") {
       const giftId = localStorage.getItem(ACTIVE_CHAT_KEY);
@@ -120,9 +122,10 @@ function Index() {
     return (
       <AuthFlow
         initialNonce={pendingLoginNonce}
-        onAuthed={(u) => {
+        onAuthed={(u, isNew) => {
           setPendingLoginNonce(null);
           setUser(u);
+          startTourForUser(u.user_id, u.xp, !!isNew);
         }}
       />
     );

@@ -15,6 +15,7 @@ import {
   GIVE_EXAMPLES,
   RECEIVE_EXAMPLES,
 } from "@/lib/random-copy";
+import { useTourState } from "@/lib/tour";
 
 type Gift = {
   id: string;
@@ -59,6 +60,14 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
     }, 2200);
     return () => clearInterval(t);
   }, []);
+
+  // Гид по сервису: для шага home-wishes автоматически переключаем фид на «Загадали»,
+  // а для home-gifted — на «Подарили», чтобы было что подсветить.
+  const tour = useTourState();
+  useEffect(() => {
+    if (tour.step === "home-wishes") setFeedTab("wishes");
+    else if (tour.step === "home-gifted") setFeedTab("gifts");
+  }, [tour.step]);
 
   // Лента уже подаренных подарков
   useEffect(() => {
@@ -136,6 +145,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         </button>
         <button
           type="button"
+          data-tour="receive-btn"
           onClick={() => { haptic("medium"); onReceive(); }}
           className="group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
@@ -162,7 +172,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
 
       {/* Жизнь сервиса — компактная панель статистики */}
       {stats && (
-        <section className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
+        <section data-tour="home-stats" className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
           <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Жизнь сервиса
           </h2>
@@ -204,7 +214,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
       </div>
 
       {feedTab === "gifts" ? (
-        <section>
+        <section data-tour="feed-gifts">
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Уже нашли хозяев</h2>
             <span className="text-xs text-muted-foreground">
@@ -231,7 +241,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           )}
         </section>
       ) : (
-        <section>
+        <section data-tour="feed-wishes">
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
           </div>

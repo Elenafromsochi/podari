@@ -190,6 +190,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       </section>
 
 
+      <div data-tour="profile-zone">
       {/* Мои желания */}
       <section className="mb-5">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
@@ -306,6 +307,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
           </ul>
         )}
       </section>
+      </div>
+
+
 
 
       <div className="mt-8 space-y-3">
@@ -517,7 +521,12 @@ function InviteRow({
     const text =
       "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-    if (typeof window !== "undefined") window.open(url, "_blank");
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank");
+      window.dispatchEvent(
+        new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
+      );
+    }
   };
 
   const wishLocked = level < 3;
@@ -563,6 +572,7 @@ function InviteRow({
     <section className="mb-5 rounded-3xl border bg-card p-3 shadow-sm">
       <button
         type="button"
+        data-tour="invite-btn"
         onClick={shareTg}
         className="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
       >

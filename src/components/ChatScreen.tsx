@@ -26,6 +26,7 @@ import {
   sendChatMessage,
   submitReview,
 } from "@/lib/cozy.functions";
+import { emitTour } from "@/lib/tour";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 
@@ -105,6 +106,10 @@ export function ChatScreen({
   const isOwner = !!(meId && gift && gift.owner_id === meId);
   const handedOver = txStatus === "completed";
   const cancelled = txStatus === "cancelled";
+
+  useEffect(() => {
+    emitTour("chat-opened");
+  }, []);
 
   useEffect(() => {
     (async () => {

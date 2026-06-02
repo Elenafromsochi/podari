@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
+import { emitTour } from "@/lib/tour";
 
 
 function timeAgo(iso?: string | null): string {
@@ -71,6 +72,10 @@ export function ReceiveGiftFlow({
   const [query, setQuery] = useState("");
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
+
+  useEffect(() => {
+    emitTour("receive-opened");
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -291,6 +296,7 @@ export function ReceiveGiftFlow({
                   setKind(k.id);
                   setCategory(null);
                   setStep("categories");
+                  emitTour("kind-picked");
                 }}
                 aria-disabled={locked}
                 className={`relative rounded-2xl border bg-card p-4 text-left shadow-sm transition ${
@@ -371,6 +377,7 @@ export function ReceiveGiftFlow({
                   onClick={() => {
                     setCategory(cat);
                     setStep("feed");
+                    emitTour("subcat-picked");
                   }}
                   className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent"
                 >
