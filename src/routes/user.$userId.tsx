@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
+import { GlobalChrome } from "@/components/GlobalChrome";
 
 
 export const Route = createFileRoute("/user/$userId")({
