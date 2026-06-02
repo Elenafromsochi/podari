@@ -46,7 +46,6 @@ function StatusTag({ status }: { status: string }) {
 
 export function ChatsTab() {
   const [filter, setFilter] = useState<Filter>("givers");
-  const [query, setQuery] = useState("");
 
   const [givers, setGivers] = useState<ChatItem[] | null>(null);
   const [receivers, setReceivers] = useState<ChatItem[] | null>(null);
