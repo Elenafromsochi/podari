@@ -193,13 +193,10 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       {/* Мои желания */}
       <section className="mb-5">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
+        <WishCtaButton level={user.level} onCreateWish={onCreateWish} />
         {!myWishes ? (
           <Skeleton className="h-16 w-full rounded-2xl" />
-        ) : myWishes.length === 0 ? (
-          <div className="rounded-2xl border bg-card p-4 text-center text-xs text-muted-foreground">
-            Пока не загадано ни одного желания
-          </div>
-        ) : (
+        ) : myWishes.length === 0 ? null : (
           <ul className="space-y-2">
             {myWishes.map((w) => (
               <li key={w.id}>
