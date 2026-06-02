@@ -136,6 +136,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         </button>
         <button
           type="button"
+          data-tour="receive-btn"
           onClick={() => { haptic("medium"); onReceive(); }}
           className="group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
