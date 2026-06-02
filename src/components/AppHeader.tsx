@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { HelpCircle } from "lucide-react";
 import type { UserProfile } from "@/lib/auth-state";
@@ -7,6 +8,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 interface Props {
   user: UserProfile | null;
 }
+
+type Fx = { id: number; text: string; positive: boolean };
+
 
 const LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1700, 2500];
 
@@ -62,6 +66,36 @@ function InfoDot({ label, content }: { label: string; content: string }) {
 }
 
 export function AppHeader({ user }: Props) {
+  const prevRef = useRef<{ xp: number; balance: number } | null>(null);
+  const [xpFx, setXpFx] = useState<Fx[]>([]);
+  const [balFx, setBalFx] = useState<Fx[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      prevRef.current = null;
+      return;
+    }
+    const prev = prevRef.current;
+    const xp = user.xp;
+    const balance = Number(user.balance);
+    if (prev) {
+      const dx = xp - prev.xp;
+      const db = +(balance - prev.balance).toFixed(2);
+      if (dx !== 0) {
+        const id = Date.now() + Math.random();
+        setXpFx((s) => [...s, { id, text: `${dx > 0 ? "+" : ""}${dx} XP`, positive: dx > 0 }]);
+        setTimeout(() => setXpFx((s) => s.filter((f) => f.id !== id)), 1500);
+      }
+      if (db !== 0) {
+        const id = Date.now() + Math.random();
+        const txt = `${db > 0 ? "+" : "−"}${Math.abs(db).toFixed(Math.abs(db) < 1 ? 1 : 1)} 🎁`;
+        setBalFx((s) => [...s, { id, text: txt, positive: db > 0 }]);
+        setTimeout(() => setBalFx((s) => s.filter((f) => f.id !== id)), 1500);
+      }
+    }
+    prevRef.current = { xp, balance };
+  }, [user?.xp, user?.balance, user]);
+
   if (!user) return null;
   const initial = (user.display_name || "?").trim().charAt(0).toUpperCase();
   const { pct, toNext } = levelProgress(user.xp, user.level);
@@ -69,6 +103,7 @@ export function AppHeader({ user }: Props) {
   return (
     <header
       className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl"
+
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-2.5">
@@ -95,20 +130,37 @@ export function AppHeader({ user }: Props) {
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="shrink-0 text-[10.5px] font-medium text-muted-foreground">
+            <span className="relative shrink-0 text-[10.5px] font-medium text-muted-foreground">
               {user.xp} XP
+              {xpFx.map((f) => (
+                <span
+                  key={f.id}
+                  className={`balance-fx absolute left-1/2 -top-1 text-[11px] font-semibold ${f.positive ? "text-emerald-600" : "text-rose-500"}`}
+                >
+                  {f.text}
+                </span>
+              ))}
             </span>
             <InfoDot label="Опыт (XP)" content={XP_INFO} />
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 rounded-xl bg-mint/50 px-2 py-1 text-mint-foreground">
+        <div className="relative flex shrink-0 items-center gap-1 rounded-xl bg-mint/50 px-2 py-1 text-mint-foreground">
           <span className="text-sm">🎁</span>
           <span className="text-[13px] font-semibold tabular-nums">
             {Number(user.balance).toFixed(1)}
           </span>
           <InfoDot label="Подарочные баллы" content={BALANCE_INFO} />
+          {balFx.map((f) => (
+            <span
+              key={f.id}
+              className={`balance-fx absolute left-1/2 -top-2 text-[11px] font-semibold ${f.positive ? "text-emerald-600" : "text-rose-500"}`}
+            >
+              {f.text}
+            </span>
+          ))}
         </div>
+
       </div>
     </header>
   );

@@ -61,7 +61,6 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
         </span>
         <span>
           <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
-          <span className="block text-xs opacity-75">−0.2 балла • +10 опыта</span>
         </span>
       </button>
 

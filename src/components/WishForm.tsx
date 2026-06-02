@@ -171,11 +171,6 @@ export function WishForm({ onDone, onBack }: Props) {
             )}
           </div>
 
-          <div className="rounded-2xl bg-peach/40 p-3 text-xs leading-relaxed text-foreground/80">
-            Размещение пожелания: <b>−0.2 балла</b> и <b>+10 опыта</b>.
-            <br />
-            Когда кто-то исполнит — спишется ещё −0.8 балла, а тебе придёт +10 опыта.
-          </div>
 
           <Button onClick={submit} disabled={loading} className="w-full rounded-2xl">
             {loading ? "Отправляем…" : "✨ Загадать желание"}
