@@ -45,6 +45,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   const [gifted, setGifted] = useState<Gift[] | null>(null);
   const [feedTab, setFeedTab] = useState<"gifts" | "wishes">(initialFeedTab);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [query, setQuery] = useState("");
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
