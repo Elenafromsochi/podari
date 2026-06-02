@@ -11,6 +11,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalNotifications } from "@/components/GlobalNotifications";
 import { LevelUpModal } from "@/components/LevelUpModal";
+import { TourOverlay } from "@/components/tour/TourOverlay";
 import appCss from "../styles.css?url";
 
 
