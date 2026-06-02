@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Search } from "lucide-react";
 import { getMyChats } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +46,6 @@ function StatusTag({ status }: { status: string }) {
 
 export function ChatsTab() {
   const [filter, setFilter] = useState<Filter>("givers");
-  const [query, setQuery] = useState("");
 
   const [givers, setGivers] = useState<ChatItem[] | null>(null);
   const [receivers, setReceivers] = useState<ChatItem[] | null>(null);
@@ -76,13 +74,7 @@ export function ChatsTab() {
     return [...archiveG, ...archiveR];
   }, [filter, givers, receivers, archiveG, archiveR]);
 
-  const q = query.trim().toLowerCase();
-  const list = q
-    ? base.filter(
-        (c) =>
-          c.gift_title.toLowerCase().includes(q) || c.other_name.toLowerCase().includes(q),
-      )
-    : base;
+  const list = base;
 
   const loading =
     (filter === "givers" && !givers) || (filter === "receivers" && !receivers);
@@ -95,22 +87,6 @@ export function ChatsTab() {
           Общение по подаркам и сделкам
         </p>
       </header>
-
-      {/* Search */}
-      <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            filter === "archive"
-              ? "Глубокий поиск по архиву…"
-              : "Умный поиск по потребностям…"
-          }
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-        />
-      </div>
-
 
       {/* Segmented control */}
       <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
@@ -150,11 +126,9 @@ export function ChatsTab() {
         </div>
       ) : list.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          {q
-            ? "Ничего не нашлось 🌿"
-            : filter === "archive"
-              ? "Архив пуст"
-              : "Здесь пока нет активных чатов"}
+          {filter === "archive"
+            ? "Архив пуст"
+            : "Здесь пока нет активных чатов"}
         </div>
       ) : (
         <ul key={filter} className="achievements-list space-y-2">

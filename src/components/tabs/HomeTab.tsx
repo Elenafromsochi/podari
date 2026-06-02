@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart, Search } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WishesFeed } from "@/components/WishesFeed";
@@ -45,6 +45,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   const [gifted, setGifted] = useState<Gift[] | null>(null);
   const [feedTab, setFeedTab] = useState<"gifts" | "wishes">(initialFeedTab);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [query, setQuery] = useState("");
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
@@ -85,6 +86,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   useEffect(() => {
     statsFn().then((s) => setStats(s as Stats)).catch(() => setStats(null));
   }, [statsFn]);
+
+  const q = query.trim().toLowerCase();
+  const filteredGifted = useMemo(() => {
+    if (!gifted || !q) return gifted;
+    return gifted.filter(
+      (g) =>
+        g.title.toLowerCase().includes(q) ||
+        (g.description && g.description.toLowerCase().includes(q)) ||
+        (g.owner_name && g.owner_name.toLowerCase().includes(q)),
+    );
+  }, [gifted, q]);
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
@@ -127,6 +139,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             <div className="text-[11px] opacity-75">{receiveSub}</div>
           </div>
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск по ленте…"
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+        />
       </div>
 
       {/* Жизнь сервиса — компактная панель статистики */}
@@ -177,7 +200,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Уже нашли хозяев</h2>
             <span className="text-xs text-muted-foreground">
-              {gifted ? `${gifted.length}` : ""}
+              {filteredGifted ? `${filteredGifted.length}` : ""}
             </span>
           </div>
 
@@ -187,13 +210,13 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
               <Skeleton className="h-24 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
             </div>
-          ) : gifted.length === 0 ? (
+          ) : filteredGifted && filteredGifted.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              Пока никто ничего не подарил 🌱
+              {q ? "Ничего не нашлось 🌿" : "Пока никто ничего не подарил 🌱"}
             </div>
           ) : (
             <ul className="space-y-3">
-              {gifted.map((g) => (
+              {filteredGifted?.map((g) => (
                 <GiftedCard key={g.id} gift={g} />
               ))}
             </ul>
@@ -205,6 +228,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
           </div>
           <WishesFeed
+            searchQuery={query}
             onCreate={() => onCreateWish?.()}
             onOpen={(id) => onOpenWish?.(id)}
           />

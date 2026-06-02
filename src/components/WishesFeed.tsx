@@ -23,15 +23,28 @@ type Wish = {
 interface Props {
   onOpen: (wishId: string) => void;
   onCreate: () => void;
+  searchQuery?: string;
 }
 
-export function WishesFeed({ onOpen, onCreate }: Props) {
+export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const listFn = useServerFn(listWishes);
 
   useEffect(() => {
     listFn({ data: {} }).then((data) => setWishes(data as Wish[])).catch(() => setWishes([]));
   }, [listFn]);
+
+  const q = (searchQuery ?? "").trim().toLowerCase();
+  const list =
+    wishes && q
+      ? wishes.filter(
+          (w) =>
+            w.title.toLowerCase().includes(q) ||
+            (w.description && w.description.toLowerCase().includes(q)) ||
+            w.owner_name.toLowerCase().includes(q) ||
+            w.category.toLowerCase().includes(q),
+        )
+      : wishes;
 
   return (
     <div>
@@ -57,13 +70,13 @@ export function WishesFeed({ onOpen, onCreate }: Props) {
           <Skeleton className="h-24 w-full rounded-2xl" />
           <Skeleton className="h-24 w-full rounded-2xl" />
         </div>
-      ) : wishes.length === 0 ? (
+      ) : list && list.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          Пока никто ничего не пожелал. Будь первым ✨
+          {q ? "Ничего не нашлось 🌿" : "Пока никто ничего не пожелал. Будь первым ✨"}
         </div>
       ) : (
         <ul className="space-y-3">
-          {wishes.map((w) => (
+          {list?.map((w) => (
             <li key={w.id}>
               <button
                 type="button"
