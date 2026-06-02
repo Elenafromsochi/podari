@@ -61,6 +61,12 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
       localStorage.setItem("cozy_last_seen_chats", new Date().toISOString());
       setUnreadChats(0);
     }
+    // Гид: сообщаем о смене вкладки, чтобы туториал мог продвинуться
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("cozy:tour-event", { detail: `${tab}-opened` }),
+      );
+    }
   }, [tab]);
 
   return (
