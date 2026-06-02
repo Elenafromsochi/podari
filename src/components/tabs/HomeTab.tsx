@@ -12,8 +12,8 @@ import { getHomeStats } from "@/lib/cozy.functions";
 import {
   pickRandom,
   HOME_TAGLINES,
-  GIVE_SUBTITLES,
-  RECEIVE_SUBTITLES,
+  GIVE_EXAMPLES,
+  RECEIVE_EXAMPLES,
 } from "@/lib/random-copy";
 
 type Gift = {
@@ -49,8 +49,16 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
-  const giveSub = useMemo(() => pickRandom(GIVE_SUBTITLES), []);
-  const receiveSub = useMemo(() => pickRandom(RECEIVE_SUBTITLES), []);
+  const [giveIdx, setGiveIdx] = useState(() => Math.floor(Math.random() * GIVE_EXAMPLES.length));
+  const [receiveIdx, setReceiveIdx] = useState(() => Math.floor(Math.random() * RECEIVE_EXAMPLES.length));
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setGiveIdx((i) => (i + 1) % GIVE_EXAMPLES.length);
+      setReceiveIdx((i) => (i + 1) % RECEIVE_EXAMPLES.length);
+    }, 2200);
+    return () => clearInterval(t);
+  }, []);
 
   // Лента уже подаренных подарков
   useEffect(() => {
@@ -123,7 +131,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           </div>
           <div className="mt-3">
             <div className="text-sm font-semibold leading-tight">Подарить</div>
-            <div className="text-[11px] opacity-75">{giveSub}</div>
+            <div className="text-[11px] opacity-75 transition-opacity duration-300">{GIVE_EXAMPLES[giveIdx]}</div>
           </div>
         </button>
         <button
@@ -136,7 +144,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           </div>
           <div className="mt-3">
             <div className="text-sm font-semibold leading-tight">Получить</div>
-            <div className="text-[11px] opacity-75">{receiveSub}</div>
+            <div className="text-[11px] opacity-75 transition-opacity duration-300">{RECEIVE_EXAMPLES[receiveIdx]}</div>
           </div>
         </button>
       </div>
