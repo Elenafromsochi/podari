@@ -48,8 +48,6 @@ function StatusTag({ status }: { status: string }) {
 export function ChatsTab() {
   const [filter, setFilter] = useState<Filter>("givers");
   const [query, setQuery] = useState("");
-  const [listening, setListening] = useState(false);
-  const recRef = useRef<SR | null>(null);
 
   const [givers, setGivers] = useState<ChatItem[] | null>(null);
   const [receivers, setReceivers] = useState<ChatItem[] | null>(null);
@@ -71,35 +69,6 @@ export function ChatsTab() {
       setArchiveR(c.archive_with_receivers ?? []);
     })();
   }, [chatsFn]);
-
-  const toggleMic = () => {
-    const W = window as unknown as {
-      SpeechRecognition?: new () => SR;
-      webkitSpeechRecognition?: new () => SR;
-    };
-    const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
-    if (!Ctor) return;
-    if (listening) {
-      recRef.current?.stop();
-      setListening(false);
-      return;
-    }
-    const r = new Ctor();
-    r.lang = "ru-RU";
-    r.continuous = false;
-    r.interimResults = true;
-    r.onresult = (e) => {
-      let t = "";
-      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-      setQuery(t);
-    };
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
-    recRef.current = r;
-    haptic("light");
-    r.start();
-    setListening(true);
-  };
 
   const base: ChatItem[] = useMemo(() => {
     if (filter === "givers") return givers ?? [];
@@ -127,7 +96,7 @@ export function ChatsTab() {
         </p>
       </header>
 
-      {/* Smart search */}
+      {/* Search */}
       <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
@@ -140,19 +109,8 @@ export function ChatsTab() {
           }
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
         />
-        <button
-          type="button"
-          onClick={toggleMic}
-          aria-label="Голос"
-          className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
-            listening
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-muted text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </button>
       </div>
+
 
       {/* Segmented control */}
       <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
