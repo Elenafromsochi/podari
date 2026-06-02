@@ -1,4 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { GlobalChrome } from "@/components/GlobalChrome";
+
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2 } from "lucide-react";
