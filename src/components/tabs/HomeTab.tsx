@@ -61,6 +61,14 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
     return () => clearInterval(t);
   }, []);
 
+  // Гид по сервису: для шага home-wishes автоматически переключаем фид на «Загадали»,
+  // а для home-gifted — на «Подарили», чтобы было что подсветить.
+  const tour = useTourState();
+  useEffect(() => {
+    if (tour.step === "home-wishes") setFeedTab("wishes");
+    else if (tour.step === "home-gifted") setFeedTab("gifts");
+  }, [tour.step]);
+
   // Лента уже подаренных подарков
   useEffect(() => {
     (async () => {
