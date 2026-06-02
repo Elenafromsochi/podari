@@ -87,6 +87,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
     statsFn().then((s) => setStats(s as Stats)).catch(() => setStats(null));
   }, [statsFn]);
 
+  const q = query.trim().toLowerCase();
+  const filteredGifted = useMemo(() => {
+    if (!gifted || !q) return gifted;
+    return gifted.filter(
+      (g) =>
+        g.title.toLowerCase().includes(q) ||
+        (g.description && g.description.toLowerCase().includes(q)) ||
+        (g.owner_name && g.owner_name.toLowerCase().includes(q)),
+    );
+  }, [gifted, q]);
+
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
       {/* Greeting */}
