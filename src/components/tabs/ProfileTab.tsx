@@ -517,7 +517,12 @@ function InviteRow({
     const text =
       "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-    if (typeof window !== "undefined") window.open(url, "_blank");
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank");
+      window.dispatchEvent(
+        new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
+      );
+    }
   };
 
   const wishLocked = level < 3;
