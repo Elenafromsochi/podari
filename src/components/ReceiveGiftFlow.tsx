@@ -74,6 +74,10 @@ export function ReceiveGiftFlow({
   const recRef = useRef<SR | null>(null);
 
   useEffect(() => {
+    emitTour("receive-opened");
+  }, []);
+
+  useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
