@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { CATEGORY_IDS } from "@/lib/gift-categories";
 
 // Защита от prompt injection: вырезаем управляющие конструкции,
 // нормализуем переносы и режем длину.
@@ -20,7 +21,7 @@ function looksUnsafe(text: string): boolean {
   return /(system\s*:|<\|[^|]*\|>|ignore (all |the )?(previous|above))/i.test(text);
 }
 
-const CATEGORIES = ["книги", "медитации", "кофе", "музыка", "еда", "разное"];
+const CATEGORIES = CATEGORY_IDS;
 
 async function callGateway(body: any) {
   const apiKey = process.env.LOVABLE_API_KEY;

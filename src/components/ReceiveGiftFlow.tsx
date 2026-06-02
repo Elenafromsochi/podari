@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
 
 
@@ -318,7 +319,7 @@ export function ReceiveGiftFlow({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query && setStep("search")}
-            placeholder="Или опиши голосом, что тебе нужно…"
+            placeholder="Опиши, что тебе нужно…"
             className="flex-1 bg-transparent text-sm outline-none"
           />
           <button
@@ -362,21 +363,25 @@ export function ReceiveGiftFlow({
           <p className="text-muted-foreground">В этой категории пока пусто 💚</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {cats.map(([cat, n]) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setCategory(cat);
-                  setStep("feed");
-                }}
-                className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent"
-              >
-                <div className="text-base font-medium capitalize">{cat}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {n} {n === 1 ? "подарок" : "подарков"}
-                </div>
-              </button>
-            ))}
+            {cats.map(([cat, n]) => {
+              const meta = getCategoryMeta(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setCategory(cat);
+                    setStep("feed");
+                  }}
+                  className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent"
+                >
+                  <div className="mb-1 text-2xl">{meta.emoji}</div>
+                  <div className="text-sm font-medium">{meta.label}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {n} {n === 1 ? "подарок" : "подарков"}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
