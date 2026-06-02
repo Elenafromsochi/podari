@@ -130,6 +130,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         </button>
       </div>
 
+      {/* Search */}
+      <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск по ленте…"
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+        />
+      </div>
+
       {/* Жизнь сервиса — компактная панель статистики */}
       {stats && (
         <section className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
