@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WishesFeed } from "@/components/WishesFeed";
@@ -12,7 +12,6 @@ import {
   HOME_TAGLINES,
   GIVE_SUBTITLES,
   RECEIVE_SUBTITLES,
-  WISH_FEED_TITLES,
 } from "@/lib/random-copy";
 
 type Gift = {
@@ -40,9 +39,8 @@ interface Props {
 
 type Stats = { active_gifts: number; gifted_total: number; wishes_fulfilled: number };
 
-export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish, onOpenWish, initialFeedTab = "gifts" }: Props) {
-  const [gifts, setGifts] = useState<Gift[] | null>(null);
-  const [query, setQuery] = useState("");
+export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, onCreateWish, onOpenWish, initialFeedTab = "gifts" }: Props) {
+  const [gifted, setGifted] = useState<Gift[] | null>(null);
   const [feedTab, setFeedTab] = useState<"gifts" | "wishes">(initialFeedTab);
   const [stats, setStats] = useState<Stats | null>(null);
   const statsFn = useServerFn(getHomeStats);
@@ -50,21 +48,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
   const giveSub = useMemo(() => pickRandom(GIVE_SUBTITLES), []);
   const receiveSub = useMemo(() => pickRandom(RECEIVE_SUBTITLES), []);
-  const wishesTitle = useMemo(() => pickRandom(WISH_FEED_TITLES), []);
 
-  // Загружаем активные подарки (для поиска и ленты)
+  // Лента уже подаренных подарков
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      let q = supabase
+      const { data } = await supabase
         .from("gifts")
         .select("id,title,description,category,image_url,cost,owner_id,created_at")
-        .eq("status", "available")
+        .eq("status", "gifted")
         .not("owner_id", "is", null)
-        .order("created_at", { ascending: false })
+        .order("updated_at", { ascending: false })
         .limit(60);
-      if (user?.id) q = q.neq("owner_id", user.id);
-      const { data } = await q;
       const rows = (data as Gift[]) ?? [];
       const ids = Array.from(new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)));
       const nameMap = new Map<string, string>();
@@ -76,7 +70,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
           levelMap.set(p.user_id, p.level ?? 1);
         }
       }
-      setGifts(
+      setGifted(
         rows.map((g) => ({
           ...g,
           owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
@@ -89,18 +83,6 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
   useEffect(() => {
     statsFn().then((s) => setStats(s as Stats)).catch(() => setStats(null));
   }, [statsFn]);
-
-  const q = query.trim().toLowerCase();
-  const filtered = !gifts
-    ? []
-    : q
-      ? gifts.filter(
-          (g) =>
-            g.title.toLowerCase().includes(q) ||
-            g.category.toLowerCase().includes(q) ||
-            (g.description ?? "").toLowerCase().includes(q),
-        )
-      : gifts;
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
@@ -118,18 +100,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
         </div>
       </header>
 
-      {/* Компактная строка статистики */}
-      {stats && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-1 rounded-2xl border bg-card/60 px-3 py-2 text-[11px] text-muted-foreground shadow-sm">
-          <span><b className="text-foreground tabular-nums">{stats.active_gifts}</b> 🎁 активных</span>
-          <span className="opacity-40">·</span>
-          <span><b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено</span>
-          <span className="opacity-40">·</span>
-          <span><b className="text-foreground tabular-nums">{stats.wishes_fulfilled}</b> ⭐ желаний</span>
-        </div>
-      )}
-
-      {/* Action duo */}
+      {/* Action duo — сразу под приветствием */}
       <div className="mb-5 grid grid-cols-2 gap-3">
         <button
           type="button"
@@ -159,22 +130,27 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
         </button>
       </div>
 
-      {/* Поиск (только текст, среди активных подарков) */}
-      <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Найди подарок по названию или категории…"
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-        />
-      </div>
+      {/* Жизнь сервиса — компактная панель статистики */}
+      {stats && (
+        <section className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
+          <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Жизнь сервиса
+          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[12px] text-muted-foreground">
+            <span><b className="text-foreground tabular-nums">{stats.active_gifts}</b> 🎁 активных</span>
+            <span className="opacity-40">·</span>
+            <span><b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено</span>
+            <span className="opacity-40">·</span>
+            <span><b className="text-foreground tabular-nums">{stats.wishes_fulfilled}</b> ⭐ желаний</span>
+          </div>
+        </section>
+      )}
 
-      {/* Feed tabs */}
+      {/* Feed tabs: Подарили / Загадали */}
       <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl border bg-muted/60 p-1">
         {([
-          ["gifts", "🎁 Подарки"],
-          ["wishes", "✨ Желания"],
+          ["gifts", "💝 Подарили"],
+          ["wishes", "✨ Загадали"],
         ] as const).map(([k, label]) => {
           const active = feedTab === k;
           return (
@@ -200,26 +176,26 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       {feedTab === "gifts" ? (
         <section>
           <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">Активные подарки</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Уже нашли хозяев</h2>
             <span className="text-xs text-muted-foreground">
-              {gifts ? `${filtered.length}` : ""}
+              {gifted ? `${gifted.length}` : ""}
             </span>
           </div>
 
-          {!gifts ? (
+          {!gifted ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : gifted.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              Ничего не нашлось 🌱
+              Пока никто ничего не подарил 🌱
             </div>
           ) : (
             <ul className="space-y-3">
-              {filtered.map((g) => (
-                <ActiveGiftCard key={g.id} gift={g} onPick={onPickGift} />
+              {gifted.map((g) => (
+                <GiftedCard key={g.id} gift={g} />
               ))}
             </ul>
           )}
@@ -227,7 +203,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       ) : (
         <section>
           <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">{wishesTitle}</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
           </div>
           <WishesFeed
             onCreate={() => onCreateWish?.()}
@@ -239,10 +215,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
   );
 }
 
-function ActiveGiftCard({ gift, onPick }: { gift: Gift; onPick: (id: string) => void }) {
+function GiftedCard({ gift }: { gift: Gift }) {
+  // Карточка целиком ведёт на страницу дарителя (его активные подарки + загаданные желания)
+  if (!gift.owner_id) return null;
   return (
     <li>
-      <article className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+      <Link
+        to="/user/$userId"
+        params={{ userId: gift.owner_id }}
+        onClick={() => haptic("light")}
+        className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm transition active:scale-[0.98]"
+      >
         {gift.image_url ? (
           <img
             src={gift.image_url}
@@ -265,31 +248,18 @@ function ActiveGiftCard({ gift, onPick }: { gift: Gift; onPick: (id: string) => 
             </p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {gift.owner_id ? (
-              <Link
-                to="/user/$userId"
-                params={{ userId: gift.owner_id }}
-                onClick={() => haptic("light")}
-                className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground hover:bg-lavender transition"
-              >
-                {gift.owner_name}
-              </Link>
-            ) : (
-              <span className="text-[12px] font-semibold">{gift.owner_name}</span>
-            )}
+            <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+              {gift.owner_name}
+            </span>
             <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
               ур. {gift.owner_level ?? 1}
             </span>
-            <button
-              type="button"
-              onClick={() => { haptic("medium"); onPick(gift.id); }}
-              className="ml-auto rounded-full bg-mint px-3 py-1 text-[11px] font-semibold text-mint-foreground shadow-sm hover:bg-mint/90"
-            >
-              Забрать
-            </button>
+            <span className="ml-auto inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[10px] font-semibold text-mint-foreground">
+              💝 подарено
+            </span>
           </div>
         </div>
-      </article>
+      </Link>
     </li>
   );
 }
