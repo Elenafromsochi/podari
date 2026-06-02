@@ -23,6 +23,7 @@ type Wish = {
 interface Props {
   onOpen: (wishId: string) => void;
   onCreate: () => void;
+  searchQuery?: string;
 }
 
 export function WishesFeed({ onOpen, onCreate }: Props) {
