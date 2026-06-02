@@ -10,7 +10,6 @@ import {
 
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalNotifications } from "@/components/GlobalNotifications";
-import { DealsBanner } from "@/components/DealsBanner";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import appCss from "../styles.css?url";
 
@@ -120,7 +119,6 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DealsBanner />
       <Outlet />
       <GlobalNotifications />
       <LevelUpModal />
