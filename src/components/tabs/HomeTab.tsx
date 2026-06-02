@@ -15,6 +15,7 @@ import {
   GIVE_EXAMPLES,
   RECEIVE_EXAMPLES,
 } from "@/lib/random-copy";
+import { useTourState } from "@/lib/tour";
 
 type Gift = {
   id: string;
