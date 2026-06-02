@@ -63,11 +63,7 @@ export function GlobalChrome({ children }: { children: React.ReactNode }) {
       className="relative min-h-[100dvh] bg-background"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)" }}
     >
-      <AppHeader
-        user={user}
-        unreadChats={unread}
-        onMessagesClick={() => goTab("chats")}
-      />
+      <AppHeader user={user} />
       {children}
       <BottomNav
         active={active}

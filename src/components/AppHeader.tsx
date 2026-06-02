@@ -1,13 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { MessageCircle, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import type { UserProfile } from "@/lib/auth-state";
 import { LevelBadge } from "@/components/LevelBadge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Props {
   user: UserProfile | null;
-  unreadChats?: number;
-  onMessagesClick?: () => void;
 }
 
 const LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1700, 2500];
@@ -65,7 +63,7 @@ function InfoDot({ label, content }: { label: string; content: string }) {
   );
 }
 
-export function AppHeader({ user, unreadChats = 0, onMessagesClick }: Props) {
+export function AppHeader({ user }: Props) {
   if (!user) return null;
   const initial = (user.display_name || "?").trim().charAt(0).toUpperCase();
   const { pct, toNext } = levelProgress(user.xp, user.level);
@@ -113,20 +111,6 @@ export function AppHeader({ user, unreadChats = 0, onMessagesClick }: Props) {
           </span>
           <InfoDot label="Подарочные баллы" content={BALANCE_INFO} />
         </div>
-
-        <button
-          type="button"
-          onClick={onMessagesClick}
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition hover:bg-accent"
-          aria-label="Чаты"
-        >
-          <MessageCircle className="h-5 w-5" />
-          {unreadChats > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-background">
-              {unreadChats > 9 ? "9+" : unreadChats}
-            </span>
-          )}
-        </button>
       </div>
     </header>
   );

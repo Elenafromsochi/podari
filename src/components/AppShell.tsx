@@ -68,11 +68,7 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
       className="relative min-h-[100dvh] bg-background"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)" }}
     >
-      <AppHeader
-        user={user}
-        unreadChats={unreadChats}
-        onMessagesClick={() => setTab("chats")}
-      />
+      <AppHeader user={user} />
       <div key={tab} className="tab-reveal">
         {tab === "home" && (
           <HomeTab
