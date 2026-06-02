@@ -287,5 +287,6 @@ function UserProfilePage() {
         )}
       </section>
     </div>
+    </GlobalChrome>
   );
 }
