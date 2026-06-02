@@ -307,6 +307,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
           </ul>
         )}
       </section>
+      </div>
+
+
 
 
       <div className="mt-8 space-y-3">
