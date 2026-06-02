@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LevelBadge } from "@/components/LevelBadge";
+
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles } from "lucide-react";
