@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { HelpCircle } from "lucide-react";
 import type { UserProfile } from "@/lib/auth-state";
@@ -7,6 +8,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 interface Props {
   user: UserProfile | null;
 }
+
+type Fx = { id: number; text: string; positive: boolean };
+
 
 const LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1700, 2500];
 
@@ -62,6 +66,36 @@ function InfoDot({ label, content }: { label: string; content: string }) {
 }
 
 export function AppHeader({ user }: Props) {
+  const prevRef = useRef<{ xp: number; balance: number } | null>(null);
+  const [xpFx, setXpFx] = useState<Fx[]>([]);
+  const [balFx, setBalFx] = useState<Fx[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      prevRef.current = null;
+      return;
+    }
+    const prev = prevRef.current;
+    const xp = user.xp;
+    const balance = Number(user.balance);
+    if (prev) {
+      const dx = xp - prev.xp;
+      const db = +(balance - prev.balance).toFixed(2);
+      if (dx !== 0) {
+        const id = Date.now() + Math.random();
+        setXpFx((s) => [...s, { id, text: `${dx > 0 ? "+" : ""}${dx} XP`, positive: dx > 0 }]);
+        setTimeout(() => setXpFx((s) => s.filter((f) => f.id !== id)), 1500);
+      }
+      if (db !== 0) {
+        const id = Date.now() + Math.random();
+        const txt = `${db > 0 ? "+" : "−"}${Math.abs(db).toFixed(Math.abs(db) < 1 ? 1 : 1)} 🎁`;
+        setBalFx((s) => [...s, { id, text: txt, positive: db > 0 }]);
+        setTimeout(() => setBalFx((s) => s.filter((f) => f.id !== id)), 1500);
+      }
+    }
+    prevRef.current = { xp, balance };
+  }, [user?.xp, user?.balance, user]);
+
   if (!user) return null;
   const initial = (user.display_name || "?").trim().charAt(0).toUpperCase();
   const { pct, toNext } = levelProgress(user.xp, user.level);
@@ -69,6 +103,7 @@ export function AppHeader({ user }: Props) {
   return (
     <header
       className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl"
+
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-2.5">
