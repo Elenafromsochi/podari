@@ -94,7 +94,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Привет
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">{userName} ✨</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{userName}</h1>
           <p className="mt-1 text-xs leading-snug text-muted-foreground">{tagline}</p>
         </div>
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-peach shadow-sm">
@@ -103,31 +103,31 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
       </header>
 
       {/* Action duo — сразу под приветствием */}
-      <div className="mb-5 grid grid-cols-2 gap-3">
+      <div className="mb-5 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => { haptic("medium"); onGive(); }}
-          className="group relative flex flex-col items-start justify-between overflow-hidden rounded-3xl bg-lavender p-4 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
+          className="group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl bg-lavender p-3 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-background/60 backdrop-blur">
-            <HandHeart className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+            <HandHeart className="h-4 w-4" />
           </div>
-          <div className="mt-6">
-            <div className="text-[15px] font-semibold leading-tight">✨ Подарить</div>
-            <div className="text-xs opacity-75">{giveSub}</div>
+          <div className="mt-3">
+            <div className="text-sm font-semibold leading-tight">Подарить</div>
+            <div className="text-[11px] opacity-75">{giveSub}</div>
           </div>
         </button>
         <button
           type="button"
           onClick={() => { haptic("medium"); onReceive(); }}
-          className="group relative flex flex-col items-start justify-between overflow-hidden rounded-3xl bg-mint p-4 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
+          className="group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-background/60 backdrop-blur">
-            <GiftIcon className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+            <GiftIcon className="h-4 w-4" />
           </div>
-          <div className="mt-6">
-            <div className="text-[15px] font-semibold leading-tight">🎁 Забрать</div>
-            <div className="text-xs opacity-75">{receiveSub}</div>
+          <div className="mt-3">
+            <div className="text-sm font-semibold leading-tight">Забрать</div>
+            <div className="text-[11px] opacity-75">{receiveSub}</div>
           </div>
         </button>
       </div>
