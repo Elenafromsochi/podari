@@ -126,11 +126,9 @@ export function ChatsTab() {
         </div>
       ) : list.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          {q
-            ? "Ничего не нашлось 🌿"
-            : filter === "archive"
-              ? "Архив пуст"
-              : "Здесь пока нет активных чатов"}
+          {filter === "archive"
+            ? "Архив пуст"
+            : "Здесь пока нет активных чатов"}
         </div>
       ) : (
         <ul key={filter} className="achievements-list space-y-2">
