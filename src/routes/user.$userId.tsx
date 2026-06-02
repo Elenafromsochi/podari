@@ -110,6 +110,7 @@ function UserProfilePage() {
   };
 
   return (
+    <GlobalChrome>
     <div className="mx-auto w-full max-w-md space-y-4 px-5 pb-8 pt-5">
       <button
         onClick={() => navigate({ to: "/" })}
