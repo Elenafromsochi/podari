@@ -100,9 +100,10 @@ function InsightsPage() {
     }
   };
 
-  if (!authChecked) return <div className="min-h-[100dvh] bg-[#0a0a0f]" />;
+  if (!authChecked) return <GlobalChrome><div className="min-h-[60dvh]" /></GlobalChrome>;
 
   return (
+    <GlobalChrome>
     <div className="min-h-[100dvh] bg-[#0a0a0f] text-zinc-100">
       <style>{`
         .ins-card { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; }
@@ -286,6 +287,7 @@ function InsightsPage() {
         }}
       />
     </div>
+    </GlobalChrome>
   );
 }
 
