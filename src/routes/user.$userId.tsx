@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
+import { GlobalChrome } from "@/components/GlobalChrome";
 
 
 export const Route = createFileRoute("/user/$userId")({
@@ -109,6 +110,7 @@ function UserProfilePage() {
   };
 
   return (
+    <GlobalChrome>
     <div className="mx-auto w-full max-w-md space-y-4 px-5 pb-8 pt-5">
       <button
         onClick={() => navigate({ to: "/" })}
@@ -285,5 +287,6 @@ function UserProfilePage() {
         )}
       </section>
     </div>
+    </GlobalChrome>
   );
 }
