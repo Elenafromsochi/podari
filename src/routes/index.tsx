@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { startTourForUser } from "@/lib/tour";
 import { claimGift } from "@/lib/cozy.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/haptics";
