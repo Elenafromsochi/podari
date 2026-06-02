@@ -29,6 +29,14 @@ type Gift = {
   status: string;
 };
 
+type Wish = {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  category: string;
+};
+
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
 const ACTIVE_TX_KEY = "cozygift_active_tx";
 
