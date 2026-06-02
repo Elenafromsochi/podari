@@ -6,7 +6,9 @@ import { Sparkles, Gift as GiftIcon, HandHeart } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WishesFeed } from "@/components/WishesFeed";
+import { LevelBadge } from "@/components/LevelBadge";
 import { getHomeStats } from "@/lib/cozy.functions";
+
 import {
   pickRandom,
   HOME_TAGLINES,
@@ -251,9 +253,8 @@ function GiftedCard({ gift }: { gift: Gift }) {
             <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
               {gift.owner_name}
             </span>
-            <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
-              ур. {gift.owner_level ?? 1}
-            </span>
+            <LevelBadge level={gift.owner_level ?? 1} />
+
             <span className="ml-auto inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[10px] font-semibold text-mint-foreground">
               💝 подарено
             </span>

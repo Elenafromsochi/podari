@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+import { LevelBadge } from "@/components/LevelBadge";
+
 
 function timeAgo(iso?: string | null): string {
   if (!iso) return "";
@@ -176,9 +178,8 @@ export function ReceiveGiftFlow({
             ) : (
               <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
             )}
-            <span className="inline-flex items-center rounded-full bg-peach/50 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
-              ур. {g.owner_level ?? 1}
-            </span>
+            <LevelBadge level={g.owner_level ?? 1} />
+
             <span>· {timeAgo(g.created_at)}</span>
           </div>
         </div>
