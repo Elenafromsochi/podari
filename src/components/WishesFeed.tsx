@@ -34,6 +34,18 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
     listFn({ data: {} }).then((data) => setWishes(data as Wish[])).catch(() => setWishes([]));
   }, [listFn]);
 
+  const q = (searchQuery ?? "").trim().toLowerCase();
+  const list =
+    wishes && q
+      ? wishes.filter(
+          (w) =>
+            w.title.toLowerCase().includes(q) ||
+            (w.description && w.description.toLowerCase().includes(q)) ||
+            w.owner_name.toLowerCase().includes(q) ||
+            w.category.toLowerCase().includes(q),
+        )
+      : wishes;
+
   return (
     <div>
       <button
