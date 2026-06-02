@@ -26,6 +26,7 @@ import {
   Coins,
   Gift,
 } from "lucide-react";
+import { GlobalChrome } from "@/components/GlobalChrome";
 
 export const Route = createFileRoute("/insights")({
   head: () => ({ meta: [{ title: "Insights · Подари" }, { name: "robots", content: "noindex" }] }),
