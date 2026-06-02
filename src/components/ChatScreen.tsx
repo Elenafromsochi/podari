@@ -92,6 +92,7 @@ export function ChatScreen({
 
   const reviewFn = useServerFn(submitReview);
   const cancelFn = useServerFn(cancelClaim);
+  const cancelBySenderFn = useServerFn(cancelBySender);
   const sendMessageFn = useServerFn(sendChatMessage);
   const requestHandoverFn = useServerFn(requestHandover);
   const confirmHandoverFn = useServerFn(confirmHandover);
