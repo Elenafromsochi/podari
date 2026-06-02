@@ -363,10 +363,6 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             </div>
             <p className="text-[11px] text-muted-foreground">
               {COST_TIERS.find((t) => t.cost === cost)?.range}
-              {" · "}
-              <span className="opacity-70">
-                Чем выше оценка — тем больше баллов получит даритель при вручении.
-              </span>
             </p>
           </div>
 
