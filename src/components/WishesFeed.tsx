@@ -70,26 +70,13 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
           <Skeleton className="h-24 w-full rounded-2xl" />
           <Skeleton className="h-24 w-full rounded-2xl" />
         </div>
-      ) : (
-        (() => {
-          const q = (searchQuery ?? "").trim().toLowerCase();
-          const list = q
-            ? wishes.filter(
-                (w) =>
-                  w.title.toLowerCase().includes(q) ||
-                  (w.description && w.description.toLowerCase().includes(q)) ||
-                  w.owner_name.toLowerCase().includes(q) ||
-                  w.category.toLowerCase().includes(q),
-              )
-            : wishes;
-          if (list.length === 0) {
-            return (
+      ) : list && list.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          Пока никто ничего не пожелал. Будь первым ✨
+          {q ? "Ничего не нашлось 🌿" : "Пока никто ничего не пожелал. Будь первым ✨"}
         </div>
       ) : (
         <ul className="space-y-3">
-          {wishes.map((w) => (
+          {list?.map((w) => (
             <li key={w.id}>
               <button
                 type="button"
