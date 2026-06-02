@@ -63,39 +63,8 @@ export function GlobalNotifications() {
       )
       .subscribe();
 
-    const msgChannel = supabase
-      .channel(`global-msgs-${me}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        async (payload) => {
-          const m = payload.new as { chat_id: string; sender_id: string | null; content: string };
-          if (!m.sender_id || m.sender_id === me) return;
-          // Проверим, что я участник этого чата
-          const { data: chat } = await supabase
-            .from("chats")
-            .select("id, gift_id, user_a, user_b")
-            .eq("id", m.chat_id)
-            .maybeSingle();
-          if (!chat || (chat.user_a !== me && chat.user_b !== me)) return;
-          toast("Новое сообщение 💬", {
-            description: m.content.length > 80 ? m.content.slice(0, 80) + "…" : m.content,
-            action: chat.gift_id
-              ? {
-                  label: "Открыть",
-                  onClick: () =>
-                    navigate({ to: "/chat/$giftId", params: { giftId: chat.gift_id as string } }),
-                }
-              : undefined,
-          });
-          window.dispatchEvent(new CustomEvent("cozy:chats-activity"));
-        },
-      )
-      .subscribe();
-
     return () => {
       supabase.removeChannel(txChannel);
-      supabase.removeChannel(msgChannel);
     };
   }, [user?.user_id, navigate]);
 
