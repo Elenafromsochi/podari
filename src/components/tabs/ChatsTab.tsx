@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyChats } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WriteToAdminButton } from "@/components/WriteToAdminDialog";
+
 
 type ChatItem = {
   transaction_id: string;
@@ -81,12 +83,16 @@ export function ChatsTab() {
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-7">
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Чаты</h1>
-        <p className="text-sm text-muted-foreground">
-          Общение по подаркам и сделкам
-        </p>
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Чаты</h1>
+          <p className="text-sm text-muted-foreground">
+            Общение по подаркам и сделкам
+          </p>
+        </div>
+        <WriteToAdminButton />
       </header>
+
 
       {/* Segmented control */}
       <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
