@@ -27,6 +27,8 @@ import {
   Gift,
 } from "lucide-react";
 import { GlobalChrome } from "@/components/GlobalChrome";
+import { AdminInbox } from "@/components/AdminInbox";
+
 
 export const Route = createFileRoute("/insights")({
   head: () => ({ meta: [{ title: "Insights · Подари" }, { name: "robots", content: "noindex" }] }),
@@ -192,8 +194,12 @@ function InsightsPage() {
           </section>
         )}
 
+        {/* Admin inbox */}
+        <AdminInbox />
+
         {/* Users table */}
         <section className="ins-card p-4 ins-fade">
+
           <div className="flex items-center gap-2 flex-wrap mb-3">
             <Input
               placeholder="Поиск по имени или @username"
