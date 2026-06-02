@@ -97,6 +97,7 @@ function CabinetPage() {
   const chatsFn = useServerFn(getMyChats);
   const unreadFn = useServerFn(getUnreadCounts);
   const navigate = useNavigate();
+  const router = useRouter();
 
 
   const handleSignOut = async () => {
