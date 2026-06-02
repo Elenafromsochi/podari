@@ -171,6 +171,7 @@ function Index() {
       )}
 
       {flow.kind === "wish_form" && (
+        <GlobalChrome>
         <WishForm
           onBack={() => setFlow({ kind: "none" })}
           onDone={async (id) => {
@@ -183,9 +184,11 @@ function Index() {
             setFlow({ kind: "wish_details", wishId: id });
           }}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "wish_details" && (
+        <GlobalChrome>
         <WishDetails
           wishId={flow.wishId}
           onBack={() => setFlow({ kind: "none" })}
@@ -194,9 +197,11 @@ function Index() {
           }
           onDeleted={() => setFlow({ kind: "none" })}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "wish_chat" && (
+        <GlobalChrome>
         <WishChatScreen
           wishId={flow.wishId}
           transactionId={flow.txId}
@@ -208,17 +213,21 @@ function Index() {
             setFlow({ kind: "none" });
           }}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "give_chip" && (
+        <GlobalChrome>
         <GiveGiftChips
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
           onPick={(kind, label) => setFlow({ kind: "give_form", presetHint: label, giftKind: kind })}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "give_form" && (
+        <GlobalChrome>
         <GiveGiftForm
           onBack={() => setFlow({ kind: "give_chip" })}
           presetHint={flow.presetHint}
@@ -233,25 +242,31 @@ function Index() {
             setFlow({ kind: "publish_success" });
           }}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "publish_success" && (
+        <GlobalChrome>
         <PublishSuccess
           onGiveAnother={() => setFlow({ kind: "give_chip" })}
           onReceive={() => setFlow({ kind: "receive" })}
           onHome={() => setFlow({ kind: "none" })}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "receive" && (
+        <GlobalChrome>
         <ReceiveGiftFlow
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
           onPick={handlePickGift}
         />
+        </GlobalChrome>
       )}
 
       {flow.kind === "chat" && (
+        <GlobalChrome>
         <ChatScreen
           giftId={flow.giftId}
           transactionId={flow.txId}
@@ -273,6 +288,7 @@ function Index() {
             setFlow({ kind: "none" });
           }}
         />
+        </GlobalChrome>
       )}
 
       <Dialog open={insufficientOpen} onOpenChange={setInsufficientOpen}>
