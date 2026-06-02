@@ -200,7 +200,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Уже нашли хозяев</h2>
             <span className="text-xs text-muted-foreground">
-              {gifted ? `${gifted.length}` : ""}
+              {filteredGifted ? `${filteredGifted.length}` : ""}
             </span>
           </div>
 
@@ -210,13 +210,13 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
               <Skeleton className="h-24 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
             </div>
-          ) : gifted.length === 0 ? (
+          ) : filteredGifted && filteredGifted.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              Пока никто ничего не подарил 🌱
+              {q ? "Ничего не нашлось 🌿" : "Пока никто ничего не подарил 🌱"}
             </div>
           ) : (
             <ul className="space-y-3">
-              {gifted.map((g) => (
+              {filteredGifted?.map((g) => (
                 <GiftedCard key={g.id} gift={g} />
               ))}
             </ul>
@@ -228,6 +228,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
           </div>
           <WishesFeed
+            searchQuery={query}
             onCreate={() => onCreateWish?.()}
             onOpen={(id) => onOpenWish?.(id)}
           />
