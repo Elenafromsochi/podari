@@ -54,11 +54,15 @@ function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
     </span>
   );
 }
-type Gift = { id: string; title: string; image_url: string | null; owner_id: string | null };
+type Gift = { id: string; title: string; description?: string | null; image_url: string | null; owner_id: string | null };
 
-const AUTO_MESSAGES = [
+const RECEIVER_HINTS = [
   "Мне понравился ваш подарок. Как могу его забрать? 😊",
-  "Расскажите подробнее про ваш подарок, а именно… 💬",
+  "Расскажите подробнее о вашем подарке, а именно… ",
+];
+const OWNER_HINTS = [
+  "Здравствуйте! Спасибо, что выбрали подарок 💚",
+  "Когда вам удобно его забрать?",
 ];
 
 
