@@ -48,7 +48,7 @@ export function PublishSuccess({ onGiveAnother, onReceive, onHome }: Props) {
               <GiftIcon className="h-5 w-5" />
             </span>
             <span>
-              <span className="block text-base font-semibold leading-tight">🎁 Забрать подарок</span>
+              <span className="block text-base font-semibold leading-tight">🎁 Получить подарок</span>
               <span className="block text-xs opacity-75">поддержать круговорот</span>
             </span>
           </button>

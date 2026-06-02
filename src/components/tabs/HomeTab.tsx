@@ -135,7 +135,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             <GiftIcon className="h-4 w-4" />
           </div>
           <div className="mt-3">
-            <div className="text-sm font-semibold leading-tight">Забрать</div>
+            <div className="text-sm font-semibold leading-tight">Получить</div>
             <div className="text-[11px] opacity-75">{receiveSub}</div>
           </div>
         </button>

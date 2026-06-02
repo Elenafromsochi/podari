@@ -46,7 +46,7 @@ export const GIVE_SUBTITLES = [
   "немного тепла",
 ] as const;
 
-// Подпись под кнопкой «Забрать»
+// Подпись под кнопкой «Получить»
 export const RECEIVE_SUBTITLES = [
   "что-то приятное",
   "подарок от другого",
