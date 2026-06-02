@@ -26,6 +26,7 @@ import {
   sendChatMessage,
   submitReview,
 } from "@/lib/cozy.functions";
+import { emitTour } from "@/lib/tour";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
 
