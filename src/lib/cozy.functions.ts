@@ -8,8 +8,6 @@ function failOp(code: string, err: unknown): never {
   throw new Error(code);
 }
 
-const INITIAL_CHAT_MESSAGE = "Мне понравился ваш подарок. Как могу его забрать? 😊";
-
 // ---------- Profile ----------
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
