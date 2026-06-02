@@ -26,7 +26,7 @@ interface Props {
   searchQuery?: string;
 }
 
-export function WishesFeed({ onOpen, onCreate }: Props) {
+export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const listFn = useServerFn(listWishes);
 
