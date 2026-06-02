@@ -121,9 +121,10 @@ function Index() {
     return (
       <AuthFlow
         initialNonce={pendingLoginNonce}
-        onAuthed={(u) => {
+        onAuthed={(u, isNew) => {
           setPendingLoginNonce(null);
           setUser(u);
+          startTourForUser(u.user_id, u.xp, !!isNew);
         }}
       />
     );
