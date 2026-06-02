@@ -159,6 +159,12 @@ function Index() {
           onPickGift={handlePickGift}
           onCreateWish={() => setFlow({ kind: "wish_form" })}
           onOpenWish={(wishId) => setFlow({ kind: "wish_details", wishId })}
+          initialTab={
+            typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("tab") === "chats"
+              ? "chats"
+              : "home"
+          }
         />
       )}
 

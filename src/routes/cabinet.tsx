@@ -1,4 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { GlobalChrome } from "@/components/GlobalChrome";
+
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2 } from "lucide-react";
@@ -95,6 +97,7 @@ function CabinetPage() {
   const chatsFn = useServerFn(getMyChats);
   const unreadFn = useServerFn(getUnreadCounts);
   const navigate = useNavigate();
+  const router = useRouter();
 
 
   const handleSignOut = async () => {
@@ -193,18 +196,22 @@ function CabinetPage() {
 
   if (!authChecked) {
     return (
-      <div className="mx-auto max-w-md p-8 text-center text-sm text-muted-foreground">
-        Загружаем кабинет…
-      </div>
+      <GlobalChrome>
+        <div className="mx-auto max-w-md p-8 text-center text-sm text-muted-foreground">
+          Загружаем кабинет…
+        </div>
+      </GlobalChrome>
     );
   }
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-md p-8 text-center text-muted-foreground">
-        Войдите, чтобы открыть личный кабинет.{" "}
-        <Link to="/" className="text-primary underline-offset-4 hover:underline">На главную</Link>
-      </div>
+      <GlobalChrome>
+        <div className="mx-auto max-w-md p-8 text-center text-muted-foreground">
+          Войдите, чтобы открыть личный кабинет.{" "}
+          <Link to="/" className="text-primary underline-offset-4 hover:underline">На главную</Link>
+        </div>
+      </GlobalChrome>
     );
   }
 
@@ -215,8 +222,19 @@ function CabinetPage() {
   ];
 
   return (
+    <GlobalChrome>
     <div className="mx-auto w-full max-w-md px-5 py-8">
-      <Link to="/" className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground">← На главную</Link>
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
+          else navigate({ to: "/" });
+        }}
+        className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Назад
+      </button>
+
 
       <Card className="mb-6 border-primary/20 bg-card/80">
         <CardHeader>
@@ -379,8 +397,10 @@ function CabinetPage() {
         </AlertDialog>
       </div>
     </div>
+    </GlobalChrome>
   );
 }
+
 
 function ChatGroup({
   title,
