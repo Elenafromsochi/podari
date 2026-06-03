@@ -17,19 +17,32 @@ export const publishWish = createServerFn({ method: "POST" })
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80).default("разное"),
         image_url: z.string().max(15_000_000).nullable().optional(),
+        image_urls: z.array(z.string().max(15_000_000)).max(10).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const urls = (data.image_urls ?? []).filter(Boolean);
+    const cover = data.image_url ?? urls[0] ?? "";
+    const allUrls = cover && !urls.includes(cover) ? [cover, ...urls] : urls;
+
     const { data: row, error } = await supabase.rpc("publish_wish", {
       _title: data.title,
       _description: data.description ?? "",
-      _image_url: data.image_url ?? "",
+      _image_url: cover,
       _category: data.category,
     });
     if (error) failOp(error.message || "PUBLISH_WISH_FAILED", error);
-    return { id: row as unknown as string };
+    const wishId = row as unknown as string;
+    if (allUrls.length > 0 && wishId) {
+      await supabase
+        .from("wishes")
+        .update({ image_urls: allUrls })
+        .eq("id", wishId)
+        .eq("owner_id", userId);
+    }
+    return { id: wishId };
   });
 
 // ---------- List wishes (feed) ----------
