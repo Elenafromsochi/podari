@@ -215,7 +215,8 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
     setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
 
   const submit = async () => {
-    if (!description.trim() && !photoPreview) {
+    const hasPhoto = photoPreviews.length > 0;
+    if (!description.trim() && !hasPhoto) {
       setError("Опишите подарок голосом, текстом или прикрепите фото ✨");
       return;
     }
@@ -225,7 +226,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
       setStatus("✨ ИИ придумывает название и категорию...");
       const desc = description.trim() || "Подарок с фотографии";
       const { title, category } = await generateMeta({
-        data: { description: desc, hasImage: !!photoPreview },
+        data: { description: desc, hasImage: hasPhoto },
       });
 
       // Мягкая подсказка по средней оценке похожих подарков
@@ -252,7 +253,8 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           title,
           description: description.trim() || null,
           category,
-          image_url: photoPreview,
+          image_url: photoPreviews[0] ?? null,
+          image_urls: photoPreviews,
           gift_kind: giftKind,
           cost,
         },
