@@ -40,7 +40,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
       setMeId(u.user?.id ?? null);
       const { data } = await supabase
         .from("wishes")
-        .select("id,title,description,category,image_url,status,owner_id,created_at")
+        .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at")
         .eq("id", wishId)
         .maybeSingle();
       setWish(data as Wish | null);
