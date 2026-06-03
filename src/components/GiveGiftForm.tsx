@@ -19,7 +19,7 @@ interface Props {
 
 export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
