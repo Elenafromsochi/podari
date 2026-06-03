@@ -50,6 +50,7 @@ export const publishGift = createServerFn({ method: "POST" })
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80),
         image_url: z.string().max(15_000_000).nullable().optional(),
+        image_urls: z.array(z.string().max(15_000_000)).max(10).optional(),
         gift_kind: GiftKind.default("used_item"),
         price_tier: PriceTier.default("under_3k"),
         price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
@@ -61,10 +62,6 @@ export const publishGift = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     void allowedForLevel;
 
-    // Серверная проверка: считаем среднюю стоимость похожих подарков (та же
-    // категория + тот же kind). Если у пользователя оценка сильно отличается
-    // от среднего (≥ 2 балла) и накопилось хотя бы 3 примера — ставим флаг
-    // cost_flag для администратора. Публикацию не блокируем.
     let cost_flag = false;
     const { data: similar } = await supabase
       .from("gifts")
@@ -79,13 +76,18 @@ export const publishGift = createServerFn({ method: "POST" })
       if (Math.abs(avg - data.cost) >= 2) cost_flag = true;
     }
 
+    const urls = (data.image_urls ?? []).filter(Boolean);
+    const cover = data.image_url ?? urls[0] ?? null;
+    const allUrls = cover && !urls.includes(cover) ? [cover, ...urls] : urls;
+
     const { data: row, error } = await supabase
       .from("gifts")
       .insert({
         title: data.title,
         description: data.description ?? null,
         category: data.category,
-        image_url: data.image_url ?? null,
+        image_url: cover,
+        image_urls: allUrls,
         status: "available",
         cost: data.cost,
         owner_id: userId,

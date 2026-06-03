@@ -19,7 +19,7 @@ interface Props {
 
 export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -159,31 +159,64 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
       img.src = dataUrl;
     });
 
-  const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const rawUrl = String(reader.result);
-      const dataUrl = await compressImage(rawUrl);
-      setPhotoPreview(dataUrl);
+  const MAX_PHOTOS = 10;
+
+  const readFile = (f: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const dataUrl = await compressImage(String(reader.result));
+          resolve(dataUrl);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(f);
+    });
+
+  const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    const slots = Math.max(0, MAX_PHOTOS - photoPreviews.length);
+    if (slots === 0) {
+      setError(`Можно загрузить максимум ${MAX_PHOTOS} фото`);
+      return;
+    }
+    const toRead = files.slice(0, slots);
+    try {
+      const urls = await Promise.all(toRead.map(readFile));
+      const wasEmpty = photoPreviews.length === 0;
+      setPhotoPreviews((prev) => [...prev, ...urls]);
       setError(null);
-      setDescription("");
-      setStatus("✨ ИИ рассматривает фото и пишет описание...");
-      try {
-        const { description: aiDesc } = await describeImage({ data: { imageDataUrl: dataUrl } });
-        setDescription(aiDesc);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Не удалось описать фото");
-      } finally {
-        setStatus(null);
+      // ИИ описывает только первый загруженный кадр (когда галерея была пуста)
+      if (wasEmpty && urls[0]) {
+        setDescription("");
+        setStatus("✨ ИИ рассматривает фото и пишет описание...");
+        try {
+          const { description: aiDesc } = await describeImage({
+            data: { imageDataUrl: urls[0] },
+          });
+          setDescription(aiDesc);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Не удалось описать фото");
+        } finally {
+          setStatus(null);
+        }
       }
-    };
-    reader.readAsDataURL(f);
+    } catch {
+      setError("Не удалось загрузить фото");
+    }
   };
 
+  const removePhoto = (idx: number) =>
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
+
   const submit = async () => {
-    if (!description.trim() && !photoPreview) {
+    const hasPhoto = photoPreviews.length > 0;
+    if (!description.trim() && !hasPhoto) {
       setError("Опишите подарок голосом, текстом или прикрепите фото ✨");
       return;
     }
@@ -193,7 +226,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
       setStatus("✨ ИИ придумывает название и категорию...");
       const desc = description.trim() || "Подарок с фотографии";
       const { title, category } = await generateMeta({
-        data: { description: desc, hasImage: !!photoPreview },
+        data: { description: desc, hasImage: hasPhoto },
       });
 
       // Мягкая подсказка по средней оценке похожих подарков
@@ -220,7 +253,8 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           title,
           description: description.trim() || null,
           category,
-          image_url: photoPreview,
+          image_url: photoPreviews[0] ?? null,
+          image_urls: photoPreviews,
           gift_kind: giftKind,
           cost,
         },
@@ -259,26 +293,46 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  multiple
                   onChange={onPhoto}
                   className="hidden"
                 />
               </label>
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                📁 Выбрать файл
-                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
+                📁 Выбрать файлы
+                <input type="file" accept="image/*" multiple onChange={onPhoto} className="hidden" />
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              🤖 ИИ автоматически напишет описание по фотографии
+              🤖 ИИ опишет подарок по первой фотографии. Можно добавить до 10 кадров.
             </p>
-            {photoPreview && (
-              <img
-                src={photoPreview}
-                alt="Превью"
-                className="mt-2 max-h-48 w-full rounded-md border object-cover"
-              />
+            {photoPreviews.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {photoPreviews.map((src, i) => (
+                  <div key={i} className="relative">
+                    <img
+                      src={src}
+                      alt={`Превью ${i + 1}`}
+                      className="h-24 w-full rounded-md border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/95 text-xs shadow ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground"
+                      aria-label="Удалить фото"
+                    >
+                      ✕
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded bg-primary/90 px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                        обложка
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
-            {status && photoPreview && (
+            {status && photoPreviews.length > 0 && (
               <div className="mt-2 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
                 <span>{status}</span>

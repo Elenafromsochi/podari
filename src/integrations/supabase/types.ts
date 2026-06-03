@@ -167,6 +167,7 @@ export type Database = {
           gift_kind: string
           id: string
           image_url: string | null
+          image_urls: string[]
           owner_id: string
           price_rub: number | null
           price_tier: string
@@ -183,6 +184,7 @@ export type Database = {
           gift_kind?: string
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           owner_id: string
           price_rub?: number | null
           price_tier?: string
@@ -199,6 +201,7 @@ export type Database = {
           gift_kind?: string
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           owner_id?: string
           price_rub?: number | null
           price_tier?: string
@@ -497,6 +500,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          image_urls: string[]
           owner_id: string
           status: string
           title: string
@@ -508,6 +512,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           owner_id: string
           status?: string
           title: string
@@ -519,6 +524,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           owner_id?: string
           status?: string
           title?: string

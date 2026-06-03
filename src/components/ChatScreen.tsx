@@ -55,7 +55,7 @@ function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
     </span>
   );
 }
-type Gift = { id: string; title: string; description?: string | null; image_url: string | null; owner_id: string | null };
+type Gift = { id: string; title: string; description?: string | null; image_url: string | null; image_urls?: string[] | null; owner_id: string | null };
 
 const RECEIVER_HINTS = [
   "Мне понравился ваш подарок. Как могу его забрать? 😊",
@@ -118,7 +118,7 @@ export function ChatScreen({
       setMeId(myId);
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,image_url,owner_id")
+        .select("id,title,description,image_url,image_urls,owner_id")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
@@ -406,6 +406,27 @@ export function ChatScreen({
             </div>
           </div>
         </div>
+
+        {gift?.image_urls && gift.image_urls.length > 1 && (
+          <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {gift.image_urls.map((src, i) => (
+              <a
+                key={i}
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0"
+              >
+                <img
+                  src={src}
+                  alt={`Фото ${i + 1}`}
+                  className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+
 
         {/* Кнопки действия по роли */}
         {!cancelled && !handedOver && (

@@ -23,7 +23,7 @@ import {
 } from "@/lib/wishes.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
-type Wish = { id: string; title: string; image_url: string | null; owner_id: string };
+type Wish = { id: string; title: string; image_url: string | null; image_urls?: string[] | null; owner_id: string };
 
 const AUTO_MSGS_GIVER = [
   "Здравствуйте! Я могу исполнить ваше пожелание ✨",
@@ -70,7 +70,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
       setMeId(myId);
       const { data: w } = await supabase
         .from("wishes")
-        .select("id,title,image_url,owner_id")
+        .select("id,title,image_url,image_urls,owner_id")
         .eq("id", wishId)
         .maybeSingle();
       setWish(w as Wish | null);
@@ -298,6 +298,27 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           </Button>
         )}
       </div>
+
+      {wish?.image_urls && wish.image_urls.length > 1 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto border-b px-4 pb-2 pt-2">
+          {wish.image_urls.map((src, i) => (
+            <a
+              key={i}
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0"
+            >
+              <img
+                src={src}
+                alt={`Фото ${i + 1}`}
+                className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (

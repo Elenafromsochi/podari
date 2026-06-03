@@ -52,21 +52,43 @@ export function WishForm({ onDone, onBack }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("разное");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const publishFn = useServerFn(publishWish);
 
+  const MAX_PHOTOS = 10;
+
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const raw = String(reader.result);
-      const dataUrl = await compressImage(raw);
-      setPhotoPreview(dataUrl);
-    };
-    reader.readAsDataURL(f);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const slots = Math.max(0, MAX_PHOTOS - photoPreviews.length);
+    const toRead = files.slice(0, slots);
+    if (slots === 0) {
+      toast.error(`Можно загрузить максимум ${MAX_PHOTOS} фото`);
+      e.target.value = "";
+      return;
+    }
+    Promise.all(
+      toRead.map(
+        (f) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const dataUrl = await compressImage(String(reader.result));
+              resolve(dataUrl);
+            };
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(f);
+          }),
+      ),
+    )
+      .then((urls) => setPhotoPreviews((prev) => [...prev, ...urls]))
+      .catch(() => toast.error("Не удалось загрузить фото"));
+    e.target.value = "";
   };
+
+  const removePhoto = (idx: number) =>
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
 
   const submit = async () => {
     if (!title.trim()) {
@@ -80,7 +102,8 @@ export function WishForm({ onDone, onBack }: Props) {
           title: title.trim(),
           description: description.trim() || null,
           category,
-          image_url: photoPreview,
+          image_url: photoPreviews[0] ?? null,
+          image_urls: photoPreviews,
         },
       });
       haptic("success");
@@ -155,19 +178,38 @@ export function WishForm({ onDone, onBack }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>Фото-референс (необязательно)</Label>
+            <Label>Фото-референс (необязательно, до 10 шт.)</Label>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
                 📷 Сделать фото
-                <input type="file" accept="image/*" capture="environment" onChange={onPhoto} className="hidden" />
+                <input type="file" accept="image/*" capture="environment" multiple onChange={onPhoto} className="hidden" />
               </label>
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                📁 Выбрать файл
-                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
+                📁 Выбрать файлы
+                <input type="file" accept="image/*" multiple onChange={onPhoto} className="hidden" />
               </label>
             </div>
-            {photoPreview && (
-              <img src={photoPreview} alt="Превью" className="mt-2 max-h-56 w-full rounded-xl object-cover" />
+            {photoPreviews.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {photoPreviews.map((src, i) => (
+                  <div key={i} className="relative">
+                    <img src={src} alt={`Превью ${i + 1}`} className="h-24 w-full rounded-lg object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/95 text-xs shadow ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground"
+                      aria-label="Удалить фото"
+                    >
+                      ✕
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded bg-primary/90 px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                        обложка
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

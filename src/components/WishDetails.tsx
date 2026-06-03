@@ -13,6 +13,7 @@ type Wish = {
   description: string | null;
   category: string;
   image_url: string | null;
+  image_urls: string[] | null;
   status: string;
   owner_id: string;
   created_at: string;
@@ -39,7 +40,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
       setMeId(u.user?.id ?? null);
       const { data } = await supabase
         .from("wishes")
-        .select("id,title,description,category,image_url,status,owner_id,created_at")
+        .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at")
         .eq("id", wishId)
         .maybeSingle();
       setWish(data as Wish | null);
@@ -104,6 +105,19 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
           <img src={wish.image_url} alt={wish.title} className="h-56 w-full object-cover" />
         ) : (
           <div className="flex h-40 w-full items-center justify-center bg-peach/40 text-6xl">✨</div>
+        )}
+        {wish.image_urls && wish.image_urls.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto border-b bg-background/60 px-3 py-2">
+            {wish.image_urls.map((src, i) => (
+              <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                <img
+                  src={src}
+                  alt={`Фото ${i + 1}`}
+                  className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+                />
+              </a>
+            ))}
+          </div>
         )}
         <div className="p-5">
           <div className="mb-2 flex flex-wrap items-center gap-2">
