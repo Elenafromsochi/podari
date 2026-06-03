@@ -293,26 +293,46 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  multiple
                   onChange={onPhoto}
                   className="hidden"
                 />
               </label>
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                📁 Выбрать файл
-                <input type="file" accept="image/*" onChange={onPhoto} className="hidden" />
+                📁 Выбрать файлы
+                <input type="file" accept="image/*" multiple onChange={onPhoto} className="hidden" />
               </label>
             </div>
             <p className="text-xs text-muted-foreground">
-              🤖 ИИ автоматически напишет описание по фотографии
+              🤖 ИИ опишет подарок по первой фотографии. Можно добавить до 10 кадров.
             </p>
-            {photoPreview && (
-              <img
-                src={photoPreview}
-                alt="Превью"
-                className="mt-2 max-h-48 w-full rounded-md border object-cover"
-              />
+            {photoPreviews.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {photoPreviews.map((src, i) => (
+                  <div key={i} className="relative">
+                    <img
+                      src={src}
+                      alt={`Превью ${i + 1}`}
+                      className="h-24 w-full rounded-md border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/95 text-xs shadow ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground"
+                      aria-label="Удалить фото"
+                    >
+                      ✕
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded bg-primary/90 px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                        обложка
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
-            {status && photoPreview && (
+            {status && photoPreviews.length > 0 && (
               <div className="mt-2 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
                 <span>{status}</span>
