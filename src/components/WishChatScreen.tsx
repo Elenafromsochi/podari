@@ -70,7 +70,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
       setMeId(myId);
       const { data: w } = await supabase
         .from("wishes")
-        .select("id,title,image_url,owner_id")
+        .select("id,title,image_url,image_urls,owner_id")
         .eq("id", wishId)
         .maybeSingle();
       setWish(w as Wish | null);
