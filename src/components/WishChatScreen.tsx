@@ -299,6 +299,27 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
         )}
       </div>
 
+      {wish?.image_urls && wish.image_urls.length > 1 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto border-b px-4 pb-2 pt-2">
+          {wish.image_urls.map((src, i) => (
+            <a
+              key={i}
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0"
+            >
+              <img
+                src={src}
+                alt={`Фото ${i + 1}`}
+                className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
+
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">
