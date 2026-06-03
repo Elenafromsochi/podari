@@ -13,6 +13,7 @@ type Wish = {
   description: string | null;
   category: string;
   image_url: string | null;
+  image_urls: string[] | null;
   status: string;
   owner_id: string;
   created_at: string;
