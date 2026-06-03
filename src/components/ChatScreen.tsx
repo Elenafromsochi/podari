@@ -55,7 +55,7 @@ function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
     </span>
   );
 }
-type Gift = { id: string; title: string; description?: string | null; image_url: string | null; owner_id: string | null };
+type Gift = { id: string; title: string; description?: string | null; image_url: string | null; image_urls?: string[] | null; owner_id: string | null };
 
 const RECEIVER_HINTS = [
   "Мне понравился ваш подарок. Как могу его забрать? 😊",
