@@ -52,21 +52,43 @@ export function WishForm({ onDone, onBack }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("разное");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const publishFn = useServerFn(publishWish);
 
+  const MAX_PHOTOS = 10;
+
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const raw = String(reader.result);
-      const dataUrl = await compressImage(raw);
-      setPhotoPreview(dataUrl);
-    };
-    reader.readAsDataURL(f);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const slots = Math.max(0, MAX_PHOTOS - photoPreviews.length);
+    const toRead = files.slice(0, slots);
+    if (slots === 0) {
+      toast.error(`Можно загрузить максимум ${MAX_PHOTOS} фото`);
+      e.target.value = "";
+      return;
+    }
+    Promise.all(
+      toRead.map(
+        (f) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async () => {
+              const dataUrl = await compressImage(String(reader.result));
+              resolve(dataUrl);
+            };
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(f);
+          }),
+      ),
+    )
+      .then((urls) => setPhotoPreviews((prev) => [...prev, ...urls]))
+      .catch(() => toast.error("Не удалось загрузить фото"));
+    e.target.value = "";
   };
+
+  const removePhoto = (idx: number) =>
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
 
   const submit = async () => {
     if (!title.trim()) {
@@ -80,7 +102,8 @@ export function WishForm({ onDone, onBack }: Props) {
           title: title.trim(),
           description: description.trim() || null,
           category,
-          image_url: photoPreview,
+          image_url: photoPreviews[0] ?? null,
+          image_urls: photoPreviews,
         },
       });
       haptic("success");
