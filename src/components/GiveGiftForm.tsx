@@ -159,28 +159,60 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
       img.src = dataUrl;
     });
 
-  const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const rawUrl = String(reader.result);
-      const dataUrl = await compressImage(rawUrl);
-      setPhotoPreview(dataUrl);
+  const MAX_PHOTOS = 10;
+
+  const readFile = (f: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const dataUrl = await compressImage(String(reader.result));
+          resolve(dataUrl);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(f);
+    });
+
+  const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    const slots = Math.max(0, MAX_PHOTOS - photoPreviews.length);
+    if (slots === 0) {
+      setError(`Можно загрузить максимум ${MAX_PHOTOS} фото`);
+      return;
+    }
+    const toRead = files.slice(0, slots);
+    try {
+      const urls = await Promise.all(toRead.map(readFile));
+      const wasEmpty = photoPreviews.length === 0;
+      setPhotoPreviews((prev) => [...prev, ...urls]);
       setError(null);
-      setDescription("");
-      setStatus("✨ ИИ рассматривает фото и пишет описание...");
-      try {
-        const { description: aiDesc } = await describeImage({ data: { imageDataUrl: dataUrl } });
-        setDescription(aiDesc);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Не удалось описать фото");
-      } finally {
-        setStatus(null);
+      // ИИ описывает только первый загруженный кадр (когда галерея была пуста)
+      if (wasEmpty && urls[0]) {
+        setDescription("");
+        setStatus("✨ ИИ рассматривает фото и пишет описание...");
+        try {
+          const { description: aiDesc } = await describeImage({
+            data: { imageDataUrl: urls[0] },
+          });
+          setDescription(aiDesc);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Не удалось описать фото");
+        } finally {
+          setStatus(null);
+        }
       }
-    };
-    reader.readAsDataURL(f);
+    } catch {
+      setError("Не удалось загрузить фото");
+    }
   };
+
+  const removePhoto = (idx: number) =>
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
 
   const submit = async () => {
     if (!description.trim() && !photoPreview) {
