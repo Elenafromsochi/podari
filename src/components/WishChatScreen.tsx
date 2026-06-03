@@ -23,7 +23,7 @@ import {
 } from "@/lib/wishes.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
-type Wish = { id: string; title: string; image_url: string | null; owner_id: string };
+type Wish = { id: string; title: string; image_url: string | null; image_urls?: string[] | null; owner_id: string };
 
 const AUTO_MSGS_GIVER = [
   "Здравствуйте! Я могу исполнить ваше пожелание ✨",
