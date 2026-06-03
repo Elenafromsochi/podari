@@ -106,6 +106,19 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
         ) : (
           <div className="flex h-40 w-full items-center justify-center bg-peach/40 text-6xl">✨</div>
         )}
+        {wish.image_urls && wish.image_urls.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto border-b bg-background/60 px-3 py-2">
+            {wish.image_urls.map((src, i) => (
+              <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                <img
+                  src={src}
+                  alt={`Фото ${i + 1}`}
+                  className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+                />
+              </a>
+            ))}
+          </div>
+        )}
         <div className="p-5">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
