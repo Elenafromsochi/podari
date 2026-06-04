@@ -6,6 +6,7 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles } from "lucide-react";
+import { WISH_EXAMPLES } from "@/lib/random-copy";
 
 type Wish = {
   id: string;
@@ -28,11 +29,19 @@ interface Props {
 
 export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
+  const [wishIdx, setWishIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
   const listFn = useServerFn(listWishes);
 
   useEffect(() => {
     listFn({ data: {} }).then((data) => setWishes(data as Wish[])).catch(() => setWishes([]));
   }, [listFn]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setWishIdx((i) => (i + 1) % WISH_EXAMPLES.length);
+    }, 10000);
+    return () => clearInterval(t);
+  }, []);
 
   const q = (searchQuery ?? "").trim().toLowerCase();
   const list =
@@ -61,6 +70,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
         </span>
         <span>
           <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
+          <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">{WISH_EXAMPLES[wishIdx]}</span>
         </span>
       </button>
 
