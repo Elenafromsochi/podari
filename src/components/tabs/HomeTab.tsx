@@ -57,7 +57,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
     const t = setInterval(() => {
       setGiveIdx((i) => (i + 1) % GIVE_EXAMPLES.length);
       setReceiveIdx((i) => (i + 1) % RECEIVE_EXAMPLES.length);
-    }, 10000);
+    }, 30000);
     return () => clearInterval(t);
   }, []);
 
