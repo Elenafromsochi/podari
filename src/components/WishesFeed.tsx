@@ -6,6 +6,7 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles } from "lucide-react";
+import { WISH_EXAMPLES } from "@/lib/random-copy";
 
 type Wish = {
   id: string;
