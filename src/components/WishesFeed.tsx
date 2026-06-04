@@ -29,11 +29,19 @@ interface Props {
 
 export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
+  const [wishIdx, setWishIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
   const listFn = useServerFn(listWishes);
 
   useEffect(() => {
     listFn({ data: {} }).then((data) => setWishes(data as Wish[])).catch(() => setWishes([]));
   }, [listFn]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setWishIdx((i) => (i + 1) % WISH_EXAMPLES.length);
+    }, 10000);
+    return () => clearInterval(t);
+  }, []);
 
   const q = (searchQuery ?? "").trim().toLowerCase();
   const list =
