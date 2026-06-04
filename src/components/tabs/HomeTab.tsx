@@ -133,29 +133,29 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         <button
           type="button"
           onClick={() => { haptic("medium"); onGive(); }}
-          className="group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl bg-lavender p-3 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
+          className="group relative flex flex-col overflow-hidden rounded-2xl bg-lavender p-3 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-            <HandHeart className="h-4 w-4" />
-          </div>
-          <div className="mt-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+              <HandHeart className="h-4 w-4" />
+            </div>
             <div className="text-sm font-semibold leading-tight">Подарить</div>
-            <div className="h-[14px] text-[11px] opacity-75 transition-opacity duration-300 line-clamp-1">{GIVE_EXAMPLES[giveIdx]}</div>
           </div>
+          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">{GIVE_EXAMPLES[giveIdx]}</div>
         </button>
         <button
           type="button"
           data-tour="receive-btn"
           onClick={() => { haptic("medium"); onReceive(); }}
-          className="group relative flex flex-col items-start justify-between overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
+          className="group relative flex flex-col overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-            <GiftIcon className="h-4 w-4" />
-          </div>
-          <div className="mt-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+              <GiftIcon className="h-4 w-4" />
+            </div>
             <div className="text-sm font-semibold leading-tight">Получить</div>
-            <div className="h-[14px] text-[11px] opacity-75 transition-opacity duration-300 line-clamp-1">{RECEIVE_EXAMPLES[receiveIdx]}</div>
           </div>
+          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">{RECEIVE_EXAMPLES[receiveIdx]}</div>
         </button>
       </div>
 
