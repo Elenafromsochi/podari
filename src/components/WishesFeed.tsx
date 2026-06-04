@@ -39,7 +39,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   useEffect(() => {
     const t = setInterval(() => {
       setWishIdx((i) => (i + 1) % WISH_EXAMPLES.length);
-    }, 10000);
+    }, 30000);
     return () => clearInterval(t);
   }, []);
 
