@@ -70,6 +70,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
         </span>
         <span>
           <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
+          <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">{WISH_EXAMPLES[wishIdx]}</span>
         </span>
       </button>
 
