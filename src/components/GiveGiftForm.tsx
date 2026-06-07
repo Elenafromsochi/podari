@@ -248,14 +248,17 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
         /* noop — это не критично для публикации */
       }
 
+      setStatus("📤 Загружаем фото...");
+      const uploadedUrls = await uploadImages(photoPreviews);
+
       setStatus("💾 Сохраняем подарок...");
       const { id } = await publishGiftFn({
         data: {
           title,
           description: description.trim() || null,
           category,
-          image_url: photoPreviews[0] ?? null,
-          image_urls: photoPreviews,
+          image_url: uploadedUrls[0] ?? null,
+          image_urls: uploadedUrls,
           gift_kind: giftKind,
           cost,
         },
