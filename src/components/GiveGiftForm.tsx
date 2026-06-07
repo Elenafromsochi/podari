@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
+import { uploadImages } from "@/lib/upload-image";
 
 import { COST_TIERS, type GiftKind } from "@/lib/gift-kinds";
 
@@ -247,14 +248,17 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
         /* noop — это не критично для публикации */
       }
 
+      setStatus("📤 Загружаем фото...");
+      const uploadedUrls = await uploadImages(photoPreviews);
+
       setStatus("💾 Сохраняем подарок...");
       const { id } = await publishGiftFn({
         data: {
           title,
           description: description.trim() || null,
           category,
-          image_url: photoPreviews[0] ?? null,
-          image_urls: photoPreviews,
+          image_url: uploadedUrls[0] ?? null,
+          image_urls: uploadedUrls,
           gift_kind: giftKind,
           cost,
         },
