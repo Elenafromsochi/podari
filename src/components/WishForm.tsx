@@ -98,13 +98,14 @@ export function WishForm({ onDone, onBack }: Props) {
     }
     setLoading(true);
     try {
+      const uploadedUrls = await uploadImages(photoPreviews);
       const { id } = await publishFn({
         data: {
           title: title.trim(),
           description: description.trim() || null,
           category,
-          image_url: photoPreviews[0] ?? null,
-          image_urls: photoPreviews,
+          image_url: uploadedUrls[0] ?? null,
+          image_urls: uploadedUrls,
         },
       });
       haptic("success");
