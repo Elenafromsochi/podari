@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
+import { uploadImages } from "@/lib/upload-image";
 
 import { COST_TIERS, type GiftKind } from "@/lib/gift-kinds";
 
