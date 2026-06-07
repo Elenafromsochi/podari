@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishWish } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
+import { uploadImages } from "@/lib/upload-image";
 
 interface Props {
   onDone: (wishId: string) => void;
