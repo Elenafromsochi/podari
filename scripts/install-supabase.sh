@@ -7,6 +7,9 @@
 # Запуск (из-под root):
 #   curl -fsSL <RAW_URL>/scripts/install-supabase.sh | bash
 #
+# Скрипт можно безопасно запускать повторно — он продолжит с места,
+# где остановился, и не теряет ранее созданные пароли/ключи.
+#
 set -euo pipefail
 
 # ============================ НАСТРОЙКИ ============================
@@ -16,6 +19,7 @@ APP_SITE_URL="https://elenafromsochi-podari-012b.twc1.net"  # адрес при�
 RAW_BASE="https://raw.githubusercontent.com/Elenafromsochi/podari/claude/podari-repo-overview-67zjks"
 INSTALL_DIR="/opt/supabase"
 SECRETS_FILE="/root/supabase-secrets.txt"
+VARS_FILE="/root/.supabase-install-vars"
 # ==================================================================
 
 log()  { echo -e "\n\033[1;36m==> $*\033[0m"; }
@@ -36,12 +40,24 @@ if ! swapon --show | grep -q .; then
   grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 
-# ---------- 2. Docker ----------
+# ---------- 2. Docker + зеркало ----------
 log "2/9  Устанавливаю Docker"
 if ! command -v docker >/dev/null 2>&1; then
   curl -fsSL https://get.docker.com | sh
 fi
-systemctl enable --now docker
+
+log "Настраиваю зеркало Docker Hub (чтобы обойти лимит скачиваний)"
+mkdir -p /etc/docker
+if ! grep -q registry-mirrors /etc/docker/daemon.json 2>/dev/null; then
+  cat > /etc/docker/daemon.json <<'EOF'
+{
+  "registry-mirrors": ["https://dockerhub.timeweb.cloud", "https://huecker.io", "https://mirror.gcr.io"]
+}
+EOF
+fi
+systemctl enable docker
+systemctl restart docker
+sleep 3
 
 # ---------- 3. Освобождаем порты 80/443 ----------
 log "3/9  Останавливаю nginx (освобождаю порты для HTTPS)"
@@ -59,17 +75,21 @@ fi
 cd "$INSTALL_DIR"
 [ -f .env ] || cp .env.example .env
 
-# ---------- 5. Генерируем секреты ----------
-log "5/9  Генерирую пароли и ключи доступа"
-POSTGRES_PASSWORD="$(openssl rand -hex 24)"
-JWT_SECRET="$(openssl rand -hex 40)"
-SECRET_KEY_BASE="$(openssl rand -hex 32)"
-VAULT_ENC_KEY="$(openssl rand -hex 16)"
-DASHBOARD_USERNAME="admin"
-DASHBOARD_PASSWORD="$(openssl rand -hex 12)"
-
-gen_jwt() { # $1 = role
-  python3 - "$JWT_SECRET" "$1" <<'PY'
+# ---------- 5. Секреты (создаём один раз, потом переиспользуем) ----------
+log "5/9  Готовлю пароли и ключи доступа"
+if [ -f "$VARS_FILE" ]; then
+  # shellcheck disable=SC1090
+  source "$VARS_FILE"
+  echo "  Использую ранее созданные ключи."
+else
+  POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+  JWT_SECRET="$(openssl rand -hex 40)"
+  SECRET_KEY_BASE="$(openssl rand -hex 32)"
+  VAULT_ENC_KEY="$(openssl rand -hex 16)"
+  DASHBOARD_USERNAME="admin"
+  DASHBOARD_PASSWORD="$(openssl rand -hex 12)"
+  gen_jwt() { # $1 = role
+    python3 - "$JWT_SECRET" "$1" <<'PY'
 import sys, hmac, hashlib, base64, json, time
 secret, role = sys.argv[1], sys.argv[2]
 b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b'=')
@@ -79,9 +99,21 @@ payload = b64(json.dumps({"role":role,"iss":"supabase","iat":now,"exp":now+10*36
 sig = b64(hmac.new(secret.encode(), header+b'.'+payload, hashlib.sha256).digest())
 print((header+b'.'+payload+b'.'+sig).decode())
 PY
-}
-ANON_KEY="$(gen_jwt anon)"
-SERVICE_ROLE_KEY="$(gen_jwt service_role)"
+  }
+  ANON_KEY="$(gen_jwt anon)"
+  SERVICE_ROLE_KEY="$(gen_jwt service_role)"
+  cat > "$VARS_FILE" <<EOF
+POSTGRES_PASSWORD='$POSTGRES_PASSWORD'
+JWT_SECRET='$JWT_SECRET'
+SECRET_KEY_BASE='$SECRET_KEY_BASE'
+VAULT_ENC_KEY='$VAULT_ENC_KEY'
+DASHBOARD_USERNAME='$DASHBOARD_USERNAME'
+DASHBOARD_PASSWORD='$DASHBOARD_PASSWORD'
+ANON_KEY='$ANON_KEY'
+SERVICE_ROLE_KEY='$SERVICE_ROLE_KEY'
+EOF
+  chmod 600 "$VARS_FILE"
+fi
 
 # ---------- 6. Прописываем .env ----------
 log "6/9  Записываю настройки в .env"
@@ -135,7 +167,6 @@ for name, svc in (d.get("services") or {}).items():
     fixed = []
     for p in ports:
         s = str(p)
-        # "8000:8000" / "${KONG_HTTP_PORT}:8000" -> слушать только локально
         if s.count(":") == 1 and not s.startswith("127.0.0.1"):
             fixed.append("127.0.0.1:" + s)
         else:
@@ -146,8 +177,16 @@ print("  внутренние порты привязаны к localhost")
 PY
 
 # ---------- 8. Запускаем Supabase ----------
-log "8/9  Запускаю Supabase (первый раз качает образы, это пара минут)"
-docker compose pull
+log "8/9  Скачиваю образы Supabase (через зеркало, с повторами)"
+ok=0
+for attempt in 1 2 3 4 5 6; do
+  if docker compose pull; then ok=1; break; fi
+  warn "Загрузка не удалась, повтор №$attempt через 20 сек..."
+  sleep 20
+done
+[ "$ok" = 1 ] || { warn "Образы скачать не удалось. Запусти скрипт ещё раз позже."; exit 1; }
+
+log "Запускаю Supabase"
 docker compose up -d
 
 echo "  Жду готовности базы данных..."
@@ -195,8 +234,8 @@ yes | ufw enable >/dev/null 2>&1 || true
 {
   echo "==== ДОСТУПЫ SUPABASE (ХРАНИ В СЕКРЕТЕ) ===="
   echo "Дата установки: $(date)"
-  echo "Адрес базы (URL):     https://$DOMAIN"
-  echo "anon key (публичный): $ANON_KEY"
+  echo "Адрес базы (URL):      https://$DOMAIN"
+  echo "anon key (публичный):  $ANON_KEY"
   echo "service_role (тайный): $SERVICE_ROLE_KEY"
   echo "Пароль Postgres:       $POSTGRES_PASSWORD"
   echo "JWT secret:            $JWT_SECRET"
