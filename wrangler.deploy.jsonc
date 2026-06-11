@@ -1,0 +1,7 @@
+{
+  "name": "podari",
+  "main": "dist/server/server.js",
+  "compatibility_date": "2025-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "dist/client", "binding": "ASSETS" }
+}
