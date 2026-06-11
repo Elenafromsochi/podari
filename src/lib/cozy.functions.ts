@@ -297,6 +297,8 @@ export const submitReview = createServerFn({ method: "POST" })
         rating: z.number().int().min(1).max(5),
         comment: z.string().max(1000).optional(),
         is_auto: z.boolean().default(false),
+        condition_confirmed: z.number().int().min(1).max(5).nullable().optional(),
+        proof_image_url: z.string().max(15_000_000).nullable().optional(),
       })
       .parse(input),
   )
@@ -322,6 +324,8 @@ export const submitReview = createServerFn({ method: "POST" })
       rating: data.rating,
       comment: data.comment ?? null,
       is_auto: data.is_auto,
+      condition_confirmed: data.condition_confirmed ?? null,
+      proof_image_url: data.proof_image_url ?? null,
     });
     if (error) failOp("REVIEW_FAILED", error);
     return { ok: true };
