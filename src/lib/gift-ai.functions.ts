@@ -29,8 +29,8 @@ const AI_BASE_URL =
   process.env.AI_BASE_URL ?? "https://openrouter.ai/api/v1";
 
 async function callGateway(body: Record<string, unknown>) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("ИИ не подключён: добавь OPENROUTER_API_KEY");
+  const apiKey = process.env.AI_API_KEY;
+  if (!apiKey) throw new Error("ИИ не подключён: добавь AI_API_KEY");
   const res = await fetch(`${AI_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
