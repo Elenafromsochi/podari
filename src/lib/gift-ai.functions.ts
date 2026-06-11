@@ -23,13 +23,15 @@ function looksUnsafe(text: string): boolean {
 
 const CATEGORIES = CATEGORY_IDS;
 
-// Модель ИИ (можно сменить через переменную AI_MODEL).
+// ИИ-провайдер (любой OpenAI-совместимый: OpenRouter, или российский прокси).
 const AI_MODEL = process.env.AI_MODEL ?? "google/gemini-2.5-flash";
+const AI_BASE_URL =
+  process.env.AI_BASE_URL ?? "https://openrouter.ai/api/v1";
 
 async function callGateway(body: Record<string, unknown>) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("ИИ не подключён: добавь OPENROUTER_API_KEY");
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const res = await fetch(`${AI_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
