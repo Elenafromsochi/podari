@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { tgApi } from "@/lib/telegram-api";
 
 const TRUSTED_DAYS = 30;
 const CODE_TTL_MIN = 5;
@@ -24,30 +25,8 @@ function makeCode() {
 }
 
 async function sendTelegramCode(chatId: number, code: string, label: string) {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-  const TELEGRAM_API_KEY = process.env.TELEGRAM_API_KEY;
-  if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
-    console.error("[password-auth] Telegram secrets missing");
-    throw new Error("TELEGRAM_NOT_CONFIGURED");
-  }
   const text = `🔐 Подари — код подтверждения входа\n\nКод: ${code}\n\nУстройство: ${label}\nКод действует ${CODE_TTL_MIN} минут.\n\nЕсли это не вы — смените пароль в личном кабинете.`;
-  const res = await fetch(
-    "https://connector-gateway.lovable.dev/telegram/sendMessage",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TELEGRAM_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ chat_id: chatId, text }),
-    },
-  );
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error("[password-auth] sendTelegramCode failed", res.status, body);
-    throw new Error("TELEGRAM_SEND_FAILED");
-  }
+  await tgApi("sendMessage", { chat_id: chatId, text });
 }
 
 function userEmail(tgId: number | bigint) {
@@ -56,8 +35,9 @@ function userEmail(tgId: number | bigint) {
 
 function anonClient() {
   return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
+    (process.env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL)!,
+    (process.env.SUPABASE_PUBLISHABLE_KEY ||
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)!,
   );
 }
 

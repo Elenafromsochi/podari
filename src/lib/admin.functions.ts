@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { tgApi } from "@/lib/telegram-api";
 
 const SLEEP_DAYS = 3;
 
@@ -243,10 +244,8 @@ const BroadcastSchema = z.object({
   buttonUrl: z.string().url().max(500).optional(),
 });
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
-
 async function sendOne(chatId: number, text: string, button?: { text: string; url: string }) {
-  const body: any = {
+  const body: Record<string, unknown> = {
     chat_id: chatId,
     text,
     parse_mode: "HTML",
@@ -257,26 +256,14 @@ async function sendOne(chatId: number, text: string, button?: { text: string; ur
       inline_keyboard: [[{ text: button.text, url: button.url }]],
     };
   }
-  const res = await fetch(`${GATEWAY_URL}/sendMessage`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.LOVABLE_API_KEY}`,
-      "X-Connection-Api-Key": process.env.TELEGRAM_API_KEY!,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`tg ${res.status}: ${txt.slice(0, 200)}`);
-  }
+  await tgApi("sendMessage", body);
 }
 
 export const sendTelegramBroadcast = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((d) => BroadcastSchema.parse(d))
   .handler(async ({ data }) => {
-    if (!process.env.TELEGRAM_API_KEY || !process.env.LOVABLE_API_KEY) {
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
       throw new Error("Telegram не подключён");
     }
     let q = supabaseAdmin

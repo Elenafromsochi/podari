@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const BOT_USERNAME = "Podari_podarki_bot";
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? "Podari_podarki_bot";
 const NONCE_TTL_MS = 5 * 60 * 1000;
 
 function makeNonce() {
@@ -106,8 +106,9 @@ export const completeTelegramLogin = createServerFn({ method: "POST" })
     const password = userPassword(tgId);
 
     const anon = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      (process.env.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL)!,
+      (process.env.SUPABASE_PUBLISHABLE_KEY ||
+        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)!,
     );
 
     let session = (await anon.auth.signInWithPassword({ email, password }))

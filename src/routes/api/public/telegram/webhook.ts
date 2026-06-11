@@ -1,14 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHash, timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { tgApiSafe } from "@/lib/telegram-api";
 
-const APP_URL = "https://podari.lovable.app";
-
-function deriveWebhookSecret(apiKey: string) {
-  return createHash("sha256")
-    .update(`telegram-webhook:${apiKey}`)
-    .digest("base64url");
-}
+const APP_URL =
+  process.env.APP_URL ?? "https://podari.visokihelenasochi.workers.dev";
 
 function safeEqual(a: string, b: string) {
   const A = Buffer.from(a);
@@ -16,30 +12,12 @@ function safeEqual(a: string, b: string) {
   return A.length === B.length && timingSafeEqual(A, B);
 }
 
-async function tgCall(method: string, body: Record<string, unknown>) {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-  const TELEGRAM_API_KEY = process.env.TELEGRAM_API_KEY;
-  if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
-    console.error("Telegram secrets missing");
-    return;
-  }
-  await fetch(`https://connector-gateway.lovable.dev/telegram/${method}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "X-Connection-Api-Key": TELEGRAM_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-}
-
 async function sendTgMessage(chatId: number, text: string) {
-  await tgCall("sendMessage", { chat_id: chatId, text });
+  await tgApiSafe("sendMessage", { chat_id: chatId, text });
 }
 
 async function sendLoginConfirmed(chatId: number) {
-  await tgCall("sendMessage", {
+  await tgApiSafe("sendMessage", {
     chat_id: chatId,
     text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
   });
@@ -50,14 +28,13 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const TELEGRAM_API_KEY = process.env.TELEGRAM_API_KEY;
-        if (!TELEGRAM_API_KEY) {
+        const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+        if (!WEBHOOK_SECRET) {
           return new Response("Not configured", { status: 500 });
         }
-        const expected = deriveWebhookSecret(TELEGRAM_API_KEY);
         const actual =
           request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
-        if (!safeEqual(actual, expected)) {
+        if (!safeEqual(actual, WEBHOOK_SECRET)) {
           return new Response("Unauthorized", { status: 401 });
         }
 
@@ -65,7 +42,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
 
         // Колбэки больше не используем — авто-подтверждение по /start
         if (update.callback_query) {
-          await tgCall("answerCallbackQuery", {
+          await tgApiSafe("answerCallbackQuery", {
             callback_query_id: update.callback_query.id,
           });
           return Response.json({ ok: true });
