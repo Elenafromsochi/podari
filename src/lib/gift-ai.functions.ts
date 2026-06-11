@@ -23,16 +23,19 @@ function looksUnsafe(text: string): boolean {
 
 const CATEGORIES = CATEGORY_IDS;
 
-async function callGateway(body: any) {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY не настроен");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+// Модель ИИ (можно сменить через переменную AI_MODEL).
+const AI_MODEL = process.env.AI_MODEL ?? "google/gemini-2.5-flash";
+
+async function callGateway(body: Record<string, unknown>) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("ИИ не подключён: добавь OPENROUTER_API_KEY");
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, model: AI_MODEL }),
   });
   if (!res.ok) {
     const text = await res.text();
