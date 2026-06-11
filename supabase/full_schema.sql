@@ -1547,3 +1547,6 @@ CREATE POLICY "gift_images_delete_own"
     bucket_id = 'gift-images'
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- ===== Оценка состояния подарка (1-5 сердечек) =====
+ALTER TABLE public.gifts ADD COLUMN IF NOT EXISTS condition smallint;

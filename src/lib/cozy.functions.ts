@@ -55,6 +55,7 @@ export const publishGift = createServerFn({ method: "POST" })
         price_tier: PriceTier.default("under_3k"),
         price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
         cost: z.number().int().min(1).max(5).default(1),
+        condition: z.number().int().min(1).max(5).nullable().optional(),
       })
       .parse(input),
   )
@@ -94,6 +95,7 @@ export const publishGift = createServerFn({ method: "POST" })
         gift_kind: data.gift_kind,
         price_tier: data.price_tier,
         price_rub: data.price_rub ?? null,
+        condition: data.condition ?? null,
         cost_flag,
       })
       .select("id")

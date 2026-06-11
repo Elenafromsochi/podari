@@ -36,6 +36,7 @@ type Gift = {
   category: string;
   image_url: string | null;
   cost: number;
+  condition: number | null;
   owner_id: string | null;
   gift_kind: GiftKind;
   created_at?: string;
@@ -82,7 +83,7 @@ export function ReceiveGiftFlow({
       const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,owner_id,gift_kind,created_at")
+        .select("id,title,description,category,image_url,cost,condition,owner_id,gift_kind,created_at")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
@@ -167,6 +168,17 @@ export function ReceiveGiftFlow({
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="text-base font-semibold leading-tight break-words">{g.title}</div>
+          {g.condition ? (
+            <div
+              className="flex items-center gap-0.5 text-sm leading-none"
+              aria-label={`Состояние ${g.condition} из 5`}
+              title={`Состояние: ${g.condition} из 5`}
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span key={n}>{n <= g.condition! ? "❤️" : "🤍"}</span>
+              ))}
+            </div>
+          ) : null}
           {g.description && (
             <p className="line-clamp-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
               {g.description}
