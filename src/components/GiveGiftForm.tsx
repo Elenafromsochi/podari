@@ -22,6 +22,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
+  const [condition, setCondition] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -197,10 +198,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
         setDescription("");
         setStatus("✨ ИИ рассматривает фото и пишет описание...");
         try {
-          const { description: aiDesc } = await describeImage({
+          const { description: aiDesc, condition: aiCond } = await describeImage({
             data: { imageDataUrl: urls[0] },
           });
           setDescription(aiDesc);
+          if (typeof aiCond === "number") setCondition(aiCond);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Не удалось описать фото");
         } finally {
@@ -261,6 +263,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           image_urls: uploadedUrls,
           gift_kind: giftKind,
           cost,
+          condition,
         },
       });
       onDone(id);
@@ -392,6 +395,29 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
                 Нажмите 🎙️ и продиктуйте описание голосом. Можно делать паузы — запись не прервётся, пока не нажмёте «Стоп».
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Состояние (новизна)</Label>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setCondition(n)}
+                  aria-label={`Оценка состояния ${n} из 5`}
+                  className="text-2xl leading-none transition-transform hover:scale-110"
+                >
+                  {condition && n <= condition ? "❤️" : "🤍"}
+                </button>
+              ))}
+              <span className="ml-2 text-xs text-muted-foreground">
+                {condition ? `${condition} из 5` : "ИИ оценит по фото"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              5 сердечек — как новое, 1 — сильно использованное. ИИ ставит оценку по фото, можно поправить вручную.
+            </p>
           </div>
 
           {/* Cost / стоимость подарка в баллах */}

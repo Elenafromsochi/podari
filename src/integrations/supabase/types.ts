@@ -160,6 +160,7 @@ export type Database = {
       gifts: {
         Row: {
           category: string
+          condition: number | null
           cost: number
           cost_flag: boolean
           created_at: string
@@ -177,6 +178,7 @@ export type Database = {
         }
         Insert: {
           category?: string
+          condition?: number | null
           cost?: number
           cost_flag?: boolean
           created_at?: string
@@ -194,6 +196,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          condition?: number | null
           cost?: number
           cost_flag?: boolean
           created_at?: string

@@ -112,26 +112,67 @@ export const describeGiftImage = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const system =
-      "Ты помощник сервиса обмена подарками. Посмотри на фото и напиши тёплое, конкретное описание подарка на русском: что это, в каком состоянии, кому подойдёт. 2–4 предложения, без markdown и без кавычек.";
+      "Ты помощник сервиса обмена подарками. Посмотри на фото вещи и:\n" +
+      "1) Напиши тёплое, конкретное описание на русском: что это, в каком состоянии, кому подойдёт. 2–4 предложения, без markdown и кавычек.\n" +
+      "2) Оцени состояние (степень новизны) по шкале 1–5, где:\n" +
+      "5 — новое или как новое, без следов использования;\n" +
+      "4 — почти новое, лёгкие следы;\n" +
+      "3 — обычное б/у, рабочее, заметные следы использования;\n" +
+      "2 — сильно б/у, видимый износ/потёртости;\n" +
+      "1 — очень изношенное, с дефектами.\n" +
+      "Если по фото сложно судить — ставь 3. Отвечай только через функцию.";
 
     const json = await callGateway({
-      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: system },
         {
           role: "user",
           content: [
-            { type: "text", text: "Опиши этот подарок." },
+            { type: "text", text: "Опиши этот подарок и оцени состояние." },
             { type: "image_url", image_url: { url: data.imageDataUrl } },
           ],
         },
       ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "set_gift_card",
+            description: "Сохранить описание и оценку состояния подарка",
+            parameters: {
+              type: "object",
+              properties: {
+                description: { type: "string", minLength: 2, maxLength: 600 },
+                condition: { type: "integer", minimum: 1, maximum: 5 },
+              },
+              required: ["description", "condition"],
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+      tool_choice: {
+        type: "function",
+        function: { name: "set_gift_card" },
+      },
     });
 
-    let description = String(json?.choices?.[0]?.message?.content ?? "")
-      .trim()
-      .slice(0, 600);
+    const call =
+      json?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    let parsed: { description?: string; condition?: number } = {};
+    try {
+      parsed = call ? JSON.parse(call) : {};
+    } catch {
+      parsed = {};
+    }
+    let description = String(parsed.description ?? "").trim().slice(0, 600);
     if (looksUnsafe(description)) description = "Подарок с фотографии";
     if (!description) throw new Error("Не удалось распознать изображение");
-    return { description };
+    const condition =
+      Number.isInteger(parsed.condition) &&
+      (parsed.condition as number) >= 1 &&
+      (parsed.condition as number) <= 5
+        ? (parsed.condition as number)
+        : 3;
+    return { description, condition };
   });
