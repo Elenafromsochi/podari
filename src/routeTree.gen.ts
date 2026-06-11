@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as UserUserIdRouteImport } from './routes/user.$userId'
 import { Route as ChatGiftIdRouteImport } from './routes/chat.$giftId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
+import { Route as ApiPublicTelegramSetupRouteImport } from './routes/api/public/telegram/setup'
 
 const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
@@ -53,6 +54,11 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTelegramSetupRoute = ApiPublicTelegramSetupRouteImport.update({
+  id: '/api/public/telegram/setup',
+  path: '/api/public/telegram/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
+  '/api/public/telegram/setup': typeof ApiPublicTelegramSetupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
+  '/api/public/telegram/setup': typeof ApiPublicTelegramSetupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
+  '/api/public/telegram/setup': typeof ApiPublicTelegramSetupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/chat/$giftId'
     | '/user/$userId'
+    | '/api/public/telegram/setup'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/chat/$giftId'
     | '/user/$userId'
+    | '/api/public/telegram/setup'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/chat/$giftId'
     | '/user/$userId'
+    | '/api/public/telegram/setup'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   SetPasswordRoute: typeof SetPasswordRoute
   ChatGiftIdRoute: typeof ChatGiftIdRoute
   UserUserIdRoute: typeof UserUserIdRoute
+  ApiPublicTelegramSetupRoute: typeof ApiPublicTelegramSetupRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -173,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/setup': {
+      id: '/api/public/telegram/setup'
+      path: '/api/public/telegram/setup'
+      fullPath: '/api/public/telegram/setup'
+      preLoaderRoute: typeof ApiPublicTelegramSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetPasswordRoute: SetPasswordRoute,
   ChatGiftIdRoute: ChatGiftIdRoute,
   UserUserIdRoute: UserUserIdRoute,
+  ApiPublicTelegramSetupRoute: ApiPublicTelegramSetupRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
