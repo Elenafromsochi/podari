@@ -313,6 +313,9 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             <p className="text-xs text-muted-foreground">
               🤖 ИИ опишет подарок по первой фотографии. Можно добавить до 10 кадров.
             </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              💛 Будь честным: добавь и фото <b>самой изношенной части</b> (потёртости, царапины) — так получатель доверяет тебе больше, а оценка состояния честнее.
+            </p>
             {photoPreviews.length > 0 && (
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {photoPreviews.map((src, i) => (
