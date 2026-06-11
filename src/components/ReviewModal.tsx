@@ -32,16 +32,39 @@ type SR = {
 export function ReviewModal({
   giftId,
   role = "receiver",
+  claimedCondition = null,
   onSubmit,
 }: {
   giftId: string;
   role?: Role;
-  onSubmit: (review: { presetId: string; label: string; comment: string; rating: number; isAuto: boolean }) => void;
+  claimedCondition?: number | null;
+  onSubmit: (review: {
+    presetId: string;
+    label: string;
+    comment: string;
+    rating: number;
+    isAuto: boolean;
+    conditionConfirmed: number | null;
+    proofPhoto: string | null;
+  }) => void;
 }) {
   const PRESETS = role === "giver" ? PRESETS_GIVER : PRESETS_RECEIVER;
+  const showCondition = role === "receiver" && !!claimedCondition;
   const [selected, setSelected] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [listening, setListening] = useState(false);
+  const [confirmedCondition, setConfirmedCondition] = useState<number | null>(
+    claimedCondition,
+  );
+  const [proofPhoto, setProofPhoto] = useState<string | null>(null);
+
+  const handleProofPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setProofPhoto(String(reader.result));
+    reader.readAsDataURL(file);
+  };
 
   const toggleMic = () => {
     const W = window as unknown as {
@@ -85,6 +108,8 @@ export function ReviewModal({
       comment,
       rating: preset.rating,
       isAuto,
+      conditionConfirmed: showCondition ? confirmedCondition : null,
+      proofPhoto: showCondition ? proofPhoto : null,
     });
   };
 
@@ -119,6 +144,48 @@ export function ReviewModal({
             </button>
           ))}
         </div>
+
+        {showCondition && (
+          <div className="mt-2 space-y-2 rounded-2xl border border-amber-300/50 bg-amber-50/50 p-3 dark:bg-amber-950/20">
+            <div className="text-sm font-medium">Проверь состояние подарка ❤️</div>
+            <div className="text-xs text-muted-foreground">
+              Даритель оценил на <b>{claimedCondition} из 5</b>. Подтверди честно или
+              поправь, как есть на самом деле.
+            </div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setConfirmedCondition(n)}
+                  aria-label={`Состояние ${n} из 5`}
+                  className="text-2xl leading-none transition-transform hover:scale-110"
+                >
+                  {confirmedCondition && n <= confirmedCondition ? "❤️" : "🤍"}
+                </button>
+              ))}
+              <span className="ml-2 text-xs text-muted-foreground">
+                {confirmedCondition ? `${confirmedCondition} из 5` : "оцени"}
+              </span>
+            </div>
+            <label className="block text-xs text-muted-foreground">
+              📸 Фото-подтверждение состояния (по желанию):
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProofPhoto}
+                className="mt-1 block w-full text-xs"
+              />
+            </label>
+            {proofPhoto && (
+              <img
+                src={proofPhoto}
+                alt="подтверждение"
+                className="h-20 w-20 rounded-lg object-cover"
+              />
+            )}
+          </div>
+        )}
 
         <div className="relative mt-2">
           <Textarea

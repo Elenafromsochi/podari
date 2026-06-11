@@ -298,9 +298,11 @@ export type Database = {
         Row: {
           author_id: string | null
           comment: string | null
+          condition_confirmed: number | null
           created_at: string
           id: string
           is_auto: boolean
+          proof_image_url: string | null
           rating: number
           target_id: string | null
           transaction_id: string | null
@@ -308,9 +310,11 @@ export type Database = {
         Insert: {
           author_id?: string | null
           comment?: string | null
+          condition_confirmed?: number | null
           created_at?: string
           id?: string
           is_auto?: boolean
+          proof_image_url?: string | null
           rating: number
           target_id?: string | null
           transaction_id?: string | null
@@ -318,9 +322,11 @@ export type Database = {
         Update: {
           author_id?: string | null
           comment?: string | null
+          condition_confirmed?: number | null
           created_at?: string
           id?: string
           is_auto?: boolean
+          proof_image_url?: string | null
           rating?: number
           target_id?: string | null
           transaction_id?: string | null

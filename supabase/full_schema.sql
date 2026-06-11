@@ -1550,3 +1550,7 @@ CREATE POLICY "gift_images_delete_own"
 
 -- ===== Оценка состояния подарка (1-5 сердечек) =====
 ALTER TABLE public.gifts ADD COLUMN IF NOT EXISTS condition smallint;
+
+-- ===== Проверка состояния получателем (отзыв) =====
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS condition_confirmed smallint;
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS proof_image_url text;

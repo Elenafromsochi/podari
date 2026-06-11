@@ -26,6 +26,7 @@ import {
   sendChatMessage,
   submitReview,
 } from "@/lib/cozy.functions";
+import { uploadImage } from "@/lib/upload-image";
 import { emitTour } from "@/lib/tour";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
@@ -55,7 +56,7 @@ function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
     </span>
   );
 }
-type Gift = { id: string; title: string; description?: string | null; image_url: string | null; image_urls?: string[] | null; owner_id: string | null };
+type Gift = { id: string; title: string; description?: string | null; image_url: string | null; image_urls?: string[] | null; owner_id: string | null; condition?: number | null };
 
 const RECEIVER_HINTS = [
   "Мне понравился ваш подарок. Как могу его забрать? 😊",
@@ -118,7 +119,7 @@ export function ChatScreen({
       setMeId(myId);
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,image_url,image_urls,owner_id")
+        .select("id,title,description,image_url,image_urls,owner_id,condition")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
@@ -577,7 +578,8 @@ export function ChatScreen({
         <ReviewModal
           giftId={giftId}
           role={isOwner ? "giver" : "receiver"}
-          onSubmit={async ({ label, comment, rating, isAuto }) => {
+          claimedCondition={gift?.condition ?? null}
+          onSubmit={async ({ label, comment, rating, isAuto, conditionConfirmed, proofPhoto }) => {
             const fullComment = [label, comment].filter(Boolean).join(" — ");
             // target_id: получатель оценивает дарителя, даритель оценивает получателя
             let targetId: string | null = null;
@@ -594,6 +596,14 @@ export function ChatScreen({
             }
             try {
               if (targetId) {
+                let proofUrl: string | null = null;
+                if (proofPhoto) {
+                  try {
+                    proofUrl = await uploadImage(proofPhoto);
+                  } catch {
+                    /* фото-подтверждение не критично */
+                  }
+                }
                 await reviewFn({
                   data: {
                     transaction_id: transactionId,
@@ -601,6 +611,8 @@ export function ChatScreen({
                     rating,
                     comment: fullComment || undefined,
                     is_auto: isAuto,
+                    condition_confirmed: conditionConfirmed ?? null,
+                    proof_image_url: proofUrl,
                   },
                 });
               }
