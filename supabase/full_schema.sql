@@ -1554,3 +1554,25 @@ ALTER TABLE public.gifts ADD COLUMN IF NOT EXISTS condition smallint;
 -- ===== Проверка состояния получателем (отзыв) =====
 ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS condition_confirmed smallint;
 ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS proof_image_url text;
+
+-- ===== Надёжный реферальный бонус через триггер =====
+CREATE OR REPLACE FUNCTION public.handle_referral_bonus()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.referred_by IS NOT NULL
+     AND NEW.referred_by <> NEW.user_id
+     AND (TG_OP = 'INSERT' OR OLD.referred_by IS DISTINCT FROM NEW.referred_by) THEN
+    UPDATE public.profiles
+      SET xp = xp + 50, level = public.calc_level(xp + 50), updated_at = now()
+      WHERE user_id = NEW.referred_by;
+    UPDATE public.profiles
+      SET balance = balance + 1, updated_at = now()
+      WHERE user_id = NEW.user_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_referral_bonus ON public.profiles;
+CREATE TRIGGER trg_referral_bonus
+  AFTER INSERT OR UPDATE OF referred_by ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.handle_referral_bonus();
