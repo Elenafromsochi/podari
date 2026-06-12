@@ -50,6 +50,7 @@ function UserProfilePage() {
   const claim = useServerFn(claimGift);
   const [name, setName] = useState<string>("Гость");
   const [level, setLevel] = useState<number>(1);
+  const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   const [active, setActive] = useState<Gift[] | null>(null);
   const [given, setGiven] = useState<Gift[] | null>(null);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
@@ -82,6 +83,19 @@ function UserProfilePage() {
         .eq("status", "open")
         .order("created_at", { ascending: false });
       setWishes((wRows as Wish[]) ?? []);
+
+      // Рейтинг человека из отзывов о нём
+      const { data: revs } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("target_id", userId);
+      const list = (revs as { rating: number }[] | null) ?? [];
+      if (list.length > 0) {
+        const avg = list.reduce((s, r) => s + (r.rating ?? 0), 0) / list.length;
+        setRating({ avg, count: list.length });
+      } else {
+        setRating({ avg: 0, count: 0 });
+      }
     })();
   }, [userId]);
 
@@ -126,6 +140,25 @@ function UserProfilePage() {
         <div>
           <h1 className="text-2xl font-semibold">{name}</h1>
           <div className="mt-1"><LevelBadge level={level} size="md" /></div>
+          {rating &&
+            (rating.count > 0 ? (
+              <div className="mt-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+                ⭐ {rating.avg.toFixed(1)} ·{" "}
+                <span className="text-muted-foreground">
+                  {rating.count}{" "}
+                  {rating.count % 10 === 1 && rating.count % 100 !== 11
+                    ? "отзыв"
+                    : [2, 3, 4].includes(rating.count % 10) &&
+                        ![12, 13, 14].includes(rating.count % 100)
+                      ? "отзыва"
+                      : "отзывов"}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-1 text-sm text-muted-foreground">
+                🐣 Новичок — отзывов пока нет
+              </div>
+            ))}
         </div>
 
       </div>
