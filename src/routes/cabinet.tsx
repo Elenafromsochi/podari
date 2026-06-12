@@ -462,10 +462,11 @@ function ChatGroup({
   );
 }
 
-const APP_PUBLIC_URL = "https://podari.lovable.app";
+const APP_PUBLIC_URL = "https://podari.visokihelenasochi.workers.dev";
 
 function getAppOrigin() {
-  // Всегда используем стабильный публичный URL для шеринга
+  // Адрес текущего сайта (работает на любом домене, не привязан к Lovable)
+  if (typeof window !== "undefined") return window.location.origin;
   return APP_PUBLIC_URL;
 }
 
