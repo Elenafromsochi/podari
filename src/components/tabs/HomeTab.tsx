@@ -24,6 +24,7 @@ type Gift = {
   category: string;
   image_url: string | null;
   cost: number;
+  condition?: number | null;
   owner_id: string | null;
   created_at?: string;
   owner_name?: string;
@@ -74,7 +75,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,owner_id,created_at")
+        .select("id,title,description,category,image_url,cost,condition,owner_id,created_at")
         .eq("status", "gifted")
         .not("owner_id", "is", null)
         .order("updated_at", { ascending: false })
@@ -283,6 +284,17 @@ function GiftedCard({ gift }: { gift: Gift }) {
           <div className="truncate text-[15px] font-semibold leading-tight">
             {gift.title}
           </div>
+          {gift.condition ? (
+            <div
+              className="mt-0.5 text-sm leading-none"
+              aria-label={`Состояние ${gift.condition} из 5`}
+              title={`Состояние: ${gift.condition} из 5`}
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span key={n}>{n <= gift.condition! ? "❤️" : "🤍"}</span>
+              ))}
+            </div>
+          ) : null}
           {gift.description && (
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
               {gift.description}
