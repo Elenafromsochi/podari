@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
-import { generateGiftMeta, describeGiftImage } from "@/lib/gift-ai.functions";
+import { generateGiftMeta, describeGiftImage, enhanceGiftDescription } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
 
 import { COST_TIERS, type GiftKind } from "@/lib/gift-kinds";
@@ -36,6 +36,26 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateMeta = useServerFn(generateGiftMeta);
   const describeImage = useServerFn(describeGiftImage);
+  const enhanceFn = useServerFn(enhanceGiftDescription);
+  const [enhancing, setEnhancing] = useState(false);
+
+  const enhanceDescription = async () => {
+    const text = description.trim();
+    if (!text) {
+      setError("Сначала напиши пару слов о подарке ✨");
+      return;
+    }
+    setEnhancing(true);
+    setError(null);
+    try {
+      const { description: better } = await enhanceFn({ data: { text } });
+      setDescription(better);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось дополнить");
+    } finally {
+      setEnhancing(false);
+    }
+  };
   const publishGiftFn = useServerFn(publishGift);
   const checkCostFn = useServerFn(checkGiftCost);
 
@@ -375,6 +395,14 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
                 {recording ? "⏹" : "🎙️"}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={enhanceDescription}
+              disabled={enhancing || !description.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 py-2 text-sm font-medium text-primary transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {enhancing ? "✨ ИИ дополняет…" : "✨ Дополнить с ИИ"}
+            </button>
             {recording ? (
               <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 <span className="relative flex h-2 w-2">
