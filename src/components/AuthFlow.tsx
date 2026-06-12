@@ -9,7 +9,13 @@ import {
   pollTelegramLogin,
   completeTelegramLogin,
 } from "@/lib/telegram-auth.functions";
+import {
+  loginWithPassword,
+  confirmDeviceCode,
+} from "@/lib/password-auth.functions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
@@ -30,6 +36,110 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const pollingRef = useRef<number | null>(null);
   const deadlineRef = useRef<number>(0);
 
+  // --- Вход по паролю (логин = имя в Telegram) ---
+  const loginPwdFn = useServerFn(loginWithPassword);
+  const confirmCodeFn = useServerFn(confirmDeviceCode);
+  const [savedUsername] = useState<string>(() => {
+    if (typeof localStorage === "undefined") return "";
+    return localStorage.getItem("cozygift_tg_username") ?? "";
+  });
+  const [deviceId] = useState<string>(() => {
+    if (typeof localStorage === "undefined") return "web-unknown";
+    let d = localStorage.getItem("cozygift_device_id");
+    if (!d) {
+      d = crypto.randomUUID?.() ?? `dev-${Date.now()}-${Math.random()}`;
+      localStorage.setItem("cozygift_device_id", d);
+    }
+    return d;
+  });
+  const [pwUsername, setPwUsername] = useState(savedUsername);
+  const [pwPassword, setPwPassword] = useState("");
+  const [pwMode, setPwMode] = useState<"hidden" | "form" | "code">(
+    savedUsername ? "form" : "hidden",
+  );
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+
+  const rememberUsername = (u?: string | null) => {
+    const name = (u ?? pwUsername ?? "").replace(/^@/, "");
+    if (name) {
+      try {
+        localStorage.setItem("cozygift_tg_username", name);
+      } catch {
+        /* noop */
+      }
+    }
+  };
+
+  const sessionAndDone = async (access: string, refresh: string) => {
+    await setTelegramSession(access, refresh);
+    const profile = await loadUser();
+    if (!profile) throw new Error("Профиль не загружен");
+    rememberUsername(profile.telegram_username);
+    confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
+    onAuthed(profile, false);
+  };
+
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError(null);
+    setPwBusy(true);
+    try {
+      const res = await loginPwdFn({
+        data: {
+          username: pwUsername,
+          password: pwPassword,
+          device_id: deviceId,
+          device_label: "Web",
+        },
+      });
+      if (res.status === "ok") {
+        await sessionAndDone(res.access_token, res.refresh_token);
+      } else {
+        setChallengeId(res.challenge_id);
+        setPwMode("code");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      let text = "Не удалось войти";
+      if (/INVALID_CREDENTIALS/.test(msg)) text = "Неверное имя или пароль";
+      else if (/PASSWORD_NOT_SET/.test(msg))
+        text = "Пароль ещё не задан — войди через Telegram и задай пароль в профиле";
+      setPwError(text);
+    } finally {
+      setPwBusy(false);
+    }
+  };
+
+  const submitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeId) return;
+    setPwError(null);
+    setPwBusy(true);
+    try {
+      const res = await confirmCodeFn({
+        data: {
+          challenge_id: challengeId,
+          code,
+          device_id: deviceId,
+          device_label: "Web",
+          remember: true,
+        },
+      });
+      await sessionAndDone(res.access_token, res.refresh_token);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      let text = "Не удалось подтвердить код";
+      if (/WRONG_CODE/.test(msg)) text = "Неверный код";
+      else if (/EXPIRED/.test(msg)) text = "Код истёк — попробуй ещё раз";
+      setPwError(text);
+    } finally {
+      setPwBusy(false);
+    }
+  };
+
   const clearPolling = () => {
     if (pollingRef.current) {
       window.clearInterval(pollingRef.current);
@@ -45,6 +155,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       await setTelegramSession(res.access_token, res.refresh_token);
       const profile = await loadUser();
       if (!profile) throw new Error("Профиль не загружен");
+      rememberUsername(profile.telegram_username);
       confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
       toast.success(
         res.is_new
@@ -157,9 +268,87 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          {phase === "idle" && (
-            <Button size="lg" className="w-full" onClick={startLogin}>
-              Авторизоваться через Телеграм
+          {phase === "idle" && pwMode === "form" && (
+            <form
+              onSubmit={submitPassword}
+              className="flex w-full flex-col gap-2 rounded-2xl bg-muted/40 p-4"
+            >
+              <p className="text-sm font-medium">
+                С возвращением{savedUsername ? `, @${savedUsername}` : ""}! 💚
+              </p>
+              <Label htmlFor="pw-user" className="text-xs text-muted-foreground">
+                Имя в Telegram
+              </Label>
+              <Input
+                id="pw-user"
+                name="username"
+                autoComplete="username"
+                value={pwUsername}
+                onChange={(e) => setPwUsername(e.target.value.replace(/^@/, ""))}
+                placeholder="username"
+              />
+              <Label htmlFor="pw-pass" className="text-xs text-muted-foreground">
+                Пароль
+              </Label>
+              <Input
+                id="pw-pass"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={pwPassword}
+                onChange={(e) => setPwPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+              {pwError && <p className="text-xs text-destructive">{pwError}</p>}
+              <Button
+                type="submit"
+                className="mt-1 w-full"
+                disabled={pwBusy || !pwUsername || !pwPassword}
+              >
+                {pwBusy ? "Входим…" : "Войти"}
+              </Button>
+            </form>
+          )}
+
+          {phase === "idle" && pwMode === "code" && (
+            <form
+              onSubmit={submitCode}
+              className="flex w-full flex-col gap-2 rounded-2xl bg-muted/40 p-4"
+            >
+              <p className="text-sm font-medium">Код из Telegram</p>
+              <p className="text-xs text-muted-foreground">
+                Это новое устройство — мы отправили 4-значный код в бота. Введи
+                его один раз, чтобы запомнить устройство.
+              </p>
+              <Input
+                inputMode="numeric"
+                maxLength={4}
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="1234"
+              />
+              {pwError && <p className="text-xs text-destructive">{pwError}</p>}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={pwBusy || code.length !== 4}
+              >
+                {pwBusy ? "Проверяем…" : "Подтвердить"}
+              </Button>
+            </form>
+          )}
+
+          {phase === "idle" && pwMode !== "code" && (
+            <Button
+              size="lg"
+              variant={pwMode === "form" ? "outline" : "default"}
+              className="w-full"
+              onClick={startLogin}
+            >
+              {pwMode === "form"
+                ? "Войти через Telegram"
+                : "Авторизоваться через Телеграм"}
             </Button>
           )}
 
@@ -203,7 +392,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
         </div>
 
         <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • без паролей и кодов
+          <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • через Telegram или по паролю
         </p>
       </div>
     </div>
