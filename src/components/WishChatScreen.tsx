@@ -223,7 +223,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
     try {
       await confirmFn({ data: { transaction_id: transactionId } });
       toast.success("Подтверждено! Спасибо 💚", {
-        description: "−0.8 балла, +10 опыта тебе. Дарителю +1 балл, +80 опыта",
+        description: "−0.8 балла, +10 XP тебе. Дарителю +1 балл, +80 XP",
       });
     } catch (e) {
       toast.error("Не получилось подтвердить", {
@@ -382,7 +382,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
             <AlertDialogTitle>Пожелание исполнено?</AlertDialogTitle>
             <AlertDialogDescription>
               Подтверди получение «{wish?.title ?? ""}». С твоего счёта спишется −0.8 балла,
-              а дарителю придёт +1 балл и +80 опыта.
+              а дарителю придёт +1 балл и +80 XP.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -21,8 +21,8 @@ export function OnboardingChecklist({ hasPosted, hasReceived, hasGifted }: Props
 
   const items = [
     { done: hasReceived, label: "Получить первый подарок", hint: "Загляни в ленту и выбери приятное — 1 балл уже на счету." },
-    { done: hasPosted, label: "Опубликовать свой подарок", hint: "+20 опыта сразу и +0,2 балла на счёт." },
-    { done: hasGifted, label: "Передать подарок", hint: "+80 опыта и +0,8 балла, когда получатель подтвердит встречу." },
+    { done: hasPosted, label: "Опубликовать свой подарок", hint: "+20 XP сразу и +0,2 балла на счёт." },
+    { done: hasGifted, label: "Передать подарок", hint: "+80 XP и +0,8 балла, когда получатель подтвердит встречу." },
   ];
 
   const allDone = items.every((i) => i.done);
