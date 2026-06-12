@@ -162,14 +162,13 @@ export const completeTelegramLogin = createServerFn({ method: "POST" })
       .eq("user_id", session.user.id);
 
     if (isNewUser && referredBy && referredBy !== session.user.id) {
+      // Бонус +50 пригласившему и +1 балл новичку начисляет триггер БД
+      // (handle_referral_bonus) автоматически при проставлении referred_by.
       await supabaseAdmin
         .from("profiles")
         .update({ referred_by: referredBy })
         .eq("user_id", session.user.id)
         .is("referred_by", null);
-      await supabaseAdmin.rpc("apply_referral_bonus", {
-        _new_user: session.user.id,
-      });
       await supabaseAdmin
         .from("telegram_referrals")
         .delete()
