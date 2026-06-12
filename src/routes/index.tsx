@@ -264,6 +264,7 @@ function Index() {
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
           onPick={handlePickGift}
+          onCreateWish={() => setFlow({ kind: "wish_form" })}
         />
         </GlobalChrome>
       )}

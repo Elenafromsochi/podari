@@ -60,13 +60,34 @@ type SR = {
 export function ReceiveGiftFlow({
   onBack,
   onPick,
+  onCreateWish,
   userLevel,
 }: {
   onBack: () => void;
   onPick: (giftId: string) => void;
+  onCreateWish?: () => void;
   userLevel: number;
 }) {
   const [step, setStep] = useState<Step>("kinds");
+
+  // Мягкая ветка, когда подходящего подарка нет
+  const NothingHere = ({ note }: { note?: string }) => (
+    <div className="rounded-2xl border border-mint/40 bg-mint/10 p-4 text-sm">
+      <p className="font-medium">{note ?? "Пока нет того, что ты ищешь — и это нормально 🌿"}</p>
+      <p className="mt-1 text-muted-foreground">
+        Новые подарки появляются каждый день — заглядывай 💚. А лучше — загадай
+        желание: дарители увидят, что ты ищешь, и подарят именно тебе.
+      </p>
+      {onCreateWish && (
+        <button
+          onClick={onCreateWish}
+          className="mt-3 w-full rounded-xl bg-mint py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98]"
+        >
+          ✨ Загадать желание
+        </button>
+      )}
+    </div>
+  );
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
   const [category, setCategory] = useState<string | null>(null);
@@ -257,7 +278,7 @@ export function ReceiveGiftFlow({
         </div>
         <div className="space-y-3">
           {results.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ничего не нашлось 🌿 Попробуй иначе.</p>
+            <NothingHere note="По запросу ничего не нашлось 🌿" />
           ) : (
             results.map(renderCard)
           )}
@@ -378,7 +399,7 @@ export function ReceiveGiftFlow({
         </p>
 
         {cats.length === 0 ? (
-          <p className="text-muted-foreground">В этой категории пока пусто 💚</p>
+          <NothingHere note="В этой категории пока пусто 💚" />
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {cats.map(([cat, n]) => {
