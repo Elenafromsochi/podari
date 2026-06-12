@@ -91,7 +91,7 @@ export function ReviewModal({
 
   const canSubmit = !!selected;
   const isAuto = !comment.trim();
-  const xpHint = isAuto ? "+5 Опыта" : "+20 Опыта";
+  const xpHint = isAuto ? "+5 XP" : "+20 XP";
 
   const submit = () => {
     if (!selected) return;
@@ -125,7 +125,7 @@ export function ReviewModal({
             {role === "giver" ? "Как прошло вручение? ✨" : "Расскажи, как всё прошло! ✨"}
           </DialogTitle>
           <DialogDescription>
-            Выбери готовый ответ (+5 Опыта) или допиши текст / надиктуй голосом (+20 Опыта).
+            Выбери готовый ответ (+5 XP) или допиши текст / надиктуй голосом (+20 XP).
           </DialogDescription>
         </DialogHeader>
 
@@ -191,7 +191,7 @@ export function ReviewModal({
           <Textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Хочешь — допиши свой отзыв (+20 Опыта)"
+            placeholder="Хочешь — допиши свой отзыв (+20 XP)"
             rows={3}
             className="pr-12"
           />

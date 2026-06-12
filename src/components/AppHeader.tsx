@@ -29,7 +29,7 @@ const LEVELS_INFO = `Уровни открывают новые категори
 4 уровень · 1000–1699 XP — премиальные подарки
 5 уровень · 1700+ XP — амбассадор сообщества`;
 
-const XP_INFO = `Опыт (XP) копится за активность в сервисе и поднимает уровень.
+const XP_INFO = `XP копятся за активность в сервисе и поднимают уровень.
 
 +20 за публикацию подарка
 +10 за бронирование
@@ -142,7 +142,7 @@ export function AppHeader({ user }: Props) {
                 </span>
               ))}
             </span>
-            <InfoDot label="Опыт (XP)" content={XP_INFO} />
+            <InfoDot label="XP" content={XP_INFO} />
           </div>
         </div>
 
