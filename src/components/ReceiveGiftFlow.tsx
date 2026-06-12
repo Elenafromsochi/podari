@@ -201,7 +201,7 @@ export function ReceiveGiftFlow({
             </div>
           ) : null}
           {g.description && (
-            <p className="line-clamp-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+            <p className="line-clamp-1 break-words text-xs text-muted-foreground">
               {g.description}
             </p>
           )}
