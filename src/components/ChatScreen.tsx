@@ -539,7 +539,7 @@ export function ChatScreen({
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 flex items-center gap-2 border-t-2 border-emerald-600/30 bg-card px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
+      <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-30 flex items-center gap-2 border-t-2 border-emerald-600/30 bg-card px-3 pb-3 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}

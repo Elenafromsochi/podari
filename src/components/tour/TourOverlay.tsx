@@ -117,16 +117,18 @@ export function TourOverlay() {
   }
 
   return (
-    <div className="fixed inset-0 z-[80] animate-fade-in">
+    <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
       {hole ? (
         <>
-          {/* 4 затемнения вокруг дырки — клики по ним перехватываются (не проваливаются) */}
+          {/* 4 затемнения вокруг дырки — клики по тёмным зонам перехватываются
+              (pointer-events-auto), а сама дырка остаётся «сквозной», чтобы
+              подсвеченную кнопку можно было нажать. */}
           <div
-            className="absolute bg-black/55"
+            className="pointer-events-auto absolute bg-black/55"
             style={{ left: 0, top: 0, right: 0, height: Math.max(0, hole.top) }}
           />
           <div
-            className="absolute bg-black/55"
+            className="pointer-events-auto absolute bg-black/55"
             style={{
               left: 0,
               top: hole.top + hole.height,
@@ -135,7 +137,7 @@ export function TourOverlay() {
             }}
           />
           <div
-            className="absolute bg-black/55"
+            className="pointer-events-auto absolute bg-black/55"
             style={{
               left: 0,
               top: hole.top,
@@ -144,7 +146,7 @@ export function TourOverlay() {
             }}
           />
           <div
-            className="absolute bg-black/55"
+            className="pointer-events-auto absolute bg-black/55"
             style={{
               left: hole.left + hole.width,
               top: hole.top,
@@ -158,11 +160,11 @@ export function TourOverlay() {
           />
         </>
       ) : (
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="pointer-events-auto absolute inset-0 bg-black/60" />
       )}
 
       <div
-        className="absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-background p-4 shadow-xl animate-scale-in"
+        className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-background p-4 shadow-xl animate-scale-in"
         style={{ top: cardTop }}
       >
         <div className="mb-1 flex items-center justify-between gap-2">

@@ -209,6 +209,32 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     }, 1500);
   };
 
+  // Готовим ссылку на бота ЗАРАНЕЕ (на загрузке экрана), чтобы тап по кнопке
+  // открывал бота сразу, в рамках жеста пользователя — без блокировки Safari.
+  const ensureLink = async () => {
+    try {
+      const referrer_id =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cozygift_pending_ref")
+          : null;
+      const res = await startFn({ data: { referrer_id } });
+      setNonce(res.nonce);
+      setDeepLink(res.deep_link);
+      startPolling(res.nonce);
+    } catch {
+      /* нет связи — кнопка-фолбэк вызовет startLogin по тапу */
+    }
+  };
+
+  // Пользователь тапнул по «настоящей» ссылке-кнопке: бот уже открывается сам,
+  // нам остаётся показать ожидание и слушать подтверждение.
+  const onTapBotLink = () => {
+    setPhase("waiting");
+    setStatusText("Открой бота, нажми Start, затем ✅ Это я");
+    if (nonce) startPolling(nonce);
+  };
+
+  // Фолбэк, если ссылка не подготовилась заранее (нет сети при загрузке).
   const startLogin = async () => {
     setPhase("waiting");
     setStatusText("Готовим ссылку…");
@@ -237,6 +263,8 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     setNonce(null);
     setDeepLink(null);
     setStatusText("");
+    // сразу готовим свежую ссылку, чтобы кнопка снова открывала бота с одного тапа
+    if (pwMode !== "form") void ensureLink();
   };
 
   // Если пользователь пришёл по ссылке t.me-бота (?login=<nonce>) —
@@ -247,6 +275,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setPhase("waiting");
       setStatusText("Подтверди вход в боте");
       startPolling(initialNonce);
+    } else if (pwMode !== "form") {
+      // Заранее готовим ссылку на бота, чтобы первый тап открывал его сразу.
+      void ensureLink();
     }
     return () => clearPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -340,16 +371,36 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           )}
 
           {phase === "idle" && pwMode !== "code" && (
-            <Button
-              size="lg"
-              variant={pwMode === "form" ? "outline" : "default"}
-              className="w-full"
-              onClick={startLogin}
-            >
-              {pwMode === "form"
-                ? "Войти через Telegram"
-                : "Авторизоваться через Телеграм"}
-            </Button>
+            deepLink ? (
+              <Button
+                asChild
+                size="lg"
+                variant={pwMode === "form" ? "outline" : "default"}
+                className="w-full"
+              >
+                <a
+                  href={deepLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onTapBotLink}
+                >
+                  {pwMode === "form"
+                    ? "Войти через Telegram"
+                    : "Авторизоваться через Телеграм"}
+                </a>
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                variant={pwMode === "form" ? "outline" : "default"}
+                className="w-full"
+                onClick={startLogin}
+              >
+                {pwMode === "form"
+                  ? "Войти через Telegram"
+                  : "Авторизоваться через Телеграм"}
+              </Button>
+            )
           )}
 
           {(phase === "waiting" || phase === "approved" || phase === "signing_in") && (
