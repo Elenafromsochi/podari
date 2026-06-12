@@ -29,6 +29,7 @@ type Gift = {
   description: string | null;
   image_url: string | null;
   cost: number;
+  condition: number | null;
   status: string;
 };
 
@@ -66,7 +67,7 @@ function UserProfilePage() {
       }
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,image_url,cost,status")
+        .select("id,title,description,image_url,cost,condition,status")
         .eq("owner_id", userId)
         .in("status", ["available", "gifted"])
         .order("created_at", { ascending: false });
@@ -169,6 +170,17 @@ function UserProfilePage() {
                             className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
                           />
                         </div>
+                        {g.condition ? (
+                          <div
+                            className="mt-0.5 text-sm leading-none"
+                            aria-label={`Состояние ${g.condition} из 5`}
+                            title={`Состояние: ${g.condition} из 5`}
+                          >
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <span key={n}>{n <= g.condition! ? "❤️" : "🤍"}</span>
+                            ))}
+                          </div>
+                        ) : null}
                         {g.description && (
                           <p className={`mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap ${isOpen ? "" : "line-clamp-2"}`}>
                             {g.description}
