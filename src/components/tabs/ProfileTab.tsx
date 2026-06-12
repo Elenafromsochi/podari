@@ -87,13 +87,16 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
 
   const { items: achievements } = useAchievements();
-  // «Новые» = открытые, которые пользователь ещё не видел в этой сессии
+  // «Новые» = открытые, которые пользователь ещё не видел
   const seenKey = "cozy_seen_achievements";
+  const [seenVersion, setSeenVersion] = useState(0);
   const unreadAch = useMemo(() => {
     if (typeof window === "undefined") return 0;
     const seen = new Set<string>(JSON.parse(localStorage.getItem(seenKey) || "[]"));
     return achievements.filter((a) => a.unlocked && !seen.has(a.code)).length;
-  }, [achievements]);
+    // seenVersion в зависимостях — чтобы счётчик пересчитался после «просмотрено»
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [achievements, seenVersion]);
 
   useEffect(() => {
     onUnreadAchievements?.(unreadAch);
@@ -116,6 +119,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       if (next && typeof window !== "undefined") {
         const codes = achievements.filter((a) => a.unlocked).map((a) => a.code);
         localStorage.setItem(seenKey, JSON.stringify(codes));
+        setSeenVersion((x) => x + 1);
         onUnreadAchievements?.(0);
       }
       return next;
