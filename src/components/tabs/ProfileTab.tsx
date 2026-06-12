@@ -321,6 +321,12 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
             <BarChart3 className="h-4 w-4" /> Insights (админ)
           </Link>
         )}
+        <Link
+          to="/set-password"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/5 py-3 text-sm font-medium text-primary transition active:scale-[0.98]"
+        >
+          🔑 Задать пароль — входить без Telegram
+        </Link>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button
