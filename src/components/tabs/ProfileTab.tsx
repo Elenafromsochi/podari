@@ -524,10 +524,13 @@ function InviteRow({
   onReceive?: () => void;
   onCreateWish?: () => void;
 }) {
-  const link = `https://podari.lovable.app/?ref=${userId}`;
-
   const shareTg = () => {
     haptic("medium");
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://podari.visokihelenasochi.workers.dev";
+    const link = `${origin}/?ref=${userId}`;
     const text =
       "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
