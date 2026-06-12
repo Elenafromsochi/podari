@@ -296,7 +296,7 @@ function GiftedCard({ gift }: { gift: Gift }) {
             </div>
           ) : null}
           {gift.description && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
               {gift.description}
             </p>
           )}
