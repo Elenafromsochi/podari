@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart, Search } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { restartTour } from "@/lib/tour";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WishesFeed } from "@/components/WishesFeed";
 import { LevelBadge } from "@/components/LevelBadge";
@@ -127,6 +128,15 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           <h1 className="text-2xl font-semibold tracking-tight">{userName}</h1>
           <p className="mt-1 text-xs leading-snug text-muted-foreground">{tagline}</p>
         </div>
+        <button
+          type="button"
+          onClick={() => { haptic("medium"); restartTour(); }}
+          className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl bg-primary/10 px-3 py-2 text-primary shadow-sm transition hover:bg-primary/20 active:scale-95"
+          aria-label="Открыть гид по сервису"
+        >
+          <Compass className="h-5 w-5" strokeWidth={2.25} />
+          <span className="text-[11px] font-semibold leading-none">Гид</span>
+        </button>
       </header>
 
       {/* Action duo — сразу под приветствием */}
