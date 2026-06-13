@@ -16,6 +16,7 @@ import {
   deleteGift,
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
+import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -353,6 +354,10 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <p className="pt-1 text-center text-[11px] text-muted-foreground/70">
+          Подари · {APP_VERSION}
+        </p>
       </div>
     </div>
   );
