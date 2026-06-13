@@ -11,16 +11,97 @@ const BALANCE_HINTS = [
   "Баланс — это поток: подарил → забери. Так мир добрых вещей крутится дальше 🎁",
 ] as const;
 
+// Сколько баллов начисляется за один выложенный подарок
+const REWARD_PER_GIFT = 0.2;
+// Сколько баллов нужно, чтобы выбрать подарок себе
+const COST_TO_RECEIVE = 1;
+
 interface Props {
+  /** Текущий баланс пользователя (в баллах) */
+  balance: number;
   onGiveAnother: () => void;
   onReceive: () => void;
   onHome: () => void;
 }
 
-export function PublishSuccess({ onGiveAnother, onReceive, onHome }: Props) {
+function giftsWord(n: number) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "подарок";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "подарка";
+  return "подарков";
+}
+
+export function PublishSuccess({ balance, onGiveAnother, onReceive, onHome }: Props) {
   const title = useMemo(() => pickRandom(PUBLISH_THANKS_TITLES), []);
   const desc = useMemo(() => pickRandom(PUBLISH_THANKS_DESCRIPTIONS), []);
-  const hint = useMemo(() => pickRandom(BALANCE_HINTS), []);
+  const randomHint = useMemo(() => pickRandom(BALANCE_HINTS), []);
+
+  // Хватает ли баллов, чтобы выбрать подарок себе
+  const canReceive = balance >= COST_TO_RECEIVE;
+  // Сколько ещё подарков выложить до 1 балла
+  const giftsToGo = Math.max(
+    0,
+    Math.ceil((COST_TO_RECEIVE - balance) / REWARD_PER_GIFT - 1e-9),
+  );
+
+  const hint = canReceive
+    ? randomHint
+    : `За каждый выложенный подарок начисляется +${REWARD_PER_GIFT} балла. ` +
+      `Чтобы выбрать подарок себе, нужен 1 балл — выложи ещё ${giftsToGo} ${giftsWord(giftsToGo)}, ` +
+      `и сможешь выбрать любой подарок 💚`;
+
+  const giveBtn = (
+    <button
+      type="button"
+      onClick={() => {
+        haptic("medium");
+        onGiveAnother();
+      }}
+      className="flex w-full items-center gap-3 rounded-2xl bg-mint px-5 py-4 text-left text-mint-foreground shadow-sm transition active:scale-[0.98]"
+    >
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+        <HandHeart className="h-5 w-5" />
+      </span>
+      <span>
+        <span className="block text-base font-semibold leading-tight">
+          ✨ Подарить ещё один
+        </span>
+        <span className="block text-xs opacity-75">
+          {canReceive
+            ? "если хочется делиться дальше"
+            : `+${REWARD_PER_GIFT} балла — на шаг ближе к подарку`}
+        </span>
+      </span>
+    </button>
+  );
+
+  const receiveBtn = (
+    <button
+      type="button"
+      onClick={() => {
+        haptic("medium");
+        onReceive();
+      }}
+      className={`flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-left shadow-sm transition active:scale-[0.98] ${
+        canReceive
+          ? "bg-mint text-mint-foreground"
+          : "bg-lavender text-lavender-foreground"
+      }`}
+    >
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+        <GiftIcon className="h-5 w-5" />
+      </span>
+      <span>
+        <span className="block text-base font-semibold leading-tight">
+          🎁 Получить подарок
+        </span>
+        <span className="block text-xs opacity-75">
+          {canReceive ? "поддержать круговорот" : "нужен 1 балл — пока посмотреть ленту"}
+        </span>
+      </span>
+    </button>
+  );
 
   return (
     <div className="mx-auto w-full max-w-md px-5 py-10">
@@ -36,39 +117,18 @@ export function PublishSuccess({ onGiveAnother, onReceive, onHome }: Props) {
         </div>
 
         <div className="mt-6 space-y-3">
-          <button
-            type="button"
-            onClick={() => {
-              haptic("medium");
-              onReceive();
-            }}
-            className="flex w-full items-center gap-3 rounded-2xl bg-mint px-5 py-4 text-left text-mint-foreground shadow-sm transition active:scale-[0.98]"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-              <GiftIcon className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-base font-semibold leading-tight">🎁 Получить подарок</span>
-              <span className="block text-xs opacity-75">поддержать круговорот</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              haptic("medium");
-              onGiveAnother();
-            }}
-            className="flex w-full items-center gap-3 rounded-2xl bg-lavender px-5 py-4 text-left text-lavender-foreground shadow-sm transition active:scale-[0.98]"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-              <HandHeart className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-base font-semibold leading-tight">✨ Подарить ещё один</span>
-              <span className="block text-xs opacity-75">если хочется делиться дальше</span>
-            </span>
-          </button>
+          {/* Когда баллов не хватает — ведём дарить ещё; иначе — получать */}
+          {canReceive ? (
+            <>
+              {receiveBtn}
+              {giveBtn}
+            </>
+          ) : (
+            <>
+              {giveBtn}
+              {receiveBtn}
+            </>
+          )}
 
           <button
             type="button"

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { Sparkles, ShieldCheck, ExternalLink, Loader2, RotateCcw } from "lucide-react";
+import { Sparkles, ShieldCheck, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
 import {
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { APP_VERSION } from "@/lib/version";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
@@ -209,6 +210,32 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     }, 1500);
   };
 
+  // Готовим ссылку на бота ЗАРАНЕЕ (на загрузке экрана), чтобы тап по кнопке
+  // открывал бота сразу, в рамках жеста пользователя — без блокировки Safari.
+  const ensureLink = async () => {
+    try {
+      const referrer_id =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cozygift_pending_ref")
+          : null;
+      const res = await startFn({ data: { referrer_id } });
+      setNonce(res.nonce);
+      setDeepLink(res.deep_link);
+      startPolling(res.nonce);
+    } catch {
+      /* нет связи — кнопка-фолбэк вызовет startLogin по тапу */
+    }
+  };
+
+  // Пользователь тапнул по «настоящей» ссылке-кнопке: бот уже открывается сам,
+  // нам остаётся показать ожидание и слушать подтверждение.
+  const onTapBotLink = () => {
+    setPhase("waiting");
+    setStatusText("Открой бота, нажми Start, затем ✅ Это я");
+    if (nonce) startPolling(nonce);
+  };
+
+  // Фолбэк, если ссылка не подготовилась заранее (нет сети при загрузке).
   const startLogin = async () => {
     setPhase("waiting");
     setStatusText("Готовим ссылку…");
@@ -237,6 +264,8 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     setNonce(null);
     setDeepLink(null);
     setStatusText("");
+    // сразу готовим свежую ссылку, чтобы кнопка снова открывала бота с одного тапа
+    if (pwMode !== "form") void ensureLink();
   };
 
   // Если пользователь пришёл по ссылке t.me-бота (?login=<nonce>) —
@@ -247,6 +276,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setPhase("waiting");
       setStatusText("Подтверди вход в боте");
       startPolling(initialNonce);
+    } else if (pwMode !== "form") {
+      // Заранее готовим ссылку на бота, чтобы первый тап открывал его сразу.
+      void ensureLink();
     }
     return () => clearPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -339,45 +371,70 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
             </form>
           )}
 
-          {phase === "idle" && pwMode !== "code" && (
-            <Button
-              size="lg"
-              variant={pwMode === "form" ? "outline" : "default"}
-              className="w-full"
-              onClick={startLogin}
-            >
-              {pwMode === "form"
-                ? "Войти через Telegram"
-                : "Авторизоваться через Телеграм"}
-            </Button>
+          {/* Кнопка входа через Telegram — это НАСТОЯЩАЯ ссылка на бота,
+              поэтому один тап сразу открывает бота (Safari не блокирует).
+              Кнопка видна и во время ожидания: если бот вдруг не открылся,
+              можно просто нажать ещё раз — без пугающего второго экрана. */}
+          {pwMode !== "code" && (phase === "idle" || phase === "waiting") && (
+            <>
+              {deepLink ? (
+                <Button
+                  asChild
+                  size="lg"
+                  variant={pwMode === "form" ? "outline" : "default"}
+                  className="w-full"
+                >
+                  <a
+                    href={deepLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onTapBotLink}
+                  >
+                    {phase === "waiting"
+                      ? "Открыть Telegram ещё раз"
+                      : pwMode === "form"
+                        ? "Войти через Telegram"
+                        : "Авторизоваться через Телеграм"}
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  variant={pwMode === "form" ? "outline" : "default"}
+                  className="w-full"
+                  onClick={startLogin}
+                >
+                  {pwMode === "form"
+                    ? "Войти через Telegram"
+                    : "Авторизоваться через Телеграм"}
+                </Button>
+              )}
+
+              {phase === "waiting" && (
+                <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Подтверди вход в боте (Start → ✅ Это я) и вернись сюда 💚
+                </p>
+              )}
+            </>
           )}
 
-          {(phase === "waiting" || phase === "approved" || phase === "signing_in") && (
-            <div className="flex w-full flex-col items-center gap-3 rounded-2xl bg-muted/40 p-4 text-center">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {statusText || "Ожидаем подтверждение в боте…"}
-              </div>
-              {deepLink && phase === "waiting" && (
-                <a
-                  href={deepLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary underline-offset-4 hover:underline"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Открыть бота ещё раз
-                </a>
-              )}
-              {phase === "waiting" && (
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <RotateCcw className="h-3 w-3" /> Начать заново
-                </button>
-              )}
+          {/* Вход по паролю доступен всегда — даже на новом устройстве,
+              где имя ещё не сохранено. Так можно не заходить через бота. */}
+          {phase === "idle" && pwMode === "hidden" && (
+            <button
+              type="button"
+              onClick={() => setPwMode("form")}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Уже задавал пароль? Войти по паролю
+            </button>
+          )}
+
+          {(phase === "approved" || phase === "signing_in") && (
+            <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-muted/40 p-4 text-sm font-medium">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {statusText || "Входим…"}
             </div>
           )}
         </div>
@@ -393,6 +450,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
 
         <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • через Telegram или по паролю
+        </p>
+        <p className="text-center text-[11px] text-muted-foreground/60">
+          Подари · {APP_VERSION}
         </p>
       </div>
     </div>

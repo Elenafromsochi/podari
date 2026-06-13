@@ -9,7 +9,7 @@ import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage, enhanceGiftDescription } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
 
-import { COST_TIERS, type GiftKind } from "@/lib/gift-kinds";
+import { COST_TIERS, hasCondition, type GiftKind } from "@/lib/gift-kinds";
 
 interface Props {
   onDone: (giftId: string) => void;
@@ -19,6 +19,8 @@ interface Props {
 }
 
 export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
+  // Сердечки/износ показываем только для вещей; у услуг и встреч их нет.
+  const showCondition = hasCondition(giftKind);
   const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
@@ -222,7 +224,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             data: { imageDataUrl: urls[0] },
           });
           setDescription(aiDesc);
-          if (typeof aiCond === "number") setCondition(aiCond);
+          if (showCondition && typeof aiCond === "number") setCondition(aiCond);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Не удалось описать фото");
         } finally {
@@ -283,7 +285,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           image_urls: uploadedUrls,
           gift_kind: giftKind,
           cost,
-          condition,
+          condition: showCondition ? condition : null,
         },
       });
       onDone(id);
@@ -333,9 +335,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             <p className="text-xs text-muted-foreground">
               🤖 ИИ опишет подарок по первой фотографии. Можно добавить до 10 кадров.
             </p>
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              💛 Будь честным: добавь и фото <b>самой изношенной части</b> (потёртости, царапины) — так получатель доверяет тебе больше, а оценка состояния честнее.
-            </p>
+            {showCondition && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💛 Будь честным: добавь и фото <b>самой изношенной части</b> (потёртости, царапины) — так получатель доверяет тебе больше, а оценка состояния честнее.
+              </p>
+            )}
             {photoPreviews.length > 0 && (
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {photoPreviews.map((src, i) => (
@@ -428,28 +432,30 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Состояние (новизна)</Label>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setCondition(n)}
-                  aria-label={`Оценка состояния ${n} из 5`}
-                  className="text-2xl leading-none transition-transform hover:scale-110"
-                >
-                  {condition && n <= condition ? "❤️" : "🤍"}
-                </button>
-              ))}
-              <span className="ml-2 text-xs text-muted-foreground">
-                {condition ? `${condition} из 5` : "ИИ оценит по фото"}
-              </span>
+          {showCondition && (
+            <div className="space-y-2">
+              <Label>Состояние (новизна)</Label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setCondition(n)}
+                    aria-label={`Оценка состояния ${n} из 5`}
+                    className="text-2xl leading-none transition-transform hover:scale-110"
+                  >
+                    {condition && n <= condition ? "❤️" : "🤍"}
+                  </button>
+                ))}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {condition ? `${condition} из 5` : "ИИ оценит по фото"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                5 сердечек — как новое, 1 — сильно использованное. ИИ ставит оценку по фото, можно поправить вручную.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              5 сердечек — как новое, 1 — сильно использованное. ИИ ставит оценку по фото, можно поправить вручную.
-            </p>
-          </div>
+          )}
 
           {/* Cost / стоимость подарка в баллах */}
           <div className="space-y-2">
