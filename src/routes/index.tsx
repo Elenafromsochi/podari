@@ -251,6 +251,7 @@ function Index() {
       {flow.kind === "publish_success" && (
         <GlobalChrome>
         <PublishSuccess
+          balance={Number(user.balance)}
           onGiveAnother={() => setFlow({ kind: "give_chip" })}
           onReceive={() => setFlow({ kind: "receive" })}
           onHome={() => setFlow({ kind: "none" })}
