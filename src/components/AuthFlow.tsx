@@ -403,6 +403,27 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
             )
           )}
 
+          {/* Вход по паролю доступен всегда — даже на новом устройстве,
+              где имя ещё не сохранено. Так можно не заходить через бота. */}
+          {phase === "idle" && pwMode === "hidden" && (
+            <button
+              type="button"
+              onClick={() => setPwMode("form")}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Уже задавал пароль? Войти по паролю
+            </button>
+          )}
+          {phase === "idle" && pwMode === "form" && !savedUsername && (
+            <button
+              type="button"
+              onClick={() => setPwMode("hidden")}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              ← Войти через Telegram
+            </button>
+          )}
+
           {(phase === "waiting" || phase === "approved" || phase === "signing_in") && (
             <div className="flex w-full flex-col items-center gap-3 rounded-2xl bg-muted/40 p-4 text-center">
               <div className="flex items-center gap-2 text-sm font-medium">
