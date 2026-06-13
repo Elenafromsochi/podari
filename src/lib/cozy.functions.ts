@@ -508,6 +508,32 @@ export const getMyChats = createServerFn({ method: "GET" })
       }
     }
 
+    // Последнее сообщение по каждому чату — чтобы отметить непрочитанные.
+    const { data: myChats } = await supabase
+      .from("chats")
+      .select("id, gift_id")
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`);
+    const giftToChat = new Map<string, string>();
+    const chatIds: string[] = [];
+    for (const ch of (myChats ?? []) as Array<{ id: string; gift_id: string | null }>) {
+      if (ch.gift_id) giftToChat.set(ch.gift_id, ch.id);
+      chatIds.push(ch.id);
+    }
+    const lastMsg = new Map<string, { at: string; fromMe: boolean }>();
+    if (chatIds.length) {
+      const { data: msgs } = await supabase
+        .from("messages")
+        .select("chat_id, sender_id, created_at")
+        .in("chat_id", chatIds)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      for (const m of (msgs ?? []) as Array<{ chat_id: string; sender_id: string; created_at: string }>) {
+        if (!lastMsg.has(m.chat_id)) {
+          lastMsg.set(m.chat_id, { at: m.created_at, fromMe: m.sender_id === userId });
+        }
+      }
+    }
+
     type Item = {
       transaction_id: string;
       status: string;
@@ -516,6 +542,8 @@ export const getMyChats = createServerFn({ method: "GET" })
       gift_image: string | null;
       other_name: string;
       created_at: string;
+      last_message_at: string | null;
+      last_incoming: boolean;
     };
     const activeGivers: Item[] = [];
     const activeReceivers: Item[] = [];
@@ -525,6 +553,7 @@ export const getMyChats = createServerFn({ method: "GET" })
       const g = (r as { gift: { id: string; title: string; image_url: string | null } | null }).gift;
       if (!g) continue;
       const otherId = r.sender_id === userId ? r.receiver_id : r.sender_id;
+      const lm = lastMsg.get(giftToChat.get(g.id) ?? "");
       const item: Item = {
         transaction_id: r.id as string,
         status: r.status as string,
@@ -533,6 +562,8 @@ export const getMyChats = createServerFn({ method: "GET" })
         gift_image: g.image_url,
         other_name: (otherId && nameMap.get(otherId)) || "Гость",
         created_at: r.created_at as string,
+        last_message_at: lm?.at ?? null,
+        last_incoming: lm ? !lm.fromMe : false,
       };
       const isArchived = r.status === "completed" || r.status === "cancelled";
       if (r.receiver_id === userId) {
