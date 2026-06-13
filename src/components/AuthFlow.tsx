@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { APP_VERSION } from "@/lib/version";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
@@ -449,6 +450,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
 
         <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • через Telegram или по паролю
+        </p>
+        <p className="text-center text-[11px] text-muted-foreground/60">
+          Подари · {APP_VERSION}
         </p>
       </div>
     </div>
