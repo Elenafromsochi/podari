@@ -25,6 +25,49 @@ interface Props {
 
 type Phase = "idle" | "waiting" | "approved" | "signing_in";
 
+// Незавершённый вход храним локально: на iPad Safari часто перезагружает
+// вкладку, пока ты подтверждаешь вход в Telegram. После возврата приложение
+// по сохранённому коду само продолжает ждать подтверждение и впускает.
+const PENDING_LOGIN_KEY = "cozygift_pending_login";
+const PENDING_LOGIN_TTL_MS = 5 * 60 * 1000;
+
+function savePendingLogin(nonce: string, deepLink: string | null) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(
+      PENDING_LOGIN_KEY,
+      JSON.stringify({ nonce, deepLink, ts: Date.now() }),
+    );
+  } catch {
+    /* noop */
+  }
+}
+
+function readPendingLogin(): { nonce: string; deepLink: string | null } | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PENDING_LOGIN_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { nonce?: string; deepLink?: string | null; ts?: number };
+    if (!v.nonce || !v.ts || Date.now() - v.ts > PENDING_LOGIN_TTL_MS) {
+      localStorage.removeItem(PENDING_LOGIN_KEY);
+      return null;
+    }
+    return { nonce: v.nonce, deepLink: v.deepLink ?? null };
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingLogin() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(PENDING_LOGIN_KEY);
+  } catch {
+    /* noop */
+  }
+}
+
 export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const startFn = useServerFn(startTelegramLogin);
   const pollFn = useServerFn(pollTelegramLogin);
@@ -157,6 +200,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       const profile = await loadUser();
       if (!profile) throw new Error("Профиль не загружен");
       rememberUsername(profile.telegram_username);
+      clearPendingLogin();
       confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
       toast.success(
         res.is_new
@@ -181,6 +225,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     pollingRef.current = window.setInterval(async () => {
       if (Date.now() > deadlineRef.current) {
         clearPolling();
+        clearPendingLogin();
         setStatusText("Время вышло. Попробуй ещё раз.");
         setPhase("idle");
         return;
@@ -193,10 +238,12 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           await finishSignIn(n);
         } else if (r.status === "rejected") {
           clearPolling();
+          clearPendingLogin();
           setStatusText("Вход отклонён в боте. Попробуй ещё раз.");
           setPhase("idle");
         } else if (r.status === "expired" || r.status === "not_found") {
           clearPolling();
+          clearPendingLogin();
           setStatusText("Ссылка истекла. Попробуй ещё раз.");
           setPhase("idle");
         } else if (r.status === "opened") {
@@ -232,7 +279,11 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const onTapBotLink = () => {
     setPhase("waiting");
     setStatusText("Открой бота, нажми Start, затем ✅ Это я");
-    if (nonce) startPolling(nonce);
+    if (nonce) {
+      // запоминаем код входа, чтобы пережить перезагрузку вкладки после Telegram
+      savePendingLogin(nonce, deepLink);
+      startPolling(nonce);
+    }
   };
 
   // Фолбэк, если ссылка не подготовилась заранее (нет сети при загрузке).
@@ -247,6 +298,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       const res = await startFn({ data: { referrer_id } });
       setNonce(res.nonce);
       setDeepLink(res.deep_link);
+      savePendingLogin(res.nonce, res.deep_link);
       window.open(res.deep_link, "_blank", "noopener,noreferrer");
       setStatusText("Открой бота и нажми Start, затем ✅ Это я");
       startPolling(res.nonce);
@@ -260,6 +312,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
 
   const reset = () => {
     clearPolling();
+    clearPendingLogin();
     setPhase("idle");
     setNonce(null);
     setDeepLink(null);
@@ -276,6 +329,17 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setPhase("waiting");
       setStatusText("Подтверди вход в боте");
       startPolling(initialNonce);
+      return () => clearPolling();
+    }
+    // Возврат из Telegram после перезагрузки вкладки: возобновляем
+    // незавершённый вход по сохранённому коду — без повторного захода в бота.
+    const pending = readPendingLogin();
+    if (pending) {
+      setNonce(pending.nonce);
+      setDeepLink(pending.deepLink);
+      setPhase("waiting");
+      setStatusText("Подтверждаем вход… если ещё не подтвердил — открой бота");
+      startPolling(pending.nonce);
     } else if (pwMode !== "form") {
       // Заранее готовим ссылку на бота, чтобы первый тап открывал его сразу.
       void ensureLink();
