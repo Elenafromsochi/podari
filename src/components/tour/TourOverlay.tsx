@@ -105,6 +105,12 @@ export function TourOverlay() {
       }
     : null;
 
+  // Шаг ждёт действия на самой странице (advanceOn), но без конкретной
+  // подсвеченной кнопки (нет hole) — значит всю страницу надо оставить
+  // кликабельной (выбрать категорию/подарок), а карточку увести наверх,
+  // чтобы она не закрывала нужные кнопки.
+  const interactiveNoHole = !hole && !!step.advanceOn;
+
   // позиционирование карточки
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
   let cardTop = vh / 2 - 110;
@@ -114,6 +120,8 @@ export function TourOverlay() {
     cardTop = hole.top + hole.height / 2 < vh / 2
       ? Math.min(vh - 220, below)
       : Math.max(16, above);
+  } else if (interactiveNoHole) {
+    cardTop = 92;
   }
 
   return (
@@ -159,6 +167,9 @@ export function TourOverlay() {
             style={hole}
           />
         </>
+      ) : interactiveNoHole ? (
+        // Лёгкое затемнение, сквозь которое можно нажимать кнопки страницы.
+        <div className="pointer-events-none absolute inset-0 bg-black/25" />
       ) : (
         <div className="pointer-events-auto absolute inset-0 bg-black/60" />
       )}
