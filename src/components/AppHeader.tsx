@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { HelpCircle, Compass } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import type { UserProfile } from "@/lib/auth-state";
 import { LevelBadge } from "@/components/LevelBadge";
-import { restartTour } from "@/lib/tour";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Props {
@@ -124,14 +123,6 @@ export function AppHeader({ user }: Props) {
             </span>
             <LevelBadge level={user.level} />
             <InfoDot label={`Уровни · до следующего ${toNext} XP`} content={LEVELS_INFO} />
-            <button
-              type="button"
-              onClick={() => restartTour()}
-              className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition hover:bg-primary/20 active:scale-95"
-              aria-label="Открыть гид по сервису"
-            >
-              <Compass className="h-3 w-3" strokeWidth={2.25} /> Гид
-            </button>
           </div>
           <div className="mt-1 flex items-center gap-2">
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
