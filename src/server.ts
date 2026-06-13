@@ -66,12 +66,30 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+// Документ (HTML) не кэшируем «намертво»: браузер обязан каждый раз
+// проверять у сервера, нет ли свежей версии. Так пользователи всегда
+// получают последнюю сборку по одной и той же ссылке, без ручного сброса
+// кэша. Сами JS/CSS имеют уникальные имена и кэшируются надолго отдельно.
+function withFreshHtmlHeaders(response: Response): Response {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/html")) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-cache, must-revalidate");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withFreshHtmlHeaders(
+        await normalizeCatastrophicSsrResponse(response),
+      );
     } catch (error) {
       console.error(error);
       return brandedErrorResponse();
