@@ -22,6 +22,21 @@ function userEmail(tgId: number) {
   return `tg_${tgId}@tg.podari.local`;
 }
 
+/** Находит id существующего auth-пользователя по email (через admin API). */
+async function findAuthUserId(email: string): Promise<string | null> {
+  // generateLink возвращает объект пользователя для существующего email
+  // (письмо при этом не отправляется — нам нужен только user.id).
+  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+  });
+  if (error) {
+    console.error("[telegram-auth] FIND_USER_FAILED", error);
+    return null;
+  }
+  return ((data?.user as { id?: string } | undefined)?.id) ?? null;
+}
+
 /** Шаг 1: фронт просит nonce, открывает deep-link на бота. */
 export const startTelegramLogin = createServerFn({ method: "POST" })
   .inputValidator((input) =>
@@ -139,11 +154,27 @@ export const completeTelegramLogin = createServerFn({ method: "POST" })
           referred_by: referredBy,
         },
       });
-      if (createErr && !/already/i.test(createErr.message)) {
-        console.error("[telegram-auth] USER_CREATE_FAILED", createErr);
-        throw new Error("USER_CREATE_FAILED");
+      if (createErr) {
+        if (/already/i.test(createErr.message)) {
+          // Аккаунт уже есть, но первый вход по паролю не прошёл — значит
+          // пароль был задан с другим "перцем" (раньше env был пуст).
+          // Лечим: пере-устанавливаем пароль на актуальный и подтверждаем email.
+          const existingId = await findAuthUserId(email);
+          if (existingId) {
+            const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(
+              existingId,
+              { password, email_confirm: true },
+            );
+            if (updErr)
+              console.error("[telegram-auth] PASSWORD_RESET_FAILED", updErr);
+          }
+        } else {
+          console.error("[telegram-auth] USER_CREATE_FAILED", createErr);
+          throw new Error("USER_CREATE_FAILED");
+        }
+      } else {
+        isNewUser = true;
       }
-      isNewUser = !createErr;
       const r = await anon.auth.signInWithPassword({ email, password });
       if (r.error || !r.data.session) {
         console.error("[telegram-auth] SIGNIN_FAILED", r.error);
