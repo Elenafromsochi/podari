@@ -15,9 +15,31 @@ type ChatItem = {
   gift_image: string | null;
   other_name: string;
   created_at: string;
+  last_message_at: string | null;
+  last_incoming: boolean;
 };
 
 type Filter = "givers" | "receivers" | "archive";
+
+const SEEN_KEY = "cozy_chat_seen";
+
+function readSeen(): Record<string, string> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeSeen(m: Record<string, string>) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify(m));
+  } catch {
+    /* noop */
+  }
+}
 
 function timeAgo(iso?: string | null) {
   if (!iso) return "";
@@ -46,6 +68,15 @@ function StatusTag({ status }: { status: string }) {
   );
 }
 
+function TabBadge({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9.5px] font-bold leading-none text-primary-foreground">
+      {n > 9 ? "9+" : n}
+    </span>
+  );
+}
+
 export function ChatsTab() {
   const [filter, setFilter] = useState<Filter>("givers");
 
@@ -53,6 +84,7 @@ export function ChatsTab() {
   const [receivers, setReceivers] = useState<ChatItem[] | null>(null);
   const [archiveG, setArchiveG] = useState<ChatItem[]>([]);
   const [archiveR, setArchiveR] = useState<ChatItem[]>([]);
+  const [seen, setSeen] = useState<Record<string, string>>(() => readSeen());
   const chatsFn = useServerFn(getMyChats);
 
   useEffect(() => {
@@ -69,6 +101,33 @@ export function ChatsTab() {
       setArchiveR(c.archive_with_receivers ?? []);
     })();
   }, [chatsFn]);
+
+  // Непрочитанный = последнее сообщение от собеседника и пришло позже,
+  // чем мы в последний раз открывали этот чат.
+  const isUnread = (c: ChatItem) =>
+    !!c.last_incoming &&
+    !!c.last_message_at &&
+    (seen[c.transaction_id] ?? "") < c.last_message_at;
+
+  const markSeen = (c: ChatItem) => {
+    if (!c.last_message_at) return;
+    setSeen((prev) => {
+      if ((prev[c.transaction_id] ?? "") >= c.last_message_at!) return prev;
+      const next = { ...prev, [c.transaction_id]: c.last_message_at! };
+      writeSeen(next);
+      return next;
+    });
+  };
+
+  const countUnread = (arr: ChatItem[]) => arr.reduce((n, c) => n + (isUnread(c) ? 1 : 0), 0);
+  const giversUnread = countUnread(givers ?? []);
+  const receiversUnread = countUnread(receivers ?? []);
+  const archiveUnread = countUnread([...archiveG, ...archiveR]);
+  const unreadByTab: Record<Filter, number> = {
+    givers: giversUnread,
+    receivers: receiversUnread,
+    archive: archiveUnread,
+  };
 
   const base: ChatItem[] = useMemo(() => {
     if (filter === "givers") return givers ?? [];
@@ -112,13 +171,14 @@ export function ChatsTab() {
                   setFilter(k);
                 }
               }}
-              className={`rounded-xl px-2 py-1.5 text-[11.5px] font-medium leading-tight transition-all duration-300 ${
+              className={`flex items-center justify-center rounded-xl px-2 py-1.5 text-[11.5px] font-medium leading-tight transition-all duration-300 ${
                 active
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {label}
+              <TabBadge n={unreadByTab[k]} />
             </button>
           );
         })}
@@ -138,42 +198,57 @@ export function ChatsTab() {
         </div>
       ) : (
         <ul key={filter} className="achievements-list space-y-2">
-          {list.map((c) => (
-            <li key={c.transaction_id}>
-              <Link
-                to="/chat/$giftId"
-                params={{ giftId: c.gift_id }}
-                onClick={() => haptic("select")}
-                className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm transition active:scale-[0.98]"
-              >
-                {c.gift_image ? (
-                  <img
-                    src={c.gift_image}
-                    alt={c.gift_title}
-                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                    🎁
+          {list.map((c) => {
+            const unread = isUnread(c);
+            return (
+              <li key={c.transaction_id}>
+                <Link
+                  to="/chat/$giftId"
+                  params={{ giftId: c.gift_id }}
+                  onClick={() => {
+                    haptic("select");
+                    markSeen(c);
+                  }}
+                  className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm transition active:scale-[0.98] ${
+                    unread ? "border-primary/40 bg-primary/5" : "bg-card"
+                  }`}
+                >
+                  {c.gift_image ? (
+                    <img
+                      src={c.gift_image}
+                      alt={c.gift_title}
+                      className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                      🎁
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`truncate text-sm ${unread ? "font-bold" : "font-semibold"}`}>
+                        {c.other_name}
+                      </p>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {unread && (
+                          <span className="h-2 w-2 rounded-full bg-primary" aria-label="новое сообщение" />
+                        )}
+                        <span className="text-[10.5px] text-muted-foreground">
+                          {timeAgo(c.last_message_at ?? c.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p className={`truncate text-xs ${unread ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                        {unread ? "● Новое сообщение" : `🎁 ${c.gift_title}`}
+                      </p>
+                      <StatusTag status={c.status} />
+                    </div>
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-semibold">{c.other_name}</p>
-                    <span className="shrink-0 text-[10.5px] text-muted-foreground">
-                      {timeAgo(c.created_at)}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-2">
-                    <p className="truncate text-xs text-muted-foreground">
-                      🎁 {c.gift_title}
-                    </p>
-                    <StatusTag status={c.status} />
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
