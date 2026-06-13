@@ -168,8 +168,9 @@ export function TourOverlay() {
           />
         </>
       ) : interactiveNoHole ? (
-        // Лёгкое затемнение, сквозь которое можно нажимать кнопки страницы.
-        <div className="pointer-events-none absolute inset-0 bg-black/25" />
+        // Никакого затемнения над страницей: на этих шагах нужно нажимать
+        // карточки самой страницы, поэтому ничего поверх них не рисуем.
+        null
       ) : (
         <div className="pointer-events-auto absolute inset-0 bg-black/60" />
       )}
