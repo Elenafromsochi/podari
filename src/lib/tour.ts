@@ -70,6 +70,13 @@ export function completeTour() {
   write({ ...cur, step: null, done: true });
 }
 
+/** Перезапуск гида с первого шага — для кнопки «Гид» в шапке.
+ *  Позволяет пройти обучение снова, даже если его пропустили. */
+export function restartTour() {
+  const cur = read();
+  write({ userId: cur.userId, step: TOUR_STEPS[0].id, done: false });
+}
+
 export function emitTour(event: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("cozy:tour-event", { detail: event }));
