@@ -214,7 +214,11 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       if (msg.includes("NONCE_EXPIRED")) text = "Ссылка истекла — попробуй ещё раз";
       else if (msg.includes("NONCE_REJECTED")) text = "Вход отклонён в боте";
       else if (msg.includes("NOT_APPROVED")) text = "Сначала подтверди вход в боте";
-      toast.error(text);
+      else if (msg.includes("NONCE_CONSUMED"))
+        text = "Этот вход уже использован — начни заново";
+      console.error("[AuthFlow] finishSignIn failed:", msg);
+      // Показываем точную причину (код ошибки) — помогает диагностике.
+      toast.error(text, { description: msg, duration: 15000 });
       reset();
     }
   };
