@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import confetti from "canvas-confetti";
 import {
   completeTour,
   getStep,
+  getTourSnapshot,
   nextStepId,
+  restartTour,
   setTourStep,
+  TOUR_STEPS,
   useTourState,
 } from "@/lib/tour";
 
@@ -22,6 +26,16 @@ export function TourOverlay() {
   const state = useTourState();
   const step = getStep(state.step);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const navigate = useNavigate();
+
+  // Решаем ОДИН раз при загрузке страницы: если гид сохранён не на первом
+  // шаге и не завершён — значит человек вернулся после перезагрузки/повторного
+  // входа. Не показываем подсказку вслепую (она может оказаться не на той
+  // странице), а спрашиваем: пройти заново или закрыть.
+  const [askResume, setAskResume] = useState(() => {
+    const s = getTourSnapshot();
+    return !!s.step && !s.done && s.step !== TOUR_STEPS[0].id;
+  });
 
   // конфетти при появлении шага
   useEffect(() => {
@@ -84,7 +98,44 @@ export function TourOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step?.advanceOn, step?.id]);
 
-  if (!step || state.done) return null;
+  if (state.done) return null;
+
+  // Возврат после перезагрузки: спрашиваем, а не показываем шаг вслепую.
+  if (askResume) {
+    return (
+      <div className="pointer-events-auto fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-6 animate-fade-in">
+        <div className="w-full max-w-sm rounded-2xl bg-background p-5 text-center shadow-xl animate-scale-in">
+          <p className="text-base font-semibold">Продолжим знакомство с сервисом?</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Ты не закончил гид. Пройти его заново с начала — это быстро и по шагам.
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                setAskResume(false);
+                navigate({ to: "/" });
+                restartTour();
+              }}
+              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:opacity-90"
+            >
+              Пройти гид заново
+            </button>
+            <button
+              onClick={() => {
+                setAskResume(false);
+                completeTour();
+              }}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-accent"
+            >
+              Не сейчас
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!step) return null;
 
   const advance = () => {
     const nxt = nextStepId(step.id);

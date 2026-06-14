@@ -43,6 +43,11 @@ export function useTourState(): TourState {
   return s;
 }
 
+/** Одноразовый снимок состояния гида (для решения «спросить ли продолжение»). */
+export function getTourSnapshot(): TourState {
+  return read();
+}
+
 /** Запускаем гид после авторизации. Существующим активным пользователям
  *  (с накопленным опытом) гид не показываем. */
 export function startTourForUser(userId: string, xp: number, isNew: boolean) {
