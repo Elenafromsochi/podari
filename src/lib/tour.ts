@@ -48,6 +48,12 @@ export function getTourSnapshot(): TourState {
   return read();
 }
 
+/** Идёт ли сейчас гид (есть активный шаг и он не завершён). */
+export function isTourActive(): boolean {
+  const s = read();
+  return !!s.step && !s.done;
+}
+
 /** Запускаем гид после авторизации. Существующим активным пользователям
  *  (с накопленным опытом) гид не показываем. */
 export function startTourForUser(userId: string, xp: number, isNew: boolean) {
