@@ -157,9 +157,9 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "point-nav",
-    target: '[data-tour="bottom-nav"]',
+    target: '[data-tour="tab-home"]',
     text:
-      "Здесь — переход на Главную, Профиль и Чаты. Пошли на Главную 🏠",
+      "Внизу — переходы между разделами. Нажми «Главная» 🏠",
     advanceOn: "home-opened",
   },
   {

@@ -53,6 +53,12 @@ export function GlobalChrome({ children }: { children: React.ReactNode }) {
       : "home";
 
   const goTab = (t: AppTab) => {
+    // Сбрасываем возможный внутренний экран (чат/форму) на «/», иначе при
+    // переходе на уже текущий адрес «/» состояние не обновлялось и человек
+    // «застревал» в чате, хотя вкладка подсвечивалась активной.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("cozy:nav-tab", { detail: t }));
+    }
     if (t === "home") navigate({ to: "/" });
     else if (t === "profile") navigate({ to: "/cabinet" });
     else if (t === "chats") navigate({ to: "/", search: { tab: "chats" } as never });

@@ -34,6 +34,14 @@ function timeAgo(iso?: string | null): string {
 function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const longDesc = !!g.description && g.description.length > 38;
+  const photos =
+    g.image_urls && g.image_urls.length > 0
+      ? g.image_urls
+      : g.image_url
+        ? [g.image_url]
+        : [];
+  const hasGallery = photos.length > 1;
+  const hasMore = longDesc || hasGallery;
   return (
     <Card className="overflow-hidden p-3">
       <div className="flex gap-3">
@@ -68,14 +76,14 @@ function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
               {g.description}
             </p>
           )}
-          {longDesc && (
+          {hasMore && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
               className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary active:scale-95"
-              aria-label={expanded ? "Свернуть описание" : "Показать полное описание"}
+              aria-label={expanded ? "Свернуть" : "Показать подробнее"}
             >
-              {expanded ? "Свернуть" : "Подробнее"}
+              {expanded ? "Свернуть" : hasGallery ? `Подробнее · фото ${photos.length}` : "Подробнее"}
               <ChevronDown
                 className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
               />
@@ -99,6 +107,22 @@ function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
           </div>
         </div>
       </div>
+
+      {/* Галерея всех фото — раскрывается по «Подробнее» */}
+      {expanded && hasGallery && (
+        <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {photos.map((src, i) => (
+            <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <img
+                src={src}
+                alt={`${g.title} — фото ${i + 1}`}
+                className="h-20 w-20 rounded-lg object-cover ring-1 ring-border"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
       <Button
         onClick={() => onPick(g.id)}
         className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
@@ -116,6 +140,7 @@ type Gift = {
   description: string | null;
   category: string;
   image_url: string | null;
+  image_urls?: string[] | null;
   cost: number;
   condition: number | null;
   owner_id: string | null;
@@ -185,7 +210,7 @@ export function ReceiveGiftFlow({
       const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,condition,owner_id,gift_kind,created_at")
+        .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,gift_kind,created_at")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false });
