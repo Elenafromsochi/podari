@@ -13,25 +13,64 @@ import {
 } from "@/lib/tour";
 import { GIFT_KINDS } from "@/lib/gift-kinds";
 
-/** Уровень пользователя из кэша профиля — чтобы гид подстраивал текст. */
-function readUserLevel(): number {
-  if (typeof localStorage === "undefined") return 1;
+/** Уровень и баланс пользователя из кэша профиля — чтобы гид подстраивал текст. */
+function readCachedProfile(): { level: number; balance: number } {
+  if (typeof localStorage === "undefined") return { level: 1, balance: 1 };
   try {
     const raw = localStorage.getItem("cozygift_last_profile");
     if (raw) {
-      const p = JSON.parse(raw) as { level?: number };
-      if (typeof p.level === "number" && p.level > 0) return p.level;
+      const p = JSON.parse(raw) as { level?: number; balance?: number | string };
+      const level = typeof p.level === "number" && p.level > 0 ? p.level : 1;
+      const balance = Number(p.balance ?? 1);
+      return { level, balance: Number.isFinite(balance) ? balance : 1 };
     }
   } catch {
     /* noop */
   }
-  return 1;
+  return { level: 1, balance: 1 };
+}
+
+function fmtBal(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function ballWord(n: number): string {
+  if (!Number.isInteger(n)) return "балла";
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return "балл";
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "балла";
+  return "баллов";
+}
+
+function giftWord(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return "подарок";
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "подарка";
+  return "подарков";
+}
+
+/** Первый шаг гида подстраивается под реальный баланс пользователя. */
+function balanceStepText(): string {
+  const { balance } = readCachedProfile();
+  const b = Math.round(balance * 10) / 10;
+  if (b >= 1) {
+    const max = Math.floor(b);
+    const extra = max >= 2 ? " (или несколько подешевле)" : "";
+    return `У тебя ${fmtBal(b)} ${ballWord(b)} — можешь выбрать подарок ценой до ${max} ${ballWord(max)}${extra}. Покажу, как 🎁`;
+  }
+  if (b <= 0) {
+    return "Пока у тебя 0 баллов. Чтобы выбрать подарок, нужен 1 балл — выкладывай свои подарки, каждый даёт +0.2 балла, так баланс и наберётся.";
+  }
+  const need = Math.max(1, Math.ceil((1 - b) / 0.2 - 1e-9));
+  return `Сейчас у тебя ${fmtBal(b)} ${ballWord(b)}. Чтобы накопить 1 балл и выбрать подарок, выложи ещё ${need} ${giftWord(need)} — каждый даёт +0.2 балла.`;
 }
 
 /** Текст шага «выбери категорию» подстраивается под уровень: перечисляет
  *  доступные категории, а если открыто всё — так и пишет. */
 function kindsStepText(): string {
-  const level = readUserLevel();
+  const level = readCachedProfile().level;
   const open = GIFT_KINDS.filter((k) => level >= k.minLevel);
   if (open.length >= GIFT_KINDS.length) {
     return "Тебе уже открыты все категории — выбери любую 🎁";
@@ -173,8 +212,13 @@ export function TourOverlay() {
 
   const skip = () => completeTour();
 
-  // Текст шага «выбери категорию» — динамический, под уровень пользователя.
-  const displayText = step.id === "kinds-explain" ? kindsStepText() : step.text;
+  // Динамические шаги: первый — под баланс, «выбери категорию» — под уровень.
+  const displayText =
+    step.id === "auth-confetti"
+      ? balanceStepText()
+      : step.id === "kinds-explain"
+        ? kindsStepText()
+        : step.text;
 
   const pad = 8;
   const hasHole = !!rect;
