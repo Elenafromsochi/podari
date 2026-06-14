@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Search, Lock, Send } from "lucide-react";
+import { Mic, MicOff, Search, Lock, Send, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,87 @@ function timeAgo(iso?: string | null): string {
   const mo = Math.floor(d / 30);
   if (mo < 12) return `${mo} мес назад`;
   return `${Math.floor(d / 365)} г назад`;
+}
+
+/** Карточка подарка в ленте: со стрелкой для раскрытия полного описания
+ *  и кликабельным дарителем (ведёт на его профиль). */
+function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const longDesc = !!g.description && g.description.length > 38;
+  return (
+    <Card className="overflow-hidden p-3">
+      <div className="flex gap-3">
+        {g.image_url ? (
+          <img
+            src={g.image_url}
+            alt={g.title}
+            className="h-20 w-20 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-3xl">
+            🎁
+          </div>
+        )}
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="text-base font-semibold leading-tight break-words">{g.title}</div>
+          {g.condition ? (
+            <div
+              className="flex items-center gap-0.5 text-sm leading-none"
+              aria-label={`Состояние ${g.condition} из 5`}
+              title={`Состояние: ${g.condition} из 5`}
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span key={n}>{n <= g.condition! ? "❤️" : "🤍"}</span>
+              ))}
+            </div>
+          ) : null}
+          {g.description && (
+            <p
+              className={`break-words text-xs text-muted-foreground ${expanded ? "" : "line-clamp-1"}`}
+            >
+              {g.description}
+            </p>
+          )}
+          {longDesc && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary active:scale-95"
+              aria-label={expanded ? "Свернуть описание" : "Показать полное описание"}
+            >
+              {expanded ? "Свернуть" : "Подробнее"}
+              <ChevronDown
+                className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+            </button>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            {g.owner_id ? (
+              <Link
+                to="/user/$userId"
+                params={{ userId: g.owner_id }}
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                {g.owner_name ?? "Гость"}
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
+            )}
+            <LevelBadge level={g.owner_level ?? 1} />
+
+            <span>· {timeAgo(g.created_at)}</span>
+          </div>
+        </div>
+      </div>
+      <Button
+        onClick={() => onPick(g.id)}
+        className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+        size="sm"
+      >
+        🎁 Получить за {g.cost ?? 1} балл
+      </Button>
+    </Card>
+  );
 }
 
 type Gift = {
@@ -174,63 +255,7 @@ export function ReceiveGiftFlow({
   }
 
   const renderCard = (g: Gift) => (
-    <Card key={g.id} className="overflow-hidden p-3">
-      <div className="flex gap-3">
-        {g.image_url ? (
-          <img
-            src={g.image_url}
-            alt={g.title}
-            className="h-20 w-20 shrink-0 rounded-lg object-cover"
-          />
-        ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-3xl">
-            🎁
-          </div>
-        )}
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="text-base font-semibold leading-tight break-words">{g.title}</div>
-          {g.condition ? (
-            <div
-              className="flex items-center gap-0.5 text-sm leading-none"
-              aria-label={`Состояние ${g.condition} из 5`}
-              title={`Состояние: ${g.condition} из 5`}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n}>{n <= g.condition! ? "❤️" : "🤍"}</span>
-              ))}
-            </div>
-          ) : null}
-          {g.description && (
-            <p className="line-clamp-1 break-words text-xs text-muted-foreground">
-              {g.description}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {g.owner_id ? (
-              <Link
-                to="/user/$userId"
-                params={{ userId: g.owner_id }}
-                className="font-medium text-primary underline-offset-2 hover:underline"
-              >
-                {g.owner_name ?? "Гость"}
-              </Link>
-            ) : (
-              <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
-            )}
-            <LevelBadge level={g.owner_level ?? 1} />
-
-            <span>· {timeAgo(g.created_at)}</span>
-          </div>
-        </div>
-      </div>
-      <Button
-        onClick={() => onPick(g.id)}
-        className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-        size="sm"
-      >
-        🎁 Получить за {g.cost ?? 1} балл
-      </Button>
-    </Card>
+    <GiftCard key={g.id} g={g} onPick={onPick} />
   );
 
 
