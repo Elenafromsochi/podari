@@ -12,7 +12,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { GlobalNotifications } from "@/components/GlobalNotifications";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import { TourOverlay } from "@/components/tour/TourOverlay";
+import { installTourToastGuard } from "@/lib/tour-toast-guard";
 import appCss from "../styles.css?url";
+
+if (typeof window !== "undefined") {
+  installTourToastGuard();
+}
 
 
 function NotFoundComponent() {
