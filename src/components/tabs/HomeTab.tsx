@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, ArrowUp } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { restartTour } from "@/lib/tour";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -176,9 +176,19 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
           placeholder="Поиск по ленте…"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
         />
+        <button
+          type="button"
+          onClick={() => { haptic("select"); (document.activeElement as HTMLElement | null)?.blur?.(); }}
+          disabled={!query.trim()}
+          aria-label="Искать"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
+        >
+          <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+        </button>
       </div>
 
       {/* Жизнь сервиса — компактная панель статистики */}
