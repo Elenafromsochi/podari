@@ -120,17 +120,20 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "kinds-explain",
+    target: '[data-tour="tour-spot"]',
     text:
       "На 1 уровне тебе доступны категории «Вещи» и «Услуги и время» — выбери что-нибудь.",
     advanceOn: "kind-picked",
   },
   {
     id: "subcat-explain",
+    target: '[data-tour="tour-spot"]',
     text: "И здесь сделай выбор 🙂",
     advanceOn: "subcat-picked",
   },
   {
     id: "feed-explain",
+    target: '[data-tour="tour-spot"]',
     text: "Ты добрался до настоящих сокровищ — выбирай любое!",
     advanceOn: "chat-opened",
   },
