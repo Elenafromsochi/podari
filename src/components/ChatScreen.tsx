@@ -372,40 +372,74 @@ export function ChatScreen({
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-background">
       {/* Шапка */}
       <div className="border-b bg-card/60 px-4 pb-3 pt-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={onBack}
             aria-label="Назад"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-base text-muted-foreground transition hover:bg-muted"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base text-muted-foreground transition hover:bg-muted"
           >
             ←
           </button>
-          {gift?.image_url ? (
-            <img src={gift.image_url} alt={gift.title} className="h-11 w-11 rounded-xl object-cover" />
-          ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+
+          {/* Левая часть строки: фото + даритель/подарок. Ведёт на профиль,
+              где можно посмотреть подарок подробнее. */}
+          {(() => {
+            const thumb = gift?.image_url ? (
+              <img src={gift.image_url} alt={gift.title} className="h-11 w-11 shrink-0 rounded-xl object-cover" />
+            ) : (
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+            );
+            const info = (
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-semibold">
+                  {isOwner ? "Получатель" : "Даритель"}
+                  {partner ? `: ${partner.name}` : ""}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  🎁 {gift?.title ?? "Подарок"}
+                  {gift?.description ? ` — ${gift.description}` : ""}
+                </div>
+              </div>
+            );
+            return partner ? (
+              <Link
+                to="/user/$userId"
+                params={{ userId: partner.id }}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl transition active:scale-[0.99]"
+              >
+                {thumb}
+                {info}
+              </Link>
+            ) : (
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                {thumb}
+                {info}
+              </div>
+            );
+          })()}
+
+          {/* Справа: небольшая приглушённо-красная кнопка отказа (для получателя) */}
+          {!isOwner && !cancelled && !handedOver && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="shrink-0 rounded-full border border-red-300/70 px-2.5 py-1 text-[11px] font-medium text-red-500/90 transition hover:bg-red-50 active:scale-95">
+                  Отказаться
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Отказаться от подарка?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Замороженные баллы вернутся вам, а подарок снова станет доступным другим.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCancel}>Отказаться</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-semibold">
-              {isOwner ? "Получатель" : "Даритель"}
-              {partner && (
-                <>
-                  {": "}
-                  <Link
-                    to="/user/$userId"
-                    params={{ userId: partner.id }}
-                    className="text-primary underline-offset-2 hover:underline"
-                  >
-                    {partner.name}
-                  </Link>
-                </>
-              )}
-            </div>
-            <div className="truncate text-xs text-muted-foreground">
-              🎁 {gift?.title ?? "Подарок"}
-              {gift?.description ? ` — ${gift.description}` : ""}
-            </div>
-          </div>
         </div>
 
         {gift?.image_urls && gift.image_urls.length > 1 && (
@@ -429,69 +463,41 @@ export function ChatScreen({
         )}
 
 
-        {/* Кнопки действия по роли */}
-        {!cancelled && !handedOver && (
+        {/* Кнопки действия дарителя (у получателя «Отказаться» — в шапке справа) */}
+        {isOwner && !cancelled && !handedOver && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {isOwner ? (
-              <>
+            <Button
+              size="sm"
+              disabled={!!handoverRequestedAt}
+              onClick={handleRequestHandover}
+              className="h-9 flex-1 rounded-full bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+            >
+              <Check className="mr-1 h-4 w-4" />
+              {handoverRequestedAt ? "Ожидаем подтверждения…" : "Подтвердить передачу"}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
                 <Button
                   size="sm"
-                  disabled={!!handoverRequestedAt}
-                  onClick={handleRequestHandover}
-                  className="h-9 flex-1 rounded-full bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                  variant="destructive"
+                  className="h-9 flex-1 rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
                 >
-                  <Check className="mr-1 h-4 w-4" />
-                  {handoverRequestedAt ? "Ожидаем подтверждения…" : "Подтвердить передачу"}
+                  <X className="mr-1 h-4 w-4" /> Отказаться от дарения
                 </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="h-9 flex-1 rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
-                    >
-                      <X className="mr-1 h-4 w-4" /> Отказаться от дарения
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Отказаться от дарения?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Подарок снова станет активным, а замороженные баллы вернутся получателю.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Отмена</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleCancelBySender}>Подтвердить</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
-            ) : (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-9 w-full rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
-                  >
-                    <X className="mr-1 h-4 w-4" /> Отказаться от подарка
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Отказаться от подарка?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Замороженные баллы вернутся вам, а подарок снова станет доступным другим.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleCancel}>Отказаться</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Отказаться от дарения?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Подарок снова станет активным, а замороженные баллы вернутся получателю.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCancelBySender}>Подтвердить</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>
