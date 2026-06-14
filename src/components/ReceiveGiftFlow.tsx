@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Search, Lock } from "lucide-react";
+import { Mic, MicOff, Search, Lock, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -263,6 +263,7 @@ export function ReceiveGiftFlow({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             placeholder="Что бы тебе хотелось получить?"
             className="flex-1 bg-transparent text-sm outline-none"
           />
@@ -274,6 +275,15 @@ export function ReceiveGiftFlow({
             aria-label="Голос"
           >
             {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => (document.activeElement as HTMLElement | null)?.blur?.()}
+            disabled={!query.trim()}
+            aria-label="Искать"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
         <div className="space-y-3">
@@ -358,6 +368,7 @@ export function ReceiveGiftFlow({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query && setStep("search")}
+            onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) setStep("search"); }}
             placeholder="Опиши, что тебе нужно…"
             className="flex-1 bg-transparent text-sm outline-none"
           />
@@ -369,6 +380,15 @@ export function ReceiveGiftFlow({
             aria-label="Голос"
           >
             {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => query.trim() && setStep("search")}
+            disabled={!query.trim()}
+            aria-label="Искать"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
       </div>
