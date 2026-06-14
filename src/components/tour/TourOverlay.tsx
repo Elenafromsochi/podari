@@ -11,6 +11,34 @@ import {
   TOUR_STEPS,
   useTourState,
 } from "@/lib/tour";
+import { GIFT_KINDS } from "@/lib/gift-kinds";
+
+/** Уровень пользователя из кэша профиля — чтобы гид подстраивал текст. */
+function readUserLevel(): number {
+  if (typeof localStorage === "undefined") return 1;
+  try {
+    const raw = localStorage.getItem("cozygift_last_profile");
+    if (raw) {
+      const p = JSON.parse(raw) as { level?: number };
+      if (typeof p.level === "number" && p.level > 0) return p.level;
+    }
+  } catch {
+    /* noop */
+  }
+  return 1;
+}
+
+/** Текст шага «выбери категорию» подстраивается под уровень: перечисляет
+ *  доступные категории, а если открыто всё — так и пишет. */
+function kindsStepText(): string {
+  const level = readUserLevel();
+  const open = GIFT_KINDS.filter((k) => level >= k.minLevel);
+  if (open.length >= GIFT_KINDS.length) {
+    return "Тебе уже открыты все категории — выбери любую 🎁";
+  }
+  const names = open.map((k) => `«${k.shortLabel}»`).join(", ");
+  return `На твоём уровне доступны: ${names} — выбери что-нибудь.`;
+}
 
 function burst() {
   const opts = { spread: 80, ticks: 200, gravity: 0.9, scalar: 1.1 } as const;
@@ -145,6 +173,9 @@ export function TourOverlay() {
 
   const skip = () => completeTour();
 
+  // Текст шага «выбери категорию» — динамический, под уровень пользователя.
+  const displayText = step.id === "kinds-explain" ? kindsStepText() : step.text;
+
   const pad = 8;
   const hasHole = !!rect;
   const hole = hasHole
@@ -252,7 +283,7 @@ export function TourOverlay() {
             Пропустить
           </button>
         </div>
-        <p className="text-[15px] leading-snug">{step.text}</p>
+        <p className="text-[15px] leading-snug">{displayText}</p>
         {step.cta && (
           <button
             onClick={advance}
