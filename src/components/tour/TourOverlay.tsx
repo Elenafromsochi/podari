@@ -156,32 +156,47 @@ export function TourOverlay() {
       }
     : null;
 
-  // Шаг ждёт действия на самой странице (advanceOn), но без конкретной
-  // подсвеченной кнопки (нет hole) — значит всю страницу надо оставить
-  // кликабельной (выбрать категорию/подарок), а карточку увести наверх,
-  // чтобы она не закрывала нужные кнопки.
-  const interactiveNoHole = !hole && !!step.advanceOn;
+  // Шаг ждёт действия на самой странице (advanceOn): страницу НЕ блокируем,
+  // нужную область только подсвечиваем кольцом, а подсказку держим сверху —
+  // так она не закрывает кнопки, которые надо нажать.
+  const waitsForAction = !!step.advanceOn;
 
   // позиционирование карточки
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
   let cardTop = vh / 2 - 110;
   if (hole) {
-    const below = hole.top + hole.height + 16;
-    const above = hole.top - 16 - 200;
-    cardTop = hole.top + hole.height / 2 < vh / 2
-      ? Math.min(vh - 220, below)
-      : Math.max(16, above);
-  } else if (interactiveNoHole) {
+    // высокую область (например, длинную ленту) не обойти — ставим подсказку
+    // наверх, чтобы не закрывать её середину.
+    if (hole.height > vh * 0.55) {
+      cardTop = 92;
+    } else {
+      // есть подсвеченная область — ставим карточку над или под ней, чтобы не закрывать
+      const below = hole.top + hole.height + 16;
+      const above = hole.top - 16 - 200;
+      cardTop = hole.top + hole.height / 2 < vh / 2
+        ? Math.min(vh - 220, below)
+        : Math.max(16, above);
+    }
+  } else if (waitsForAction) {
     cardTop = 92;
   }
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
-      {hole ? (
+      {waitsForAction ? (
+        // Шаг-действие: страницу НЕ закрываем и не затемняем. Если нашли
+        // нужную область — обводим её кольцом (подсветка), но клики проходят
+        // насквозь, и карточка-подсказка стоит так, чтобы её не перекрывать.
+        hole ? (
+          <div
+            className="pointer-events-none absolute rounded-2xl ring-4 ring-primary/80 transition-all"
+            style={hole}
+          />
+        ) : null
+      ) : hole ? (
         <>
           {/* 4 затемнения вокруг дырки — клики по тёмным зонам перехватываются
-              (pointer-events-auto), а сама дырка остаётся «сквозной», чтобы
-              подсвеченную кнопку можно было нажать. */}
+              (pointer-events-auto), а сама дырка остаётся «сквозной». */}
           <div
             className="pointer-events-auto absolute bg-black/55"
             style={{ left: 0, top: 0, right: 0, height: Math.max(0, hole.top) }}
@@ -218,10 +233,6 @@ export function TourOverlay() {
             style={hole}
           />
         </>
-      ) : interactiveNoHole ? (
-        // Никакого затемнения над страницей: на этих шагах нужно нажимать
-        // карточки самой страницы, поэтому ничего поверх них не рисуем.
-        null
       ) : (
         <div className="pointer-events-auto absolute inset-0 bg-black/60" />
       )}

@@ -312,7 +312,7 @@ export function ReceiveGiftFlow({
           Выбери категорию подарка
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3" data-tour="tour-spot">
           {GIFT_KINDS.map((k) => {
             const locked = userLevel < k.minLevel;
             const n = countsByKind.get(k.id) ?? 0;
@@ -399,9 +399,11 @@ export function ReceiveGiftFlow({
         </p>
 
         {cats.length === 0 ? (
-          <NothingHere note="В этой категории пока пусто 💚" />
+          <div data-tour="tour-spot">
+            <NothingHere note="В этой категории пока пусто 💚" />
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3" data-tour="tour-spot">
             {cats.map(([cat, n]) => {
               const meta = getCategoryMeta(cat);
               return (
@@ -443,7 +445,7 @@ export function ReceiveGiftFlow({
         {filtered.length} {filtered.length === 1 ? "подарок" : "подарков"} доступно
       </p>
 
-      <div className="space-y-3">{filtered.map(renderCard)}</div>
+      <div className="space-y-3" data-tour="tour-spot">{filtered.map(renderCard)}</div>
     </div>
   );
 }
