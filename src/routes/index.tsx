@@ -110,9 +110,14 @@ function Index() {
       if (!session) setUser(null);
       else loadUser().then(setUser);
     });
+    // Нижняя навигация из внутреннего экрана (чат/форма): сбрасываем flow,
+    // чтобы показать выбранную вкладку, а не «застрять» в чате.
+    const onNavTab = () => setFlow({ kind: "none" });
+    window.addEventListener("cozy:nav-tab", onNavTab);
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      window.removeEventListener("cozy:nav-tab", onNavTab);
     };
   }, []);
 

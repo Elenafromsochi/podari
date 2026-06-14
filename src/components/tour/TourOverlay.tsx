@@ -214,62 +214,17 @@ export function TourOverlay() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
-      {waitsForAction ? (
-        // Шаг-действие: страницу НЕ закрываем и не затемняем. Если нашли
-        // нужную область — обводим её кольцом (подсветка), но клики проходят
-        // насквозь, и карточка-подсказка стоит так, чтобы её не перекрывать.
-        hole ? (
-          <div
-            className="pointer-events-none absolute rounded-2xl ring-4 ring-primary/80 transition-all"
-            style={hole}
-          />
-        ) : null
-      ) : hole ? (
-        <>
-          {/* 4 затемнения вокруг дырки — клики по тёмным зонам перехватываются
-              (pointer-events-auto), а сама дырка остаётся «сквозной». */}
-          <div
-            className="pointer-events-auto absolute bg-black/55"
-            style={{ left: 0, top: 0, right: 0, height: Math.max(0, hole.top) }}
-          />
-          <div
-            className="pointer-events-auto absolute bg-black/55"
-            style={{
-              left: 0,
-              top: hole.top + hole.height,
-              right: 0,
-              bottom: 0,
-            }}
-          />
-          <div
-            className="pointer-events-auto absolute bg-black/55"
-            style={{
-              left: 0,
-              top: hole.top,
-              width: Math.max(0, hole.left),
-              height: hole.height,
-            }}
-          />
-          <div
-            className="pointer-events-auto absolute bg-black/55"
-            style={{
-              left: hole.left + hole.width,
-              top: hole.top,
-              right: 0,
-              height: hole.height,
-            }}
-          />
-          <div
-            className="pointer-events-none absolute rounded-2xl ring-4 ring-primary/80 transition-all"
-            style={hole}
-          />
-        </>
-      ) : (
-        <div className="pointer-events-auto absolute inset-0 bg-black/60" />
+      {/* Без затемнения: только яркое пульсирующее кольцо вокруг нужной
+          кнопки/области, чтобы «вести» взгляд. Страница полностью кликабельна. */}
+      {hole && (
+        <div
+          className="pointer-events-none absolute rounded-2xl ring-4 ring-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.35)] animate-pulse transition-all"
+          style={hole}
+        />
       )}
 
       <div
-        className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-background p-4 shadow-xl animate-scale-in"
+        className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-background p-4 shadow-xl ring-1 ring-border animate-scale-in"
         style={{ top: cardTop }}
       >
         <div className="mb-1 flex items-center justify-between gap-2">
