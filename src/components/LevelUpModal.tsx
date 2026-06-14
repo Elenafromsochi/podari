@@ -28,10 +28,10 @@ const LEVELS: Record<number, LevelMeta> = {
   },
   3: {
     emoji: "🎟",
-    title: "3 уровень — Мероприятия!",
-    subtitle: "Приглашения на события вдвоём",
+    title: "Мероприятия — открыто!",
+    subtitle: "Пригласи на событие или прими приглашение",
     unlocks:
-      "Выставка, концерт, театр, лекция — позови кого-то разделить вечер.",
+      "Выставка, концерт, театр, лекция, танцы, кино — позови кого-то разделить вечер вдвоём или сам прими приглашение.",
     image: level3Img,
     imageAlt: "Сцена и зрители",
     accent: "bg-lavender",
@@ -90,8 +90,11 @@ export function LevelUpModal() {
   return (
     <Dialog open onOpenChange={(open) => !open && setLevel(null)}>
       <DialogContent className="max-w-sm overflow-hidden rounded-3xl border-0 p-0">
-        <div className={`${meta.accent} px-6 pt-8 pb-6 text-center animate-fade-in`}>
-          <div className="mb-3 text-5xl animate-scale-in">{meta.emoji}</div>
+        <div className={`${meta.accent} px-6 pt-7 pb-6 text-center animate-fade-in`}>
+          <p className="text-[12.5px] font-semibold uppercase tracking-wide opacity-80">
+            🎉 Поздравляю! Ты перешёл на {level} уровень
+          </p>
+          <div className="mb-3 mt-2 text-5xl animate-scale-in">{meta.emoji}</div>
           <h2 className="text-2xl font-semibold tracking-tight">{meta.title}</h2>
           <p className="mt-1 text-sm opacity-80">{meta.subtitle}</p>
         </div>
