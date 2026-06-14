@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Search, Lock, ArrowUp } from "lucide-react";
+import { Mic, MicOff, Search, Lock, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -283,7 +283,7 @@ export function ReceiveGiftFlow({
             aria-label="Искать"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
           >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+            <Send className="h-4 w-4" />
           </button>
         </div>
         <div className="space-y-3">
@@ -388,7 +388,7 @@ export function ReceiveGiftFlow({
             aria-label="Искать"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
           >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>

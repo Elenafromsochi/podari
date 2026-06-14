@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, ArrowUp } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, Send } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { restartTour } from "@/lib/tour";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -187,7 +187,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           aria-label="Искать"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
         >
-          <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+          <Send className="h-4 w-4" />
         </button>
       </div>
 
