@@ -7,6 +7,7 @@ import {
   getTourSnapshot,
   nextStepId,
   restartTour,
+  resumeStepId,
   setTourStep,
   TOUR_STEPS,
   useTourState,
@@ -134,6 +135,8 @@ export function TourOverlay() {
     const s = getTourSnapshot();
     return !!s.step && !s.done && s.step !== TOUR_STEPS[0].id;
   });
+  // Шаг, на котором остановились (для «Продолжить с незавершённого»).
+  const [resumeFrom] = useState(() => getTourSnapshot().step);
 
   // конфетти при появлении шага
   useEffect(() => {
@@ -205,25 +208,35 @@ export function TourOverlay() {
         <div className="w-full max-w-sm rounded-2xl bg-background p-5 text-center shadow-xl animate-scale-in">
           <p className="text-base font-semibold">Продолжим знакомство с сервисом?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Ты не закончил гид. Пройти его заново с начала — это быстро и по шагам.
+            Ты не закончил гид. Продолжим с того места, где остановился?
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <button
               onClick={() => {
                 setAskResume(false);
                 navigate({ to: "/" });
-                restartTour();
+                setTourStep(resumeStepId(resumeFrom));
               }}
               className="w-full rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
             >
-              Пройти гид заново
+              Продолжить
+            </button>
+            <button
+              onClick={() => {
+                setAskResume(false);
+                navigate({ to: "/" });
+                restartTour();
+              }}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-foreground transition hover:bg-accent"
+            >
+              Начать с начала
             </button>
             <button
               onClick={() => {
                 setAskResume(false);
                 completeTour();
               }}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm text-muted-foreground transition hover:bg-accent"
+              className="w-full rounded-xl px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent"
             >
               Не сейчас
             </button>
