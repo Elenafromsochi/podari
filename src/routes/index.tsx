@@ -145,7 +145,23 @@ function Index() {
       localStorage.setItem(ACTIVE_TX_KEY, res.transaction_id);
       await refreshUser();
       haptic("success");
-      toast.success("−1 балл заморожен • Безопасная сделка 🔒", {
+      const cost = (() => {
+        try {
+          const n = Number(localStorage.getItem("cozygift_last_claim_cost"));
+          return Number.isFinite(n) && n > 0 ? n : 1;
+        } catch {
+          return 1;
+        }
+      })();
+      const m10 = cost % 10;
+      const m100 = cost % 100;
+      const word =
+        m10 === 1 && m100 !== 11
+          ? "балл"
+          : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)
+            ? "балла"
+            : "баллов";
+      toast.success(`Заморожено ${cost} ${word} • Безопасная сделка 🔒`, {
         description: "Открываем чат с дарителем",
       });
       setFlow({ kind: "chat", giftId, txId: res.transaction_id });
