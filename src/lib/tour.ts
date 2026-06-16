@@ -154,7 +154,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour="chat-templates"]',
     text:
       "Ты можешь отправить шаблонное сообщение, нажав на кнопку, либо написать свой вопрос дарителю.",
-    cta: "Далее",
+    cta: "Написал(а)",
   },
   {
     id: "chat-decline",
