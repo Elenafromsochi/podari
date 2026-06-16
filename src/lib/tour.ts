@@ -198,6 +198,13 @@ export const TOUR_STEPS: TourStep[] = [
     cta: "Готово",
   },
   {
+    id: "give-condition",
+    target: '[data-tour="give-condition"]',
+    text:
+      "Здесь можно дарить и б/у вещи — поэтому фотографируй честно. ИИ оценит состояние сердечками ❤️ (5 — как новое, 1 — сильно использованное). Если ИИ ошибся — поменяй количество сердечек вручную.",
+    cta: "Ок",
+  },
+  {
     id: "give-cost",
     target: '[data-tour="give-cost"]',
     text:
@@ -356,6 +363,7 @@ const SECTION_ENTRY: Record<string, string> = {
   "give-kind": "give-start",
   "give-intro": "give-start",
   "give-photo": "give-start",
+  "give-condition": "give-start",
   "give-cost": "give-start",
   "give-publish": "give-start",
   "give-done": "give-start",

@@ -221,6 +221,19 @@ export function TourOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step?.advanceOn, step?.id]);
 
+  // Шаг про состояние нужен только для вещей; у услуги/встречи — пропускаем.
+  useEffect(() => {
+    if (step?.id !== "give-condition") return;
+    let kind = "used_item";
+    try {
+      kind = localStorage.getItem("cozygift_tour_give_kind") || "used_item";
+    } catch {
+      /* noop */
+    }
+    if (kind !== "used_item") advance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step?.id]);
+
   if (state.done) return null;
 
   // Возврат после перезагрузки: спрашиваем, а не показываем шаг вслепую.
