@@ -90,6 +90,17 @@ function freezeStepText(): string {
   return `Ты попал в чат с Дарителем — и в этот момент у тебя ${verb} ${cost} ${ballWord(cost)} 🔒`;
 }
 
+/** Вводный шаг дарения: лимит цены подарка по уровню. */
+function giveIntroStepText(): string {
+  const { level } = readCachedProfile();
+  if (level <= 1) {
+    return "На 1 уровне можно дарить и получать подарки стоимостью до 3000 ₽ (это 1 балл). Чем выше твой уровень — тем дороже подарки можно дарить и получать 💚";
+  }
+  const cap = Math.min(level, 5);
+  const rub = (cap * 3000).toLocaleString("ru-RU");
+  return `На твоём уровне можно дарить и получать подарки стоимостью до ${rub} ₽ (до ${cap} ${ballWord(cap)}). Чем выше уровень — тем дороже подарки 💚`;
+}
+
 /** Текст шага про стоимость: новичку — про 1 балл (до 3000 ₽) и рост уровня. */
 function giveCostStepText(): string {
   const { level } = readCachedProfile();
@@ -151,10 +162,21 @@ export function TourOverlay() {
     }
     let timer: number | null = null;
     let cancelled = false;
+    let scrolled = false;
     const update = () => {
       if (cancelled) return;
       const el = document.querySelector(step.target!) as HTMLElement | null;
       if (el) {
+        // Один раз на шаг подкручиваем элемент в центр, чтобы он не прятался
+        // за нижней навигацией/шапкой и подсветка была видна.
+        if (!scrolled) {
+          scrolled = true;
+          try {
+            el.scrollIntoView({ block: "center", behavior: "smooth" });
+          } catch {
+            /* noop */
+          }
+        }
         const r = el.getBoundingClientRect();
         setRect((prev) => {
           if (
@@ -269,9 +291,11 @@ export function TourOverlay() {
         ? kindsStepText()
         : step.id === "chat-freeze"
           ? freezeStepText()
+          : step.id === "give-intro"
+          ? giveIntroStepText()
           : step.id === "give-cost"
-          ? giveCostStepText()
-          : step.text;
+            ? giveCostStepText()
+            : step.text;
 
   const pad = 8;
   const hasHole = !!rect;
