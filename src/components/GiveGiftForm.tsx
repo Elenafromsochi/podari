@@ -315,7 +315,10 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2" data-tour="give-photo">
+          {/* Зона описания целиком: фото, файл, текст и «Дополнить с ИИ» —
+              чтобы гид подсвечивал её всю и можно было выбрать любой способ. */}
+          <div data-tour="give-describe" className="space-y-4">
+          <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
                 📷 Сделать фото
@@ -431,6 +434,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                 Нажмите 🎙️ и продиктуйте описание голосом. Можно делать паузы — запись не прервётся, пока не нажмёте «Стоп».
               </p>
             )}
+          </div>
           </div>
 
           {showCondition && (
