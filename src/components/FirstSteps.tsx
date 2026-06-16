@@ -54,7 +54,9 @@ export function FirstSteps() {
     setTourDone(getTourSnapshot().done);
     if (typeof localStorage !== "undefined") {
       setInvitedLocal(localStorage.getItem("cozygift_invited") === "1");
-      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+      // По умолчанию свёрнут (чтобы не занимать ленту); раскрыт только если
+      // пользователь явно развернул («0»).
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) !== "0");
     }
     return () => {
       alive = false;

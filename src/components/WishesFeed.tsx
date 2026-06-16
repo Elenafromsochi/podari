@@ -63,7 +63,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
           haptic("medium");
           onCreate();
         }}
-        className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-peach px-4 py-3 text-left text-peach-foreground shadow-sm transition active:scale-[0.98]"
+        className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-mint px-4 py-3 text-left text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90"
       >
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
           <Sparkles className="h-5 w-5" />

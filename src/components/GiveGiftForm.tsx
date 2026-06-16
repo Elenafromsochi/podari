@@ -438,7 +438,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           </div>
 
           {showCondition && (
-            <div className="space-y-2">
+            <div className="space-y-2" data-tour="give-condition">
               <Label>Состояние (новизна)</Label>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((n) => (
