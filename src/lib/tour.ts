@@ -192,10 +192,24 @@ export const TOUR_STEPS: TourStep[] = [
     cta: "Далее",
   },
   {
-    id: "give-back",
+    id: "give-cost",
+    target: '[data-tour="give-cost"]',
+    text:
+      "Теперь выбери, во сколько баллов оценить подарок (по его примерной цене в рублях).",
+    cta: "Далее",
+  },
+  {
+    id: "give-publish",
+    target: '[data-tour="give-publish"]',
+    text:
+      "Готово? Жми «Выложить подарок» — и он сразу появится в ленте, а тебе начислятся баллы 🎁",
+    advanceOn: "gift-published",
+  },
+  {
+    id: "give-done",
     target: '[data-tour="tab-home"]',
     text:
-      "Опубликовать подарок можно в любой момент позже. А пока вернёмся на Главную — нажми «Главная» 🏠",
+      "Поздравляю — твой подарок опубликован! 🎉 Вернёмся на Главную: нажми «Главная» 🏠",
     advanceOn: "home-opened",
   },
   {

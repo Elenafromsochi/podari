@@ -272,6 +272,7 @@ function Index() {
             toast.success(pickRandom(PUBLISH_THANKS_TITLES), {
               description: pickRandom(PUBLISH_THANKS_DESCRIPTIONS),
             });
+            emitTour("gift-published");
             await refreshUser();
             setFlow({ kind: "publish_success" });
           }}
