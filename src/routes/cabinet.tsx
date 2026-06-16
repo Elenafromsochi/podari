@@ -236,32 +236,6 @@ function CabinetPage() {
       </button>
 
 
-      <Card className="mb-6 border-primary/20 bg-card/80">
-        <CardHeader>
-          <CardTitle className="text-2xl">✨ Личный кабинет</CardTitle>
-          <p className="text-sm text-muted-foreground">Привет, {user.display_name}!</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat
-              label="Опыт"
-              value={user.xp}
-              hint={`За каждое действие начисляются баллы опыта:\n+20 за публикацию подарка\n+80 за вручённый подарок\n+5 или +20 за отзыв\n+10 за получение подарка`}
-            />
-            <Stat
-              label="Уровень"
-              value={user.level}
-              hint={`Уровень растёт по мере накопления Опыта:\n1 уровень — от 0 до 199 очков\n2 уровень — от 200 до 499 очков\n3 уровень — от 500 до 999 очков\n4 уровень — от 1000 до 1699 очков\n5 уровень — от 1700 до 2499 очков`}
-            />
-            <Stat
-              label="Подарочные баллы"
-              value={user.balance}
-              hint={`Списываются (замораживаются), когда забираешь подарок.\nНачисляются, когда твой подарок принят получателем.`}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       <OnboardingChecklist
         hasPosted={posted.length > 0}
         hasReceived={received.length > 0}

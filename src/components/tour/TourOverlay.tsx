@@ -291,9 +291,10 @@ export function TourOverlay() {
   } else if (waitsForAction) {
     cardTop = 92;
   }
-  // Шаг про описание при дарении: подсказку уводим ВНИЗ, чтобы вся форма
-  // (фото + поле ввода + «Дополнить с ИИ») оставалась видимой и доступной.
-  if (step.id === "give-photo") cardTop = Math.max(140, vh - 320);
+  // Шаг про описание при дарении: подсказку уводим к САМОМУ верху (в зону
+  // шапки, где нет кнопок формы), чтобы вся форма снизу — фото, поле ввода и
+  // «Дополнить с ИИ» — оставалась видимой и доступной.
+  if (step.id === "give-photo") cardTop = 64;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
