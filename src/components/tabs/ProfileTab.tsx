@@ -595,10 +595,17 @@ function InviteRow({
     const text =
       "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚 По этой ссылке тебе сразу зачислится 1 балл, на который можно выбрать любой подарок:";
     // Гид продвигаем ТОЛЬКО после фактической отправки.
-    const advance = () =>
+    const advance = () => {
+      try {
+        // отмечаем «пригласил друга» в трекере «Первые шаги»
+        localStorage.setItem("cozygift_invited", "1");
+      } catch {
+        /* noop */
+      }
       window.dispatchEvent(
         new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
       );
+    };
 
     // 1) Системное окно «Поделиться» — не закрывается само, даёт выбрать друга.
     try {
