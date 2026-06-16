@@ -65,7 +65,7 @@ export function GiveGiftChips({ onPick, onBack, userLevel }: Props) {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3" data-tour="give-kinds">
         {GIFT_KINDS.map((c) => {
           const locked = userLevel < c.minLevel;
           return (

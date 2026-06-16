@@ -143,6 +143,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
       <div className="mb-5 grid grid-cols-2 gap-2">
         <button
           type="button"
+          data-tour="give-btn"
           onClick={() => { haptic("medium"); onGive(); }}
           className="group relative flex flex-col overflow-hidden rounded-2xl bg-lavender p-3 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
@@ -171,7 +172,10 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
       </div>
 
       {/* Search */}
-      <div className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm">
+      <div
+        data-tour="home-search"
+        className="mb-4 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-sm"
+      >
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
           value={query}
