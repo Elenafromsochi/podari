@@ -238,11 +238,15 @@ export function ReceiveGiftFlow({
       }
 
       setGifts(
-        rows.map((g) => ({
-          ...g,
-          owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
-          owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
-        })),
+        rows
+          // Показываем только подарки по карману уровню: дороже своего уровня
+          // пользователь их даже не видит — они «открываются» при росте уровня.
+          .filter((g) => (Number(g.cost) || 1) <= userLevel)
+          .map((g) => ({
+            ...g,
+            owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
+            owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
+          })),
       );
     })();
   }, []);
