@@ -485,11 +485,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                       setCost(t.cost);
                     }}
                     aria-disabled={locked}
-                    className={`flex flex-col items-center rounded-xl border px-1 py-2 text-[11px] font-medium transition ${
+                    className={`flex flex-col items-center rounded-xl border-2 px-1 py-2 text-[11px] font-medium transition ${
                       locked
                         ? "cursor-not-allowed border-input bg-muted/40 text-muted-foreground/50"
                         : active
-                          ? "border-primary bg-primary/10 text-foreground shadow-sm"
+                          ? "border-emerald-500 bg-emerald-100 text-emerald-800 shadow-sm"
                           : "border-input bg-background text-muted-foreground hover:bg-accent"
                     }`}
                   >
