@@ -676,16 +676,18 @@ function WishCtaButton({ level, onCreateWish }: { level: number; onCreateWish?: 
         haptic("medium");
         onCreateWish?.();
       }}
-      className={`mb-3 flex w-full items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-left shadow-sm transition active:scale-[0.98] ${
-        locked ? "opacity-70" : "hover:bg-accent"
+      className={`mb-3 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left shadow-sm transition active:scale-[0.98] ${
+        locked
+          ? "border bg-card opacity-70"
+          : "bg-mint text-mint-foreground hover:bg-mint/90"
       }`}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lavender/60 text-lavender-foreground">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/60 text-mint-foreground">
         <Sparkles className="h-4 w-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">Загадать желание</span>
-        <span className="block truncate text-xs text-muted-foreground transition-opacity duration-300">
+        <span className={`block truncate text-xs transition-opacity duration-300 ${locked ? "text-muted-foreground" : "text-mint-foreground/70"}`}>
           например: {WISH_EXAMPLES[idx]}
         </span>
       </span>
