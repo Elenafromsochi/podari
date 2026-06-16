@@ -46,11 +46,16 @@ export function GlobalChrome({ children }: { children: React.ReactNode }) {
     };
   }, [user, unreadFn]);
 
-  const active: AppTab = pathname.startsWith("/cabinet")
+  // В чате и на под-экранах поверх главной («/») вкладку НЕ подсвечиваем:
+  // человек и так понимает, что он в чате, а «активная» вкладка мешала по ней
+  // нажать (тап по уже активной вкладке не срабатывал).
+  const active: AppTab | null = pathname.startsWith("/cabinet")
     ? "profile"
-    : pathname.startsWith("/chat") || pathname === "/" && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "chats"
-      ? "chats"
-      : "home";
+    : pathname.startsWith("/chat")
+      ? null
+      : pathname === "/"
+        ? null
+        : "home";
 
   const goTab = (t: AppTab) => {
     // Сбрасываем возможный внутренний экран (чат/форму) на «/», иначе при

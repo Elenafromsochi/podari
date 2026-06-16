@@ -422,7 +422,10 @@ export function ChatScreen({
           {!isOwner && !cancelled && !handedOver && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <button className="shrink-0 rounded-full border border-red-300/70 px-2.5 py-1 text-[11px] font-medium text-red-500/90 transition hover:bg-red-50 active:scale-95">
+                <button
+                  data-tour="chat-decline"
+                  className="shrink-0 rounded-full border border-red-300/70 px-2.5 py-1 text-[11px] font-medium text-red-500/90 transition hover:bg-red-50 active:scale-95"
+                >
                   Отказаться
                 </button>
               </AlertDialogTrigger>
