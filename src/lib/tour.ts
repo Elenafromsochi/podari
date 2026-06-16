@@ -167,7 +167,35 @@ export const TOUR_STEPS: TourStep[] = [
     id: "point-nav",
     target: '[data-tour="tab-home"]',
     text:
-      "Пока ждёшь ответа — давай изучим остальные разделы. Внизу — переходы между разделами, нажми «Главная» 🏠",
+      "Пока ждёшь ответа — выйдем из чата. Внизу — переходы между разделами, нажми «Главная» 🏠",
+    advanceOn: "home-opened",
+  },
+  {
+    id: "give-start",
+    target: '[data-tour="give-btn"]',
+    text:
+      "А теперь давай сам что-нибудь подаришь — это пополняет баланс и поднимает уровень. Нажми «Подарить» 🎁",
+    advanceOn: "give-opened",
+  },
+  {
+    id: "give-kind",
+    target: '[data-tour="give-kinds"]',
+    text:
+      "Выбери, чем хочешь поделиться — категории зависят от твоего уровня. Нажми на любую открытую.",
+    advanceOn: "give-kind-picked",
+  },
+  {
+    id: "give-photo",
+    target: '[data-tour="give-photo"]',
+    text:
+      "Добавь фото — и ИИ сам опишет подарок и оценит состояние. Описание всегда можно поправить вручную.",
+    cta: "Далее",
+  },
+  {
+    id: "give-back",
+    target: '[data-tour="tab-home"]',
+    text:
+      "Опубликовать подарок можно в любой момент позже. А пока вернёмся на Главную — нажми «Главная» 🏠",
     advanceOn: "home-opened",
   },
   {
@@ -175,7 +203,14 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour="home-stats"]',
     text:
       "Здесь видно, сколько сейчас во всём сервисе активных подарков, уже подаренных и загаданных желаний.",
-    cta: "Ок",
+    cta: "Далее",
+  },
+  {
+    id: "home-search",
+    target: '[data-tour="home-search"]',
+    text:
+      "А здесь — поиск по ленте: можно найти подарок или желание по словам. Введи запрос и нажми ✈️.",
+    cta: "Далее",
   },
   {
     id: "home-gifted",
@@ -189,7 +224,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour="feed-tab-wishes"]',
     text:
       "А кнопка «Загадали» — это лента желаний других людей: можно изучить и, возможно, исполнить какое-нибудь из них ✨",
-    cta: "Класс!",
+    cta: "Далее",
   },
   {
     id: "point-profile",

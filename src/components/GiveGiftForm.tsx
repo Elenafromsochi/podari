@@ -314,7 +314,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="give-photo">
             <div className="grid grid-cols-2 gap-2">
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
                 📷 Сделать фото

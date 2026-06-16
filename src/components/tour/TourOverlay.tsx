@@ -89,6 +89,20 @@ function freezeStepText(): string {
   return `Ты попал в чат с Дарителем — и в этот момент у тебя ${verb} ${cost} ${ballWord(cost)} 🔒`;
 }
 
+/** Текст шага про фото при дарении отличается для вещи и услуги. */
+function givePhotoStepText(): string {
+  let kind = "used_item";
+  try {
+    kind = localStorage.getItem("cozygift_tour_give_kind") || "used_item";
+  } catch {
+    /* noop */
+  }
+  if (kind === "used_item") {
+    return "Добавь фото — и ИИ сам опишет вещь и оценит её состояние ❤️. Описание всегда можно поправить вручную.";
+  }
+  return "Опиши, что предлагаешь — текстом или голосом. Фото по желанию, а ИИ поможет сделать описание красивее. У услуги состояния нет — оценивать нечего 🙂";
+}
+
 /** Текст шага «выбери категорию» подстраивается под уровень: перечисляет
  *  доступные категории, а если открыто всё — так и пишет. */
 function kindsStepText(): string {
@@ -243,7 +257,9 @@ export function TourOverlay() {
         ? kindsStepText()
         : step.id === "chat-freeze"
           ? freezeStepText()
-          : step.text;
+          : step.id === "give-photo"
+            ? givePhotoStepText()
+            : step.text;
 
   const pad = 8;
   const hasHole = !!rect;

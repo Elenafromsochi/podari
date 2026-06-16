@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
-import { startTourForUser } from "@/lib/tour";
+import { startTourForUser, emitTour } from "@/lib/tour";
 import { claimGift } from "@/lib/cozy.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/lib/haptics";
@@ -182,7 +182,7 @@ function Index() {
       {flow.kind === "none" && (
         <AppShell
           user={user}
-          onGive={() => setFlow({ kind: "give_chip" })}
+          onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_chip" }); }}
           onReceive={() => setFlow({ kind: "receive" })}
           onPickGift={handlePickGift}
           onCreateWish={() => setFlow({ kind: "wish_form" })}
@@ -247,7 +247,15 @@ function Index() {
         <GiveGiftChips
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
-          onPick={(kind, label) => setFlow({ kind: "give_form", presetHint: label, giftKind: kind })}
+          onPick={(kind, label) => {
+            try {
+              localStorage.setItem("cozygift_tour_give_kind", kind);
+            } catch {
+              /* noop */
+            }
+            emitTour("give-kind-picked");
+            setFlow({ kind: "give_form", presetHint: label, giftKind: kind });
+          }}
         />
         </GlobalChrome>
       )}
