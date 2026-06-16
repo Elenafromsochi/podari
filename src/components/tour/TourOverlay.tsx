@@ -321,7 +321,7 @@ export function TourOverlay() {
             Пропустить
           </button>
         </div>
-        <p className="text-[15px] font-medium leading-snug">{displayText}</p>
+        <p className="whitespace-pre-line text-[15px] font-medium leading-snug">{displayText}</p>
         {step.cta && (
           <button
             onClick={advance}
