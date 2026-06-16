@@ -593,7 +593,7 @@ export const ACHIEVEMENT_META: Record<
   giver_5:        { title: "Щедрая душа",       description: "Передал 5 подарков",                      emoji: "💝", xp: 30, group: "Даритель" },
   receiver_5:     { title: "Открытый миру",     description: "Получил 5 подарков",                      emoji: "🌸", xp: 20, group: "Получатель" },
   level_2:        { title: "Новый горизонт",    description: "Достиг 2 уровня",                         emoji: "✨", xp: 25, group: "Прогресс" },
-  first_referral: { title: "Пригласил друга",   description: "Привёл первого нового пользователя",      emoji: "👯", xp: 30, group: "Социальное" },
+  first_referral: { title: "Пригласил друга",   description: "За каждого друга по ссылке — +50 XP",     emoji: "👯", xp: 0, group: "Социальное" },
 };
 
 export type AchievementRow = {

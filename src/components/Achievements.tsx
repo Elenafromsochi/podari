@@ -24,9 +24,12 @@ export function useAchievements() {
           for (const g of res.newly_granted) {
             const meta = ACHIEVEMENT_META[g.code];
             if (!meta) continue;
-            toast.success(`${meta.emoji} ${meta.title} • +${g.xp_granted} XP`, {
-              description: meta.description,
-            });
+            toast.success(
+              g.xp_granted > 0
+                ? `${meta.emoji} ${meta.title} • +${g.xp_granted} XP`
+                : `${meta.emoji} ${meta.title}`,
+              { description: meta.description },
+            );
           }
           // Сводный тост, если выдано больше одного
           if (res.newly_granted.length > 1) {
@@ -179,7 +182,7 @@ export function Achievements({ variant = "full" }: Props) {
                     <div className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
                       it.unlocked ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"
                     }`}>
-                      +{meta.xp} XP
+                      {meta.xp > 0 ? `+${meta.xp} XP` : (it.unlocked ? "✓" : "🏅")}
                     </div>
                   </li>
                 );

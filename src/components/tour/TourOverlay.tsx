@@ -238,7 +238,11 @@ export function TourOverlay() {
   const advance = () => {
     const nxt = nextStepId(step.id);
     if (nxt) setTourStep(nxt);
-    else completeTour();
+    else {
+      // финал гида — отправляем человека в профиль (к достижениям)
+      completeTour();
+      navigate({ to: "/cabinet" });
+    }
   };
 
   const skip = () => completeTour();
