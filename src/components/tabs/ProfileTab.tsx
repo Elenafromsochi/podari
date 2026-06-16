@@ -238,7 +238,10 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       {/* Мои подарки */}
       <section>
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Мои подарки</h2>
-        <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
+        <div
+          data-tour="profile-statustabs"
+          className="mb-3 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1"
+        >
           {([
             ["posted", "Активные"],
             ["gifted", "Подаренные"],

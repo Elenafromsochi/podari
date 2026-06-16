@@ -293,21 +293,21 @@ export function TourOverlay() {
       )}
 
       <div
-        className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-background p-4 shadow-xl ring-1 ring-border animate-scale-in"
+        className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-lavender p-4 text-lavender-foreground shadow-xl ring-1 ring-lavender-foreground/15 animate-scale-in"
         style={{ top: cardTop }}
       >
         <div className="mb-1 flex items-center justify-between gap-2">
-          <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10.5px] font-medium uppercase tracking-wider text-lavender-foreground/70">
             Гид по «Подари»
           </span>
           <button
             onClick={skip}
-            className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+            className="text-[11px] text-lavender-foreground/70 underline-offset-4 hover:underline"
           >
             Пропустить
           </button>
         </div>
-        <p className="text-[15px] leading-snug">{displayText}</p>
+        <p className="text-[15px] font-medium leading-snug">{displayText}</p>
         {step.cta && (
           <button
             onClick={advance}
@@ -317,7 +317,7 @@ export function TourOverlay() {
           </button>
         )}
         {!step.cta && (
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          <p className="mt-2 text-center text-[11px] text-lavender-foreground/70">
             👆 сделай шаг, и я продолжу
           </p>
         )}
