@@ -93,6 +93,20 @@ export function ChatScreen({
   const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Подставить шаблон в поле и поставить курсор в конец, чтобы можно дописать.
+  const fillTemplate = (s: string) => {
+    setText(s);
+    requestAnimationFrame(() => {
+      const el = composerRef.current;
+      if (el) {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    });
+  };
 
   const navigate = useNavigate();
 
@@ -535,7 +549,7 @@ export function ChatScreen({
                 onClick={() => {
                   // если шаблон заканчивается на "…" — даём пользователю дописать
                   if (s.trim().endsWith("…")) {
-                    setText(s);
+                    fillTemplate(s);
                   } else {
                     send(s);
                   }
@@ -548,13 +562,21 @@ export function ChatScreen({
             ))}
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <input
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={composerRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
+            onKeyDown={(e) => {
+              // Enter — отправить, Shift+Enter — перенос строки
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send(text);
+              }
+            }}
             placeholder="Напишите сообщение…"
-            className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+            rows={3}
+            className="max-h-44 min-h-[76px] flex-1 resize-none rounded-2xl border-2 border-border bg-background px-4 py-2.5 text-base leading-snug outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
           />
           <Button
             size="icon"
