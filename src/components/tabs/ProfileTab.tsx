@@ -151,10 +151,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
-      {user.telegram_username && (
-        <p className="mb-3 text-xs text-muted-foreground">@{user.telegram_username}</p>
-      )}
-
       {/* Пригласить друга + быстрые действия */}
       <InviteRow
         userId={user.user_id}
