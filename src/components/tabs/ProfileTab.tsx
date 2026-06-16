@@ -17,6 +17,7 @@ import {
   deleteGift,
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
+import { FirstSteps } from "@/components/FirstSteps";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -165,6 +166,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
+      {/* Трекер «Первые шаги» — 8 достижений новичка (скрывается, когда все пройдены) */}
+      <FirstSteps />
+
       {/* Пригласить друга + быстрые действия */}
       <InviteRow
         userId={user.user_id}
