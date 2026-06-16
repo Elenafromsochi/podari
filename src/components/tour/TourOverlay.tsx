@@ -67,6 +67,20 @@ function balanceStepText(): string {
   return `Сейчас у тебя ${fmtBal(b)} ${ballWord(b)}. Чтобы накопить 1 балл и выбрать подарок, выложи ещё ${need} ${giftWord(need)} — каждый даёт +0.2 балла.`;
 }
 
+/** Текст шага «ты попал в чат» — число замороженных баллов из стоимости
+ *  только что выбранного подарка. */
+function freezeStepText(): string {
+  let cost = 1;
+  try {
+    const raw = localStorage.getItem("cozygift_last_claim_cost");
+    const n = raw ? Number(raw) : NaN;
+    if (Number.isFinite(n) && n > 0) cost = n;
+  } catch {
+    /* noop */
+  }
+  return `Ты попал в чат с Дарителем — и в этот момент у тебя «заморозилось» ${cost} ${ballWord(cost)} 🔒`;
+}
+
 /** Текст шага «выбери категорию» подстраивается под уровень: перечисляет
  *  доступные категории, а если открыто всё — так и пишет. */
 function kindsStepText(): string {
@@ -183,7 +197,7 @@ export function TourOverlay() {
                 navigate({ to: "/" });
                 restartTour();
               }}
-              className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:opacity-90"
+              className="w-full rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
             >
               Пройти гид заново
             </button>
@@ -212,13 +226,16 @@ export function TourOverlay() {
 
   const skip = () => completeTour();
 
-  // Динамические шаги: первый — под баланс, «выбери категорию» — под уровень.
+  // Динамические шаги: первый — под баланс, «выбери категорию» — под уровень,
+  // «попал в чат» — число замороженных баллов из стоимости подарка.
   const displayText =
     step.id === "auth-confetti"
       ? balanceStepText()
       : step.id === "kinds-explain"
         ? kindsStepText()
-        : step.text;
+        : step.id === "chat-freeze"
+          ? freezeStepText()
+          : step.text;
 
   const pad = 8;
   const hasHole = !!rect;
@@ -286,7 +303,7 @@ export function TourOverlay() {
         {step.cta && (
           <button
             onClick={advance}
-            className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:opacity-90"
+            className="mt-3 w-full rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
           >
             {step.cta}
           </button>

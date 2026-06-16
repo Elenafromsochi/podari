@@ -124,7 +124,14 @@ function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
       )}
 
       <Button
-        onClick={() => onPick(g.id)}
+        onClick={() => {
+          try {
+            localStorage.setItem("cozygift_last_claim_cost", String(g.cost ?? 1));
+          } catch {
+            /* noop */
+          }
+          onPick(g.id);
+        }}
         className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
         size="sm"
       >
