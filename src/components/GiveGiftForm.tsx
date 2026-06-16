@@ -458,7 +458,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
           )}
 
           {/* Cost / стоимость подарка в баллах */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="give-cost">
             <Label>Во сколько баллов оцениваешь подарок?</Label>
             <div className="grid grid-cols-5 gap-1.5">
               {COST_TIERS.map((t) => {
@@ -498,7 +498,13 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             </p>
           )}
 
-          <Button onClick={submit} disabled={loading} className="w-full" size="lg">
+          <Button
+            data-tour="give-publish"
+            onClick={submit}
+            disabled={loading}
+            className="w-full"
+            size="lg"
+          >
             {loading ? "Готовим..." : "🎁 Выложить подарок"}
           </Button>
         </CardContent>

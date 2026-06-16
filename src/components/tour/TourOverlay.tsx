@@ -103,6 +103,15 @@ function givePhotoStepText(): string {
   return "Расскажи, что предлагаешь. Можешь добавить фото — встроенный ИИ сделает описание. Либо напиши пару слов о своём подарке, и помощник дополнит или сделает описание красивее.";
 }
 
+/** Текст шага про стоимость: новичку советуем первый подарок до 3000 ₽ (1 балл). */
+function giveCostStepText(): string {
+  const { level } = readCachedProfile();
+  if (level <= 1) {
+    return "Теперь выбери, во сколько баллов оценить подарок (по его примерной цене в рублях). Совет: твой первый подарок лучше до 3000 ₽ — это 1 балл.";
+  }
+  return "Выбери, во сколько баллов оценить подарок — ориентируйся на его примерную стоимость в рублях.";
+}
+
 /** Текст шага «выбери категорию» подстраивается под уровень: перечисляет
  *  доступные категории, а если открыто всё — так и пишет. */
 function kindsStepText(): string {
@@ -259,7 +268,9 @@ export function TourOverlay() {
           ? freezeStepText()
           : step.id === "give-photo"
             ? givePhotoStepText()
-            : step.text;
+            : step.id === "give-cost"
+              ? giveCostStepText()
+              : step.text;
 
   const pad = 8;
   const hasHole = !!rect;
