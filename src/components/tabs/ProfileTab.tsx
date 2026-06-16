@@ -528,7 +528,7 @@ function InviteRow({
   onReceive?: () => void;
   onCreateWish?: () => void;
 }) {
-  const shareTg = () => {
+  const shareTg = async () => {
     haptic("medium");
     const origin =
       typeof window !== "undefined"
@@ -536,13 +536,36 @@ function InviteRow({
         : "https://podari.visokihelenasochi.workers.dev";
     const link = `${origin}/?ref=${userId}`;
     const text =
-      "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚\n\nПо этой ссылке тебе сразу зачислится 1 балл, на который ты можешь выбрать любой подарок:";
-    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-    if (typeof window !== "undefined") {
-      window.open(url, "_blank");
+      "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚 По этой ссылке тебе сразу зачислится 1 балл, на который можно выбрать любой подарок:";
+    // Гид продвигаем ТОЛЬКО после фактической отправки.
+    const advance = () =>
       window.dispatchEvent(
         new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
       );
+
+    // 1) Системное окно «Поделиться» — не закрывается само, даёт выбрать друга.
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title: "Подари", text, url: link });
+        advance();
+        return;
+      }
+    } catch {
+      // пользователь отменил шеринг — гид НЕ продвигаем
+      return;
+    }
+
+    // 2) Фолбэк: копируем ссылку в буфер.
+    try {
+      await navigator.clipboard.writeText(`${text}\n${link}`);
+      toast.success("Ссылка скопирована — отправь её другу 💚");
+      advance();
+    } catch {
+      window.open(
+        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
+        "_blank",
+      );
+      advance();
     }
   };
 
