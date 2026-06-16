@@ -775,7 +775,7 @@ DECLARE
     {"code":"giver_5",         "xp":30, "metric":"gifted",    "threshold":5},
     {"code":"receiver_5",      "xp":20, "metric":"received",  "threshold":5},
     {"code":"level_2",         "xp":25, "metric":"level",     "threshold":2},
-    {"code":"first_referral",  "xp":30, "metric":"referrals", "threshold":1}
+    {"code":"first_referral",  "xp":0,  "metric":"referrals", "threshold":1}
   ]'::jsonb;
 BEGIN
   IF _me IS NULL THEN
