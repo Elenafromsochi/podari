@@ -581,6 +581,38 @@ export const getMyChats = createServerFn({ method: "GET" })
   });
 
 
+// ---------- Onboarding «Первые шаги» ----------
+export const getOnboardingSteps = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const cnt = async (
+      q: PromiseLike<{ count: number | null }>,
+    ): Promise<number> => ((await q).count ?? 0);
+
+    const [chosen, messaged, posted, invited, received, reviewed, gifted] =
+      await Promise.all([
+        cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("receiver_id", userId)),
+        cnt(supabase.from("messages").select("id", { count: "exact", head: true }).eq("sender_id", userId)),
+        cnt(supabase.from("gifts").select("id", { count: "exact", head: true }).eq("owner_id", userId)),
+        cnt(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", userId)),
+        cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("receiver_id", userId).eq("status", "completed")),
+        cnt(supabase.from("reviews").select("id", { count: "exact", head: true }).eq("author_id", userId)),
+        cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("sender_id", userId).eq("status", "completed")),
+      ]);
+
+    return {
+      chosen: chosen > 0,
+      messaged: messaged > 0,
+      posted: posted > 0,
+      invited: invited > 0,
+      received: received > 0,
+      reviewed: reviewed > 0,
+      gifted: gifted > 0,
+    };
+  });
+
+
 // ---------- Achievements ----------
 export const ACHIEVEMENT_META: Record<
   string,

@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { FirstSteps } from "@/components/FirstSteps";
 import { Achievements } from "@/components/Achievements";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -236,11 +236,7 @@ function CabinetPage() {
       </button>
 
 
-      <OnboardingChecklist
-        hasPosted={posted.length > 0}
-        hasReceived={received.length > 0}
-        hasGifted={gifted.length > 0}
-      />
+      <FirstSteps />
 
       <InviteCard userId={user.user_id} />
 
