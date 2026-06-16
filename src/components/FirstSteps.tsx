@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, ChevronDown } from "lucide-react";
+import confetti from "canvas-confetti";
+import { toast } from "sonner";
 import { getOnboardingSteps } from "@/lib/cozy.functions";
 import { getTourSnapshot, restartTour } from "@/lib/tour";
 import { haptic } from "@/lib/haptics";
@@ -16,10 +18,24 @@ type DbSteps = {
   gifted: boolean;
 };
 
-const COLLAPSE_KEY = "cozygift_firststeps_collapsed";
+type StepKey = keyof DbSteps | "tour";
 
-/** Трекер «Первые шаги» — 8 достижений новичка. Засчитываются в любом порядке,
- *  как только человек сделал действие. Скрывается, когда все 8 пройдены. */
+const STEP_DEFS: { key: StepKey; emoji: string; label: string }[] = [
+  { key: "chosen", emoji: "🎁", label: "Выбрать первый подарок" },
+  { key: "messaged", emoji: "💬", label: "Написать первое сообщение в чате" },
+  { key: "posted", emoji: "📤", label: "Разместить свой подарок" },
+  { key: "invited", emoji: "👯", label: "Пригласить друга" },
+  { key: "tour", emoji: "🎓", label: "Пройти обучение (гид)" },
+  { key: "received", emoji: "📥", label: "Получить первый подарок" },
+  { key: "reviewed", emoji: "💌", label: "Оставить первый отзыв" },
+  { key: "gifted", emoji: "🤝", label: "Вручить свой подарок" },
+];
+
+const COLLAPSE_KEY = "cozygift_firststeps_collapsed";
+const CELEBRATED_KEY = "cozygift_steps_celebrated";
+
+/** Трекер «Первые шаги» — 8 достижений новичка. Засчитываются в любом порядке.
+ *  При выполнении нового шага — салют и поздравление. Скрывается, когда все 8. */
 export function FirstSteps() {
   const navigate = useNavigate();
   const stepsFn = useServerFn(getOnboardingSteps);
@@ -45,23 +61,60 @@ export function FirstSteps() {
     };
   }, [stepsFn]);
 
+  const isDone = (key: StepKey): boolean => {
+    if (!db) return false;
+    if (key === "tour") return tourDone;
+    if (key === "invited") return db.invited || invitedLocal;
+    return db[key];
+  };
+
+  // Салют за новые выполненные шаги (по сравнению с прошлым просмотром).
+  useEffect(() => {
+    if (!db || typeof localStorage === "undefined") return;
+    const doneKeys = STEP_DEFS.filter((d) => isDone(d.key)).map((d) => d.key);
+    let celebrated: string[] | null = null;
+    try {
+      const raw = localStorage.getItem(CELEBRATED_KEY);
+      celebrated = raw ? (JSON.parse(raw) as string[]) : null;
+    } catch {
+      celebrated = null;
+    }
+    if (celebrated === null) {
+      // Первый просмотр — фиксируем текущие как уже отмеченные, без салюта.
+      try {
+        localStorage.setItem(CELEBRATED_KEY, JSON.stringify(doneKeys));
+      } catch {
+        /* noop */
+      }
+      return;
+    }
+    const newly = doneKeys.filter((k) => !celebrated!.includes(k));
+    if (newly.length) {
+      confetti({ particleCount: 130, spread: 85, origin: { y: 0.4 }, scalar: 1.1 });
+      haptic("success");
+      for (const k of newly) {
+        const d = STEP_DEFS.find((x) => x.key === k);
+        if (d) {
+          toast.success(`🎉 ${d.emoji} ${d.label} — выполнено!`, {
+            description: "Шаг из «Первых шагов» пройден 💚",
+          });
+        }
+      }
+      try {
+        localStorage.setItem(CELEBRATED_KEY, JSON.stringify([...celebrated, ...newly]));
+      } catch {
+        /* noop */
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, tourDone, invitedLocal]);
+
   if (!db) return null;
 
-  const steps = [
-    { emoji: "🎁", label: "Выбрать первый подарок", done: db.chosen },
-    { emoji: "💬", label: "Написать первое сообщение в чате", done: db.messaged },
-    { emoji: "📤", label: "Разместить свой подарок", done: db.posted },
-    { emoji: "👯", label: "Пригласить друга", done: db.invited || invitedLocal },
-    { emoji: "🎓", label: "Пройти обучение (гид)", done: tourDone },
-    { emoji: "📥", label: "Получить первый подарок", done: db.received },
-    { emoji: "💌", label: "Оставить первый отзыв", done: db.reviewed },
-    { emoji: "🤝", label: "Вручить свой подарок", done: db.gifted },
-  ];
-
+  const steps = STEP_DEFS.map((d) => ({ ...d, done: isDone(d.key) }));
   const doneCount = steps.filter((s) => s.done).length;
   const total = steps.length;
 
-  // Все пройдены — поздравляем и больше не показываем.
   if (doneCount >= total) {
     return (
       <section className="mb-5 rounded-3xl border border-mint/50 bg-mint/15 p-4 text-center">
@@ -121,7 +174,7 @@ export function FirstSteps() {
           <ul className="mt-3 space-y-1.5">
             {steps.map((s) => (
               <li
-                key={s.label}
+                key={s.key}
                 className={`flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-sm ${
                   s.done ? "bg-background/50" : "bg-background/80"
                 }`}

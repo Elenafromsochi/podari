@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { useNavigate, Link } from "@tanstack/react-router";
 import type { UserProfile } from "@/lib/auth-state";
 import { signOut } from "@/lib/auth-state";
@@ -213,10 +214,13 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       {/* Мои желания */}
       <section className="mb-5">
         <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
-        <WishCtaButton level={user.level} onCreateWish={onCreateWish} />
         {!myWishes ? (
           <Skeleton className="h-16 w-full rounded-2xl" />
-        ) : myWishes.length === 0 ? null : (
+        ) : myWishes.length === 0 ? (
+          <p className="rounded-2xl border bg-card p-4 text-center text-sm text-muted-foreground">
+            Пока нет желаний — загадай через кнопку «Загадать желание» выше ✨
+          </p>
+        ) : (
           <ul className="space-y-2">
             {myWishes.map((w) => (
               <li key={w.id}>
@@ -596,11 +600,30 @@ function InviteRow({
       "Привет! Дарю тебе приглашение в «Подари» — уютный сервис подарков 💚 По этой ссылке тебе сразу зачислится 1 балл, на который можно выбрать любой подарок:";
     // Гид продвигаем ТОЛЬКО после фактической отправки.
     const advance = () => {
+      let firstInvite = false;
       try {
         // отмечаем «пригласил друга» в трекере «Первые шаги»
+        firstInvite = localStorage.getItem("cozygift_invited") !== "1";
         localStorage.setItem("cozygift_invited", "1");
+        // если трекер уже инициализирован — помечаем шаг отмеченным,
+        // чтобы салют не сработал второй раз при заходе в профиль
+        const raw = localStorage.getItem("cozygift_steps_celebrated");
+        if (raw) {
+          const set = JSON.parse(raw) as string[];
+          if (!set.includes("invited")) {
+            localStorage.setItem("cozygift_steps_celebrated", JSON.stringify([...set, "invited"]));
+          }
+        }
       } catch {
         /* noop */
+      }
+      // Салют и поздравление прямо сейчас (первый раз).
+      if (firstInvite) {
+        confetti({ particleCount: 130, spread: 85, origin: { y: 0.4 }, scalar: 1.1 });
+        haptic("success");
+        toast.success("🎉 👯 Пригласить друга — выполнено!", {
+          description: "Спасибо, что зовёшь друзей в «Подари» 💚",
+        });
       }
       window.dispatchEvent(
         new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
@@ -641,12 +664,14 @@ function InviteRow({
     onClick,
     locked = false,
     lockHint,
+    accent = "bg-muted",
   }: {
     label: string;
     emoji: string;
     onClick?: () => void;
     locked?: boolean;
     lockHint?: string;
+    accent?: string;
   }) => (
     <button
       type="button"
@@ -660,12 +685,14 @@ function InviteRow({
         haptic("medium");
         onClick?.();
       }}
-      className={`flex flex-col items-center gap-0.5 rounded-2xl border bg-card px-2 py-2.5 text-[11px] font-medium shadow-sm transition active:scale-[0.97] ${
+      className={`flex flex-col items-center gap-1.5 rounded-3xl border bg-card px-2 py-3 text-center shadow-sm transition active:scale-[0.96] ${
         locked ? "opacity-60" : "hover:bg-accent"
       }`}
     >
-      <span className="text-lg leading-none">{emoji}</span>
-      <span className="mt-0.5 text-[10.5px] leading-tight">{label}</span>
+      <span className={`flex h-12 w-12 items-center justify-center rounded-full text-2xl ${accent}`}>
+        {emoji}
+      </span>
+      <span className="text-[11px] font-medium leading-tight">{label}</span>
       {locked && (
         <span className="text-[9px] text-muted-foreground">🔒 ⭐ 3</span>
       )}
@@ -673,30 +700,36 @@ function InviteRow({
   );
 
   return (
-    <section className="mb-5 rounded-3xl border bg-card p-3 shadow-sm">
-      <button
-        type="button"
-        data-tour="invite-btn"
-        onClick={shareTg}
-        className="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
-      >
-        <Send className="h-4 w-4" /> Пригласить друга
-      </button>
-      <p className="mb-2.5 text-center text-[10.5px] text-muted-foreground">
-        Другу +1 балл, тебе +50 XP
-      </p>
-      <div className="grid grid-cols-3 gap-2">
-        <Tile label="Подарить" emoji="✨" onClick={onGive} />
-        <Tile label="Получить" emoji="🎁" onClick={onReceive} />
+    <>
+      {/* Три действия — отдельный блок, выделены круглой формой и цветом */}
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        <Tile label="Подарить" emoji="✨" onClick={onGive} accent="bg-lavender/60" />
+        <Tile label="Получить" emoji="🎁" onClick={onReceive} accent="bg-mint/60" />
         <Tile
           label="Загадать желание"
           emoji="💫"
           onClick={onCreateWish}
           locked={wishLocked}
           lockHint="Откроется на 3 уровне. Дари и получай — и ты дойдёшь сюда!"
+          accent="bg-peach/60"
         />
       </div>
-    </section>
+
+      {/* Пригласить друга — отдельный блок */}
+      <section className="mb-5 rounded-3xl border bg-card p-3 shadow-sm">
+        <button
+          type="button"
+          data-tour="invite-btn"
+          onClick={shareTg}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
+        >
+          <Send className="h-4 w-4" /> Пригласить друга
+        </button>
+        <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
+          Другу +1 балл, тебе +50 XP
+        </p>
+      </section>
+    </>
   );
 }
 
