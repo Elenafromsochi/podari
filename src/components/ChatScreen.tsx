@@ -522,44 +522,45 @@ export function ChatScreen({
         ))}
       </div>
 
-      {/* Подсказки готовых сообщений */}
-      {!handedOver && !cancelled && (
-        <div className="flex gap-2 overflow-x-auto px-4 pb-2">
-          {hints.map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                // если шаблон заканчивается на "…" — даём пользователю дописать
-                if (s.trim().endsWith("…")) {
-                  setText(s);
-                } else {
-                  send(s);
-                }
-              }}
-              disabled={!chatId}
-              className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-            >
-              {s}
-            </button>
-          ))}
+      {/* Нижняя панель: шаблоны (видны сразу, без прокрутки) + поле ввода */}
+      <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-30 border-t-2 border-emerald-600/30 bg-card px-3 pb-3 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
+        {!handedOver && !cancelled && (
+          <div className="mb-2 grid grid-cols-2 gap-2" data-tour="chat-templates">
+            {hints.map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  // если шаблон заканчивается на "…" — даём пользователю дописать
+                  if (s.trim().endsWith("…")) {
+                    setText(s);
+                  } else {
+                    send(s);
+                  }
+                }}
+                disabled={!chatId}
+                className="min-h-[48px] rounded-2xl border bg-background px-3 py-2 text-left text-[11.5px] leading-snug transition hover:bg-accent active:scale-[0.98] disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
+            placeholder="Напишите сообщение…"
+            className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+          />
+          <Button
+            size="icon"
+            className="h-12 w-12 shrink-0 rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700"
+            onClick={() => send(text)}
+          >
+            <Send className="h-5 w-5" />
+          </Button>
         </div>
-      )}
-
-      <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-30 flex items-center gap-2 border-t-2 border-emerald-600/30 bg-card px-3 pb-3 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
-          placeholder="Напишите сообщение…"
-          className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
-        />
-        <Button
-          size="icon"
-          className="h-12 w-12 shrink-0 rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700"
-          onClick={() => send(text)}
-        >
-          <Send className="h-5 w-5" />
-        </Button>
       </div>
 
 
