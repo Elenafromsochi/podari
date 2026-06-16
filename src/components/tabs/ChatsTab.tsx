@@ -154,7 +154,10 @@ export function ChatsTab() {
 
 
       {/* Segmented control */}
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
+      <div
+        data-tour="chat-filters"
+        className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1"
+      >
         {([
           ["givers", "С дарителями"],
           ["receivers", "С получателями"],
