@@ -331,3 +331,45 @@ export function nextStepId(id: string): string | null {
   if (i < 0 || i >= TOUR_STEPS.length - 1) return null;
   return TOUR_STEPS[i + 1].id;
 }
+
+// Возобновление гида: шаги внутри временных экранов (получение/чат/дарение/
+// профиль/чаты) нельзя показать «вслепую» — их нужно перезайти. Поэтому при
+// возврате продолжаем С НАЧАЛА той секции, где человек остановился, а шаги на
+// стабильных экранах (главная) — прямо с них.
+const SECTION_ENTRY: Record<string, string> = {
+  // Получение подарка
+  "kinds-explain": "point-receive",
+  "subcat-explain": "point-receive",
+  "feed-explain": "point-receive",
+  "chat-freeze": "point-receive",
+  "chat-templates": "point-receive",
+  "chat-decline": "point-receive",
+  "point-nav": "point-receive",
+  // Дарение
+  "give-start": "give-start",
+  "give-kind": "give-start",
+  "give-photo": "give-start",
+  "give-cost": "give-start",
+  "give-publish": "give-start",
+  "give-done": "give-start",
+  // Профиль
+  "point-profile": "point-profile",
+  "profile-header": "point-profile",
+  "profile-xp": "point-profile",
+  "profile-balance": "point-profile",
+  "profile-invite": "point-profile",
+  "profile-invite-action": "point-profile",
+  "profile-invite-done": "point-profile",
+  "profile-zone": "point-profile",
+  // Чаты
+  "point-chats": "point-chats",
+  "chats-reviews": "point-chats",
+  "chats-admin": "point-chats",
+  "save-app": "point-chats",
+};
+
+/** С какого шага продолжить гид при возврате (начало незавершённой секции). */
+export function resumeStepId(saved: string | null): string {
+  if (!saved) return TOUR_STEPS[0].id;
+  return SECTION_ENTRY[saved] ?? saved;
+}
