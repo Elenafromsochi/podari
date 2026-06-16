@@ -116,7 +116,7 @@ export function AppHeader({ user }: Props) {
           {initial}
         </Link>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1" data-tour="header-levelxp">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[13px] font-semibold leading-tight">
               {user.display_name}
@@ -146,7 +146,10 @@ export function AppHeader({ user }: Props) {
           </div>
         </div>
 
-        <div className="relative flex shrink-0 items-center gap-1 rounded-xl bg-mint/50 px-2 py-1 text-mint-foreground">
+        <div
+          data-tour="header-balance"
+          className="relative flex shrink-0 items-center gap-1 rounded-xl bg-mint/50 px-2 py-1 text-mint-foreground"
+        >
           <span className="text-sm">🎁</span>
           <span className="text-[13px] font-semibold tabular-nums">
             {Number(user.balance).toFixed(1)}
