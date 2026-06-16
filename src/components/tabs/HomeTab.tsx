@@ -218,6 +218,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             <button
               key={k}
               type="button"
+              data-tour={`feed-tab-${k}`}
               onClick={() => {
                 if (!active) {
                   haptic("select");
