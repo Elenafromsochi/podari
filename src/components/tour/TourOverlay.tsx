@@ -291,10 +291,14 @@ export function TourOverlay() {
   } else if (waitsForAction) {
     cardTop = 92;
   }
-  // Шаг про описание при дарении: подсказку уводим к САМОМУ верху (в зону
-  // шапки, где нет кнопок формы), чтобы вся форма снизу — фото, поле ввода и
-  // «Дополнить с ИИ» — оставалась видимой и доступной.
-  if (step.id === "give-photo") cardTop = 64;
+  // Шаг про описание при дарении: подсказку ставим ПОД зоной описания (под
+  // «Дополнить с ИИ»), чтобы вся зона — фото, файл, текст, кнопка ИИ —
+  // оставалась открытой, и можно было выбрать любой способ.
+  if (step.id === "give-photo") {
+    cardTop = hole
+      ? Math.min(vh - 210, hole.top + hole.height + 12)
+      : 64;
+  }
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
