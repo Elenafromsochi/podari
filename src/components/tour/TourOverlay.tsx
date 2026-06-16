@@ -89,25 +89,11 @@ function freezeStepText(): string {
   return `Ты попал в чат с Дарителем — и в этот момент у тебя ${verb} ${cost} ${ballWord(cost)} 🔒`;
 }
 
-/** Текст шага про фото при дарении отличается для вещи и услуги. */
-function givePhotoStepText(): string {
-  let kind = "used_item";
-  try {
-    kind = localStorage.getItem("cozygift_tour_give_kind") || "used_item";
-  } catch {
-    /* noop */
-  }
-  if (kind === "used_item") {
-    return "Добавь фото — и ИИ сам опишет вещь и оценит её состояние ❤️. Описание всегда можно поправить вручную.";
-  }
-  return "Расскажи, что предлагаешь. Можешь добавить фото — встроенный ИИ сделает описание. Либо напиши пару слов о своём подарке, и помощник дополнит или сделает описание красивее.";
-}
-
-/** Текст шага про стоимость: новичку советуем первый подарок до 3000 ₽ (1 балл). */
+/** Текст шага про стоимость: новичку — про 1 балл (до 3000 ₽) и рост уровня. */
 function giveCostStepText(): string {
   const { level } = readCachedProfile();
   if (level <= 1) {
-    return "Теперь выбери, во сколько баллов оценить подарок (по его примерной цене в рублях). Совет: твой первый подарок лучше до 3000 ₽ — это 1 балл.";
+    return "Сейчас, на 1 уровне, твой подарок — до 3000 ₽, это 1 балл. Дальше, с ростом уровня, ты сможешь дарить и получать более ценные подарки 💚";
   }
   return "Выбери, во сколько баллов оценить подарок — ориентируйся на его примерную стоимость в рублях.";
 }
@@ -266,11 +252,9 @@ export function TourOverlay() {
         ? kindsStepText()
         : step.id === "chat-freeze"
           ? freezeStepText()
-          : step.id === "give-photo"
-            ? givePhotoStepText()
-            : step.id === "give-cost"
-              ? giveCostStepText()
-              : step.text;
+          : step.id === "give-cost"
+          ? giveCostStepText()
+          : step.text;
 
   const pad = 8;
   const hasHole = !!rect;
@@ -307,9 +291,9 @@ export function TourOverlay() {
   } else if (waitsForAction) {
     cardTop = 92;
   }
-  // Шаг про фото при дарении держим наверху, чтобы поле ввода описания
-  // оставалось видно и в него можно было печатать.
-  if (step.id === "give-photo") cardTop = 92;
+  // Шаг про описание при дарении: подсказку уводим ВНИЗ, чтобы вся форма
+  // (фото + поле ввода + «Дополнить с ИИ») оставалась видимой и доступной.
+  if (step.id === "give-photo") cardTop = Math.max(140, vh - 320);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">

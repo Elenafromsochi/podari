@@ -298,7 +298,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md px-5 py-8">
+    <div className="mx-auto w-full max-w-md px-5 py-4">
       <button
         onClick={onBack}
         className="mb-4 text-sm text-muted-foreground hover:text-foreground"
@@ -313,7 +313,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind }: Props) {
             Опишите подарок — голосом, текстом или фото.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-4">
           <div className="space-y-2" data-tour="give-photo">
             <div className="grid grid-cols-2 gap-2">
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
