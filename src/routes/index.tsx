@@ -85,9 +85,11 @@ function Index() {
       if (u) startTourForUser(u.user_id, u.xp, false);
     })();
     if (typeof window !== "undefined") {
-      const giftId = localStorage.getItem(ACTIVE_CHAT_KEY);
-      const txId = localStorage.getItem(ACTIVE_TX_KEY);
-      if (giftId && txId) setFlow({ kind: "chat", giftId, txId });
+      // Активный чат больше НЕ открываем автоматически при входе — иначе
+      // приложение «встречает» человека чатом вместо главной. Чат остаётся
+      // доступен во вкладке «Чаты». Чистим возможный залежавшийся след.
+      localStorage.removeItem(ACTIVE_CHAT_KEY);
+      localStorage.removeItem(ACTIVE_TX_KEY);
       try {
         const params = new URLSearchParams(window.location.search);
         const ref = params.get("ref");
