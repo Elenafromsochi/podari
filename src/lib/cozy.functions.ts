@@ -260,7 +260,7 @@ export const cancelBySender = createServerFn({ method: "POST" })
   });
 
 // ---------- Home stats (счётчики на главной, кэш 1 час) ----------
-type HomeStats = { active_gifts: number; gifted_total: number; wishes_fulfilled: number };
+type HomeStats = { active_gifts: number; gifted_total: number; wishes_open: number };
 const homeStatsCache: { value: HomeStats | null; at: number } = { value: null, at: 0 };
 
 export const getHomeStats = createServerFn({ method: "GET" })
@@ -274,12 +274,12 @@ export const getHomeStats = createServerFn({ method: "GET" })
     const [a, g, w] = await Promise.all([
       supabase.from("gifts").select("id", { count: "exact", head: true }).eq("status", "available"),
       supabase.from("gifts").select("id", { count: "exact", head: true }).eq("status", "gifted"),
-      supabase.from("wishes").select("id", { count: "exact", head: true }).eq("status", "fulfilled"),
+      supabase.from("wishes").select("id", { count: "exact", head: true }).eq("status", "open"),
     ]);
     const value: HomeStats = {
       active_gifts: a.count ?? 0,
       gifted_total: g.count ?? 0,
-      wishes_fulfilled: w.count ?? 0,
+      wishes_open: w.count ?? 0,
     };
     homeStatsCache.value = value;
     homeStatsCache.at = now;
