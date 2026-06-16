@@ -266,6 +266,7 @@ function Index() {
           onBack={() => setFlow({ kind: "give_chip" })}
           presetHint={flow.presetHint}
           giftKind={flow.giftKind}
+          userLevel={user.level}
           onDone={async () => {
             burstConfetti();
             haptic("success");
