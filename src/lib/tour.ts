@@ -185,6 +185,12 @@ export const TOUR_STEPS: TourStep[] = [
     advanceOn: "give-kind-picked",
   },
   {
+    id: "give-intro",
+    text:
+      "На 1 уровне можно дарить и получать подарки стоимостью до 3000 ₽ (это 1 балл). Чем выше уровень — тем дороже подарки.",
+    cta: "Ок",
+  },
+  {
     id: "give-photo",
     target: '[data-tour="give-describe"]',
     text:
@@ -348,6 +354,7 @@ const SECTION_ENTRY: Record<string, string> = {
   // Дарение
   "give-start": "give-start",
   "give-kind": "give-start",
+  "give-intro": "give-start",
   "give-photo": "give-start",
   "give-cost": "give-start",
   "give-publish": "give-start",
