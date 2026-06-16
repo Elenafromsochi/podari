@@ -42,7 +42,7 @@ interface Props {
   initialFeedTab?: "gifts" | "wishes";
 }
 
-type Stats = { active_gifts: number; gifted_total: number; wishes_fulfilled: number };
+type Stats = { active_gifts: number; gifted_total: number; wishes_open: number };
 
 export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, onCreateWish, onOpenWish, initialFeedTab = "gifts" }: Props) {
   const [gifted, setGifted] = useState<Gift[] | null>(null);
@@ -206,7 +206,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             <span className="opacity-40">·</span>
             <span><b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено</span>
             <span className="opacity-40">·</span>
-            <span><b className="text-foreground tabular-nums">{stats.wishes_fulfilled}</b> ⭐ желаний</span>
+            <span><b className="text-foreground tabular-nums">{stats.wishes_open}</b> ⭐ желаний</span>
           </div>
         </section>
       )}
