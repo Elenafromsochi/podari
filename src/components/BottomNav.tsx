@@ -4,7 +4,7 @@ import { haptic } from "@/lib/haptics";
 export type AppTab = "home" | "profile" | "chats";
 
 interface Props {
-  active: AppTab;
+  active: AppTab | null;
   onChange: (t: AppTab) => void;
   unreadChats?: number;
   achievementsBadge?: number;
