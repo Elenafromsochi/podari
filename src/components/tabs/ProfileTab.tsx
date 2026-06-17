@@ -18,7 +18,8 @@ import {
   deleteGift,
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
-import { INVITE_MESSAGES, pickRandom } from "@/lib/random-copy";
+import { INVITE_VARIANTS } from "@/lib/random-copy";
+import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { FirstSteps } from "@/components/FirstSteps";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
@@ -590,71 +591,39 @@ function InviteRow({
   onReceive?: () => void;
   onCreateWish?: () => void;
 }) {
-  const shareTg = async () => {
-    haptic("medium");
-    const origin =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "https://podari.visokihelenasochi.workers.dev";
-    const link = `${origin}/?ref=${userId}`;
-    // Тёплое приглашение — каждый раз случайное из набора, чтобы звучало живо.
-    const text = pickRandom(INVITE_MESSAGES);
-    // Гид продвигаем ТОЛЬКО после фактической отправки.
-    const advance = () => {
-      let firstInvite = false;
-      try {
-        // отмечаем «пригласил друга» в трекере «Первые шаги»
-        firstInvite = localStorage.getItem("cozygift_invited") !== "1";
-        localStorage.setItem("cozygift_invited", "1");
-        // если трекер уже инициализирован — помечаем шаг отмеченным,
-        // чтобы салют не сработал второй раз при заходе в профиль
-        const raw = localStorage.getItem("cozygift_steps_celebrated");
-        if (raw) {
-          const set = JSON.parse(raw) as string[];
-          if (!set.includes("invited")) {
-            localStorage.setItem("cozygift_steps_celebrated", JSON.stringify([...set, "invited"]));
-          }
+  const [shareOpen, setShareOpen] = useState(false);
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://podari.visokihelenasochi.workers.dev";
+  const inviteLink = `${origin}/?ref=${userId}`;
+
+  // Засчитываем приглашение ТОЛЬКО после фактической отправки (из окна выбора).
+  const onInviteShared = () => {
+    let firstInvite = false;
+    try {
+      firstInvite = localStorage.getItem("cozygift_invited") !== "1";
+      localStorage.setItem("cozygift_invited", "1");
+      const raw = localStorage.getItem("cozygift_steps_celebrated");
+      if (raw) {
+        const set = JSON.parse(raw) as string[];
+        if (!set.includes("invited")) {
+          localStorage.setItem("cozygift_steps_celebrated", JSON.stringify([...set, "invited"]));
         }
-      } catch {
-        /* noop */
-      }
-      // Салют и поздравление прямо сейчас (первый раз).
-      if (firstInvite) {
-        confetti({ particleCount: 130, spread: 85, origin: { y: 0.4 }, scalar: 1.1 });
-        haptic("success");
-        toast.success("🎉 👯 Пригласить друга — выполнено!", {
-          description: "Спасибо, что зовёшь друзей в «Подари» 💚",
-        });
-      }
-      window.dispatchEvent(
-        new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
-      );
-    };
-
-    // 1) Системное окно «Поделиться» — не закрывается само, даёт выбрать друга.
-    try {
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: "Подари", text, url: link });
-        advance();
-        return;
       }
     } catch {
-      // пользователь отменил шеринг — гид НЕ продвигаем
-      return;
+      /* noop */
     }
-
-    // 2) Фолбэк: копируем ссылку в буфер.
-    try {
-      await navigator.clipboard.writeText(`${text}\n${link}`);
-      toast.success("Ссылка скопирована — отправь её другу 💚");
-      advance();
-    } catch {
-      window.open(
-        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
-        "_blank",
-      );
-      advance();
+    if (firstInvite) {
+      confetti({ particleCount: 130, spread: 85, origin: { y: 0.4 }, scalar: 1.1 });
+      haptic("success");
+      toast.success("🎉 👯 Пригласить друга — выполнено!", {
+        description: "Спасибо, что зовёшь друзей в «Подари» 💚",
+      });
     }
+    window.dispatchEvent(
+      new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
+    );
   };
 
   const wishLocked = level < 3;
@@ -721,7 +690,7 @@ function InviteRow({
         <button
           type="button"
           data-tour="invite-btn"
-          onClick={shareTg}
+          onClick={() => setShareOpen(true)}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
         >
           <Send className="h-4 w-4" /> Пригласить друга
@@ -730,6 +699,15 @@ function InviteRow({
           Другу +1 балл, тебе +50 XP
         </p>
       </section>
+
+      <InviteShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={inviteLink}
+        variants={[...INVITE_VARIANTS]}
+        title="Пригласить друга"
+        onShared={onInviteShared}
+      />
     </>
   );
 }

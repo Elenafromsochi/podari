@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Search, Lock, Send, ChevronDown } from "lucide-react";
+import { Mic, MicOff, Search, Lock, Send, ChevronDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
+import { InviteShareSheet } from "@/components/InviteShareSheet";
+import { giftShareVariants } from "@/lib/random-copy";
 import { emitTour } from "@/lib/tour";
 
 
@@ -31,8 +33,14 @@ function timeAgo(iso?: string | null): string {
 
 /** Карточка подарка в ленте: со стрелкой для раскрытия полного описания
  *  и кликабельным дарителем (ведёт на его профиль). */
-function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
+function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; meId: string | null }) {
   const [expanded, setExpanded] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  // Ссылка ведёт на главную (там вход для новых + засчитывается реферал),
+  // а после входа человека перебрасывает на страницу дарителя с этим подарком.
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  const shareLink = `${origin}/?${meId ? `ref=${meId}&` : ""}u=${g.owner_id ?? ""}`;
   const longDesc = !!g.description && g.description.length > 38;
   const photos =
     g.image_urls && g.image_urls.length > 0
@@ -57,7 +65,17 @@ function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
           </div>
         )}
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="text-base font-semibold leading-tight break-words">{g.title}</div>
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1 text-base font-semibold leading-tight break-words">{g.title}</div>
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              aria-label="Поделиться подарком"
+              className="-mr-1 -mt-0.5 shrink-0 rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground active:scale-95"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+          </div>
           {g.condition ? (
             <div
               className="flex items-center gap-0.5 text-sm leading-none"
@@ -137,6 +155,15 @@ function GiftCard({ g, onPick }: { g: Gift; onPick: (id: string) => void }) {
       >
         🎁 Получить за {g.cost ?? 1} балл
       </Button>
+
+      <InviteShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={shareLink}
+        variants={giftShareVariants(g.title)}
+        title="Поделиться подарком"
+        onShared={() => toast.success("Спасибо, что зовёшь друзей 💚")}
+      />
     </Card>
   );
 }
@@ -206,6 +233,7 @@ export function ReceiveGiftFlow({
     </div>
   );
   const [gifts, setGifts] = useState<Gift[] | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
   const [feedCat, setFeedCat] = useState<string | null>(null);
   const [query, setQuery] = useState(seeded);
@@ -219,6 +247,7 @@ export function ReceiveGiftFlow({
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      setMeId(user?.id ?? null);
       let q = supabase
         .from("gifts")
         .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,gift_kind,created_at")
@@ -295,7 +324,7 @@ export function ReceiveGiftFlow({
   }
 
   const renderCard = (g: Gift) => (
-    <GiftCard key={g.id} g={g} onPick={onPick} />
+    <GiftCard key={g.id} g={g} onPick={onPick} meId={meId} />
   );
 
 
