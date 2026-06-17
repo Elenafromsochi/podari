@@ -354,11 +354,23 @@ export function TourOverlay() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
-      {/* Без затемнения: только яркое пульсирующее кольцо вокруг нужной
-          кнопки/области, чтобы «вести» взгляд. Страница полностью кликабельна. */}
+      {/* «Прожектор»: затемняем всё, кроме подсвеченной области, чтобы подсказка
+          и нужная кнопка выделялись на фоне приложения. Слой НЕ ловит нажатия
+          (pointer-events-none) — подсвеченная кнопка и карточка кликабельны,
+          поэтому гид не «залипает», как было раньше с глухим оверлеем. */}
+      {hole ? (
+        <div
+          className="pointer-events-none absolute rounded-2xl"
+          style={{ ...hole, boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)" }}
+        />
+      ) : (
+        <div className="pointer-events-none absolute inset-0 bg-black/55" />
+      )}
+
+      {/* яркое пульсирующее кольцо вокруг подсвеченной кнопки/области */}
       {hole && (
         <div
-          className="pointer-events-none absolute rounded-2xl ring-4 ring-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.35)] animate-pulse transition-all"
+          className="pointer-events-none absolute rounded-2xl ring-4 ring-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.5)] animate-pulse"
           style={hole}
         />
       )}
