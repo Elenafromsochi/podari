@@ -259,7 +259,9 @@ export const cancelBySender = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ---------- Home stats (счётчики на главной, кэш 1 час) ----------
+// ---------- Home stats (счётчики на главной, короткий кэш) ----------
+// Кэш всего на 30 секунд: иначе только что загаданное желание/выложенный подарок
+// до часа не попадают в счётчик и пользователь видит «0 желаний», хотя оно есть в ленте.
 type HomeStats = { active_gifts: number; gifted_total: number; wishes_open: number };
 const homeStatsCache: { value: HomeStats | null; at: number } = { value: null, at: 0 };
 
@@ -267,7 +269,7 @@ export const getHomeStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<HomeStats> => {
     const now = Date.now();
-    if (homeStatsCache.value && now - homeStatsCache.at < 60 * 60 * 1000) {
+    if (homeStatsCache.value && now - homeStatsCache.at < 30 * 1000) {
       return homeStatsCache.value;
     }
     const { supabase } = context;

@@ -161,8 +161,9 @@ export function TourOverlay() {
       return;
     }
     let timer: number | null = null;
+    let raf: number | null = null;
     let cancelled = false;
-    const update = () => {
+    const measure = () => {
       if (cancelled) return;
       const el = document.querySelector(step.target!) as HTMLElement | null;
       if (el) {
@@ -181,20 +182,29 @@ export function TourOverlay() {
         });
       } else {
         setRect(null);
-        timer = window.setTimeout(update, 400);
+        timer = window.setTimeout(measure, 400);
       }
     };
-    update();
-    const onMove = () => update();
-    window.addEventListener("resize", onMove);
-    window.addEventListener("scroll", onMove, true);
-    const poll = window.setInterval(update, 600);
+    // На скролл/resize пересчитываем не чаще раза в кадр (rAF) — иначе на iOS
+    // частые getBoundingClientRect во время инерционного скролла вешают поток.
+    const schedule = () => {
+      if (raf != null) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = null;
+        measure();
+      });
+    };
+    measure();
+    window.addEventListener("resize", schedule, { passive: true });
+    window.addEventListener("scroll", schedule, { passive: true, capture: true });
+    const poll = window.setInterval(measure, 800);
     return () => {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
+      if (raf != null) window.cancelAnimationFrame(raf);
       window.clearInterval(poll);
-      window.removeEventListener("resize", onMove);
-      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
     };
   }, [step?.target, step?.id]);
 
