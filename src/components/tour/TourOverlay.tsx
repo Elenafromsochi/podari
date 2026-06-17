@@ -353,58 +353,64 @@ export function TourOverlay() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[80] animate-fade-in">
-      {/* «Прожектор»: затемняем всё, кроме подсвеченной области, чтобы подсказка
-          и нужная кнопка выделялись на фоне приложения. Слой НЕ ловит нажатия
-          (pointer-events-none) — подсвеченная кнопка и карточка кликабельны,
-          поэтому гид не «залипает», как было раньше с глухим оверлеем. */}
-      {hole ? (
-        <div
-          className="pointer-events-none absolute rounded-2xl"
-          style={{ ...hole, boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)" }}
-        />
-      ) : (
-        <div className="pointer-events-none absolute inset-0 bg-black/55" />
-      )}
-
-      {/* яркое пульсирующее кольцо вокруг подсвеченной кнопки/области */}
-      {hole && (
-        <div
-          className="pointer-events-none absolute rounded-2xl ring-4 ring-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.5)] animate-pulse"
-          style={hole}
-        />
-      )}
-
-      <div
-        className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-lavender p-4 text-lavender-foreground shadow-xl ring-1 ring-lavender-foreground/15 animate-scale-in"
-        style={{ top: cardTop }}
-      >
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <span className="text-[10.5px] font-medium uppercase tracking-wider text-lavender-foreground/70">
-            Гид по «Подари»
-          </span>
-          <button
-            onClick={skip}
-            className="text-[11px] text-lavender-foreground/70 underline-offset-4 hover:underline"
-          >
-            Пропустить
-          </button>
-        </div>
-        <p className="whitespace-pre-line text-[15px] font-medium leading-snug">{displayText}</p>
-        {step.cta && (
-          <button
-            onClick={advance}
-            className="mt-3 w-full rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
-          >
-            {step.cta}
-          </button>
-        )}
-        {!step.cta && (
-          <p className="mt-2 text-center text-[11px] text-lavender-foreground/70">
-            👆 сделай шаг, и я продолжу
-          </p>
+    <>
+      {/* Слой затемнения держим НИЖЕ нижней навигации (z-40 < nav z-50): так
+          вкладки «Главная/Профиль/Чаты» во время гида остаются яркими и
+          кликабельными, а раньше тёмный слой их перекрывал и вход не срабатывал.
+          Слой не ловит нажатия (pointer-events-none). */}
+      <div className="pointer-events-none fixed inset-0 z-40 animate-fade-in">
+        {hole ? (
+          <div
+            className="pointer-events-none absolute rounded-2xl"
+            style={{ ...hole, boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)" }}
+          />
+        ) : (
+          <div className="pointer-events-none absolute inset-0 bg-black/55" />
         )}
       </div>
-    </div>
+
+      {/* Кольцо и карточка — ВЫШЕ навигации, чтобы подсветка и подсказка читались
+          поверх всего, включая вкладки. */}
+      <div className="pointer-events-none fixed inset-0 z-[80]">
+        {/* яркое пульсирующее кольцо вокруг подсвеченной кнопки/области */}
+        {hole && (
+          <div
+            className="pointer-events-none absolute rounded-2xl ring-4 ring-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.5)] animate-pulse"
+            style={hole}
+          />
+        )}
+
+        <div
+          className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-lavender p-4 text-lavender-foreground shadow-xl ring-1 ring-lavender-foreground/15 animate-scale-in"
+          style={{ top: cardTop }}
+        >
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-medium uppercase tracking-wider text-lavender-foreground/70">
+              Гид по «Подари»
+            </span>
+            <button
+              onClick={skip}
+              className="text-[11px] text-lavender-foreground/70 underline-offset-4 hover:underline"
+            >
+              Пропустить
+            </button>
+          </div>
+          <p className="whitespace-pre-line text-[15px] font-medium leading-snug">{displayText}</p>
+          {step.cta && (
+            <button
+              onClick={advance}
+              className="mt-3 w-full rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
+            >
+              {step.cta}
+            </button>
+          )}
+          {!step.cta && (
+            <p className="mt-2 text-center text-[11px] text-lavender-foreground/70">
+              👆 сделай шаг, и я продолжу
+            </p>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
