@@ -162,22 +162,10 @@ export function TourOverlay() {
     }
     let timer: number | null = null;
     let cancelled = false;
-    let scrolled = false;
     const update = () => {
       if (cancelled) return;
       const el = document.querySelector(step.target!) as HTMLElement | null;
       if (el) {
-        // Один раз на шаг подкручиваем элемент в центр, чтобы он не прятался
-        // за нижней навигацией/шапкой и подсветка была видна. Для шага описания
-        // (высокая зона) НЕ скроллим — иначе кнопки уезжают под карточку.
-        if (!scrolled && step.id !== "give-photo") {
-          scrolled = true;
-          try {
-            el.scrollIntoView({ block: "center", behavior: "smooth" });
-          } catch {
-            /* noop */
-          }
-        }
         const r = el.getBoundingClientRect();
         setRect((prev) => {
           if (
