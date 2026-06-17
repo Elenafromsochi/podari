@@ -175,13 +175,17 @@ export function ReceiveGiftFlow({
   onPick,
   onCreateWish,
   userLevel,
+  initialQuery,
 }: {
   onBack: () => void;
   onPick: (giftId: string) => void;
   onCreateWish?: () => void;
   userLevel: number;
+  initialQuery?: string;
 }) {
-  const [step, setStep] = useState<Step>("kinds");
+  // Если пришли из поиска на главной — сразу открываем экран поиска с введённым словом.
+  const seeded = typeof initialQuery === "string" ? initialQuery.trim() : "";
+  const [step, setStep] = useState<Step>(seeded ? "search" : "kinds");
 
   // Мягкая ветка, когда подходящего подарка нет
   const NothingHere = ({ note }: { note?: string }) => (
@@ -204,7 +208,7 @@ export function ReceiveGiftFlow({
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
   const [category, setCategory] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(seeded);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
 
