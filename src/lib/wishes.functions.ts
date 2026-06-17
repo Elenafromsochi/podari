@@ -16,6 +16,7 @@ export const publishWish = createServerFn({ method: "POST" })
         title: z.string().trim().min(1).max(200),
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80).default("разное"),
+        cost: z.number().int().min(1).max(5).default(1),
         image_url: z.string().max(15_000_000).nullable().optional(),
         image_urls: z.array(z.string().max(15_000_000)).max(10).optional(),
       })
@@ -27,12 +28,24 @@ export const publishWish = createServerFn({ method: "POST" })
     const cover = data.image_url ?? urls[0] ?? "";
     const allUrls = cover && !urls.includes(cover) ? [cover, ...urls] : urls;
 
-    const { data: row, error } = await supabase.rpc("publish_wish", {
+    let { data: row, error } = await supabase.rpc("publish_wish", {
       _title: data.title,
       _description: data.description ?? "",
       _image_url: cover,
       _category: data.category,
+      _cost: data.cost,
     });
+    // Если миграция со стоимостью желаний ещё не накатана — RPC не знает про
+    // _cost. Тогда мягко откатываемся к старой сигнатуре (без стоимости),
+    // чтобы загадывание не ломалось в переходный период.
+    if (error && /_cost|function|PGRST202|does not exist|schema cache/i.test(error.message || "")) {
+      ({ data: row, error } = await supabase.rpc("publish_wish", {
+        _title: data.title,
+        _description: data.description ?? "",
+        _image_url: cover,
+        _category: data.category,
+      }));
+    }
     if (error) failOp(error.message || "PUBLISH_WISH_FAILED", error);
     const wishId = row as unknown as string;
     if (allUrls.length > 0 && wishId) {
@@ -53,17 +66,29 @@ export const listWishes = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    let q = supabase
-      .from("wishes")
-      .select("id,title,description,category,image_url,status,owner_id,created_at")
-      .eq("status", "open")
-      .order("created_at", { ascending: false })
-      .limit(60);
-    if (data.category) q = q.eq("category", data.category);
-    const { data: rows, error } = await q;
+    const build = (cols: string) => {
+      let q = supabase
+        .from("wishes")
+        .select(cols)
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (data.category) q = q.eq("category", data.category);
+      return q;
+    };
+    // Пытаемся выбрать со стоимостью; если миграция со столбцом cost ещё не
+    // накатана — откатываемся к набору без неё (cost тогда считаем за 1).
+    let { data: rows, error } = await build(
+      "id,title,description,category,image_url,status,owner_id,created_at,cost",
+    );
+    if (error && /cost/i.test(error.message || "")) {
+      ({ data: rows, error } = await build(
+        "id,title,description,category,image_url,status,owner_id,created_at",
+      ));
+    }
     if (error) failOp("LIST_WISHES_FAILED", error);
 
-    const wishes = (rows ?? []) as Array<{
+    const wishes = ((rows ?? []) as unknown as Array<{
       id: string;
       title: string;
       description: string | null;
@@ -72,7 +97,8 @@ export const listWishes = createServerFn({ method: "GET" })
       status: string;
       owner_id: string;
       created_at: string;
-    }>;
+      cost?: number;
+    }>);
     const ids = Array.from(new Set(wishes.map((w) => w.owner_id)));
     const nameMap = new Map<string, { name: string; level: number }>();
     if (ids.length) {
@@ -83,6 +109,7 @@ export const listWishes = createServerFn({ method: "GET" })
     }
     return wishes.map((w) => ({
       ...w,
+      cost: Number(w.cost) || 1,
       is_own: w.owner_id === userId,
       owner_name: nameMap.get(w.owner_id)?.name ?? "Гость",
       owner_level: nameMap.get(w.owner_id)?.level ?? 1,

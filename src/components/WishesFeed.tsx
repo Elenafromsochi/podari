@@ -15,6 +15,7 @@ type Wish = {
   category: string;
   image_url: string | null;
   status: string;
+  cost: number;
   owner_id: string;
   owner_name: string;
   owner_level: number;
@@ -118,7 +119,10 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
                     </span>
                     <LevelBadge level={w.owner_level} />
 
-                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                      {w.cost} {w.cost === 1 ? "балл" : w.cost < 5 ? "балла" : "баллов"}
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                       {w.category}
                     </span>
                   </div>

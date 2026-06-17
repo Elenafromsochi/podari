@@ -7,24 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishWish } from "@/lib/wishes.functions";
+import { classifyWishCategory } from "@/lib/gift-ai.functions";
+import { COST_TIERS } from "@/lib/gift-kinds";
 import { haptic } from "@/lib/haptics";
 import { uploadImages } from "@/lib/upload-image";
 
 interface Props {
   onDone: (wishId: string) => void;
   onBack: () => void;
+  userLevel: number;
 }
-
-const CATEGORIES = [
-  "разное",
-  "вещь",
-  "одежда",
-  "книги",
-  "техника",
-  "услуга",
-  "встреча",
-  "опыт",
-];
 
 // Простое сжатие фото до data URL (~max 1280px, jpeg 0.8)
 const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<string> =>
@@ -49,13 +41,18 @@ const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<
     img.src = dataUrl;
   });
 
-export function WishForm({ onDone, onBack }: Props) {
+export function WishForm({ onDone, onBack, userLevel }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<string>("разное");
+  const [cost, setCost] = useState<number>(1);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  // Когда человек ставит курсор в поле — текст-пример (placeholder) убираем,
+  // чтобы поле выглядело пустым и готовым к своему тексту.
+  const [titleFocus, setTitleFocus] = useState(false);
+  const [descFocus, setDescFocus] = useState(false);
   const publishFn = useServerFn(publishWish);
+  const classifyFn = useServerFn(classifyWishCategory);
 
   const MAX_PHOTOS = 10;
 
@@ -99,11 +96,22 @@ export function WishForm({ onDone, onBack }: Props) {
     setLoading(true);
     try {
       const uploadedUrls = await uploadImages(photoPreviews);
+      // Категорию подбирает ИИ по тексту желания — пользователю выбирать не нужно.
+      let category = "разное";
+      try {
+        const res = await classifyFn({
+          data: { text: `${title.trim()}. ${description.trim()}`.slice(0, 2000) },
+        });
+        category = res?.category || "разное";
+      } catch {
+        /* ИИ недоступен — оставляем «разное», не мешаем загадать желание */
+      }
       const { id } = await publishFn({
         data: {
           title: title.trim(),
           description: description.trim() || null,
           category,
+          cost,
           image_url: uploadedUrls[0] ?? null,
           image_urls: uploadedUrls,
         },
@@ -112,13 +120,7 @@ export function WishForm({ onDone, onBack }: Props) {
       onDone(id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("INSUFFICIENT_BALANCE")) {
-        toast.error("Недостаточно баллов", {
-          description: "Для размещения пожелания нужно 0.2 балла",
-        });
-      } else {
-        toast.error("Не получилось разместить", { description: msg });
-      }
+      toast.error("Не получилось разместить", { description: msg });
     } finally {
       setLoading(false);
     }
@@ -143,7 +145,9 @@ export function WishForm({ onDone, onBack }: Props) {
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Книга Достоевского «Идиот»"
+              onFocus={() => setTitleFocus(true)}
+              onBlur={() => setTitleFocus(false)}
+              placeholder={titleFocus ? "" : "Например: Книга Достоевского «Идиот»"}
               maxLength={200}
             />
           </div>
@@ -153,30 +157,62 @@ export function WishForm({ onDone, onBack }: Props) {
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Любой состояние, можно б/у, в районе м. Тимирязевская…"
+              onFocus={() => setDescFocus(true)}
+              onBlur={() => setDescFocus(false)}
+              placeholder={descFocus ? "" : "Любое состояние, можно б/у, в районе м. Тимирязевская…"}
               maxLength={2000}
               rows={4}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Категория</Label>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  className={`rounded-full border px-3 py-1 text-xs transition ${
-                    category === c
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-card text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <Label>Во сколько баллов оцениваешь желание?</Label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {COST_TIERS.map((t) => {
+                const active = cost === t.cost;
+                // Стоимость ограничена уровнем — как и у подарков: на 1 уровне
+                // можно обещать только 1 балл, выше — больше.
+                const locked = t.cost > userLevel;
+                return (
+                  <button
+                    key={t.cost}
+                    type="button"
+                    onClick={() => {
+                      if (locked) {
+                        toast(`🔒 ${t.cost} ${t.cost < 5 ? "балла" : "баллов"}`, {
+                          description: `Откроется на ${t.cost} уровне. Дари и получай — и дойдёшь сюда!`,
+                        });
+                        return;
+                      }
+                      setCost(t.cost);
+                    }}
+                    aria-disabled={locked}
+                    className={`flex flex-col items-center rounded-xl border-2 px-1 py-2 text-[11px] font-medium transition ${
+                      locked
+                        ? "cursor-not-allowed border-input bg-muted/40 text-muted-foreground/50"
+                        : active
+                          ? "border-emerald-500 bg-emerald-100 text-emerald-800 shadow-sm"
+                          : "border-input bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <span className="text-sm font-semibold">{locked ? "🔒" : t.cost}</span>
+                    <span className="text-[9px] opacity-70">
+                      {locked
+                        ? `ур. ${t.cost}`
+                        : t.cost === 1
+                          ? "балл"
+                          : t.cost < 5
+                            ? "балла"
+                            : "баллов"}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Загадать — бесплатно. Эти баллы спишутся у тебя и достанутся тому,
+              кто исполнит желание — уже когда подтвердишь, что всё получил 💚
+            </p>
           </div>
 
           <div className="space-y-2">

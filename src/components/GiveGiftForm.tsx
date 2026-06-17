@@ -22,7 +22,11 @@ interface Props {
 export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }: Props) {
   // Сердечки/износ показываем только для вещей; у услуг и встреч их нет.
   const showCondition = hasCondition(giftKind);
-  const [description, setDescription] = useState(presetHint ? `${presetHint}. ` : "");
+  const initialDesc = presetHint ? `${presetHint}. ` : "";
+  const [description, setDescription] = useState(initialDesc);
+  // Текст-пример (подставленный из подсказки) убираем, как только человек
+  // ставит курсор, чтобы он писал по-своему с чистого поля.
+  const [presetCleared, setPresetCleared] = useState(false);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [condition, setCondition] = useState<number | null>(null);
@@ -386,6 +390,12 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                 placeholder="Что это, в каком состоянии, кому подойдёт..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onFocus={() => {
+                  if (!presetCleared && description === initialDesc && initialDesc) {
+                    setDescription("");
+                  }
+                  setPresetCleared(true);
+                }}
                 rows={5}
                 maxLength={600}
                 className="flex-1"

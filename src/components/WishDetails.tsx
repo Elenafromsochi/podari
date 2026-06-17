@@ -15,6 +15,7 @@ type Wish = {
   image_url: string | null;
   image_urls: string[] | null;
   status: string;
+  cost: number;
   owner_id: string;
   created_at: string;
 };
@@ -38,12 +39,20 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       setMeId(u.user?.id ?? null);
-      const { data } = await supabase
+      let { data } = await supabase
         .from("wishes")
-        .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at")
+        .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost")
         .eq("id", wishId)
         .maybeSingle();
-      setWish(data as Wish | null);
+      if (!data) {
+        // Возможно, столбца cost ещё нет (миграция не накатана) — пробуем без него.
+        ({ data } = await supabase
+          .from("wishes")
+          .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at")
+          .eq("id", wishId)
+          .maybeSingle());
+      }
+      setWish(data ? ({ ...data, cost: Number((data as { cost?: number }).cost) || 1 } as Wish) : null);
       if (data?.owner_id) {
         const { data: profs } = await supabase.rpc("get_public_profiles", {
           _user_ids: [data.owner_id],
@@ -121,6 +130,9 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
         )}
         <div className="p-5">
           <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[12px] font-semibold text-emerald-800">
+              🎁 {wish.cost} {wish.cost === 1 ? "балл" : wish.cost < 5 ? "балла" : "баллов"} за исполнение
+            </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {wish.category}
             </span>
@@ -165,7 +177,9 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
                 disabled={loading}
                 className="w-full rounded-2xl bg-mint text-mint-foreground hover:bg-mint/90"
               >
-                🎁 {loading ? "Открываем чат…" : "Исполнить пожелание"}
+                🎁 {loading
+                  ? "Открываем чат…"
+                  : `Исполнить — получить ${wish.cost} ${wish.cost === 1 ? "балл" : wish.cost < 5 ? "балла" : "баллов"}`}
               </Button>
             ) : (
               <p className="rounded-2xl bg-muted p-3 text-center text-xs text-muted-foreground">
