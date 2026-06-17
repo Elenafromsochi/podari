@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send, Sparkles } from "lucide-react";
+import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send, Sparkles, Share2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -18,7 +18,7 @@ import {
   deleteGift,
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
-import { INVITE_VARIANTS } from "@/lib/random-copy";
+import { INVITE_VARIANTS, giftShareVariants } from "@/lib/random-copy";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { FirstSteps } from "@/components/FirstSteps";
 import { APP_VERSION } from "@/lib/version";
@@ -347,6 +347,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
                 <EditableActiveItem
                   key={g.id}
                   gift={g}
+                  ownerId={user.user_id}
                   onUpdated={(patch) =>
                     setPosted((prev) => (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)))
                   }
@@ -431,15 +432,22 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
 function EditableActiveItem({
   gift,
+  ownerId,
   onUpdated,
   onDeleted,
 }: {
   gift: Gift;
+  ownerId: string;
   onUpdated: (patch: Partial<Gift>) => void;
   onDeleted: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareOrigin =
+    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  // Ссылка на свой подарок: реферал — на меня, переход — на мою же страницу.
+  const shareLink = `${shareOrigin}/?ref=${ownerId}&u=${ownerId}`;
   const [title, setTitle] = useState(gift.title);
   const [category, setCategory] = useState(gift.category);
   const [description, setDescription] = useState(gift.description ?? "");
@@ -503,26 +511,45 @@ function EditableActiveItem({
         <p className="truncate text-sm font-medium">{gift.title}</p>
         <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
       </div>
-      {canModify && (
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-label="Редактировать подарок"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            aria-label="Удалить подарок"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setShareOpen(true)}
+          aria-label="Поделиться подарком"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+        {canModify && (
+          <>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="Редактировать подарок"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              aria-label="Удалить подарок"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </>
+        )}
+      </div>
+
+      <InviteShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={shareLink}
+        variants={giftShareVariants(gift.title)}
+        title="Поделиться подарком"
+        onShared={() => toast.success("Ссылка на подарок готова — зови друзей 💚")}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
