@@ -704,7 +704,7 @@ function InviteRow({
       {/* Три действия — отдельный блок, выделены круглой формой и цветом */}
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Tile label="Подарить" emoji="✨" onClick={onGive} accent="bg-lavender/60" />
-        <Tile label="Получить" emoji="🎁" onClick={onReceive} accent="bg-mint/60" />
+        <Tile label="Получить" emoji="🎁" onClick={() => onReceive?.()} accent="bg-mint/60" />
         <Tile
           label="Загадать желание"
           emoji="💫"

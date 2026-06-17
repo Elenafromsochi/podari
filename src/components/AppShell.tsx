@@ -12,7 +12,7 @@ import type { UserProfile } from "@/lib/auth-state";
 interface Props {
   user: UserProfile;
   onGive: () => void;
-  onReceive: () => void;
+  onReceive: (query?: string) => void;
   onPickGift: (giftId: string) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;

@@ -43,7 +43,7 @@ type Flow =
   | { kind: "give_chip" }
   | { kind: "give_form"; presetHint: string | null; giftKind: import("@/lib/gift-kinds").GiftKind }
   | { kind: "publish_success" }
-  | { kind: "receive" }
+  | { kind: "receive"; query?: string }
   | { kind: "chat"; giftId: string; txId: string }
   | { kind: "wish_form" }
   | { kind: "wish_details"; wishId: string }
@@ -183,7 +183,7 @@ function Index() {
         <AppShell
           user={user}
           onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_chip" }); }}
-          onReceive={() => setFlow({ kind: "receive" })}
+          onReceive={(query) => setFlow({ kind: "receive", query })}
           onPickGift={handlePickGift}
           onCreateWish={() => setFlow({ kind: "wish_form" })}
           onOpenWish={(wishId) => setFlow({ kind: "wish_details", wishId })}
@@ -297,6 +297,7 @@ function Index() {
         <ReceiveGiftFlow
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
+          initialQuery={flow.query}
           onPick={handlePickGift}
           onCreateWish={() => setFlow({ kind: "wish_form" })}
         />

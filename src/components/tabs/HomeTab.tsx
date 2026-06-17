@@ -35,7 +35,7 @@ type Gift = {
 interface Props {
   userName: string;
   onGive: () => void;
-  onReceive: () => void;
+  onReceive: (query?: string) => void;
   onPickGift: (giftId: string) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;
@@ -180,15 +180,25 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-          placeholder="Поиск по ленте…"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) {
+              (e.target as HTMLInputElement).blur();
+              onReceive(query.trim());
+            }
+          }}
+          placeholder="Найти подарок…"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
         />
         <button
           type="button"
-          onClick={() => { haptic("select"); (document.activeElement as HTMLElement | null)?.blur?.(); }}
+          onClick={() => {
+            if (!query.trim()) return;
+            haptic("select");
+            (document.activeElement as HTMLElement | null)?.blur?.();
+            onReceive(query.trim());
+          }}
           disabled={!query.trim()}
-          aria-label="Искать"
+          aria-label="Искать подарок"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
