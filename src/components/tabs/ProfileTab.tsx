@@ -18,7 +18,7 @@ import {
   deleteGift,
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
-import { INVITE_VARIANTS, giftShareVariants } from "@/lib/random-copy";
+import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { FirstSteps } from "@/components/FirstSteps";
 import { APP_VERSION } from "@/lib/version";
@@ -225,31 +225,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         ) : (
           <ul className="space-y-2">
             {myWishes.map((w) => (
-              <li key={w.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    haptic("select");
-                    onOpenWish?.(w.id);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.98]"
-                >
-                  {w.image_url ? (
-                    <img src={w.image_url} alt={w.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
-                      ✨
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{w.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{w.category}</p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                    {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
-                  </span>
-                </button>
-              </li>
+              <MyWishItem key={w.id} w={w} ownerId={user.user_id} onOpen={onOpenWish} />
             ))}
           </ul>
         )}
@@ -601,6 +577,64 @@ function EditableActiveItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </li>
+  );
+}
+
+function MyWishItem({
+  w,
+  ownerId,
+  onOpen,
+}: {
+  w: MyWish;
+  ownerId: string;
+  onOpen?: (wishId: string) => void;
+}) {
+  const [shareOpen, setShareOpen] = useState(false);
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  const shareLink = `${origin}/?ref=${ownerId}&u=${ownerId}`;
+  return (
+    <li className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          haptic("select");
+          onOpen?.(w.id);
+        }}
+        className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.98]"
+      >
+        {w.image_url ? (
+          <img src={w.image_url} alt={w.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+        ) : (
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
+            ✨
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate pr-7 text-sm font-medium">{w.title}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {w.category} · {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
+          </p>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setShareOpen(true)}
+        aria-label="Поделиться желанием"
+        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
+      >
+        <Share2 className="h-3.5 w-3.5" />
+      </button>
+
+      <InviteShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={shareLink}
+        variants={wishShareVariants(w.title)}
+        title="Поделиться желанием"
+      />
     </li>
   );
 }
