@@ -23,7 +23,7 @@ import {
 } from "@/lib/wishes.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
-type Wish = { id: string; title: string; image_url: string | null; image_urls?: string[] | null; owner_id: string };
+type Wish = { id: string; title: string; image_url: string | null; image_urls?: string[] | null; owner_id: string; cost: number };
 
 const AUTO_MSGS_GIVER = [
   "Здравствуйте! Я могу исполнить ваше пожелание ✨",
@@ -68,12 +68,19 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
       const { data: u } = await supabase.auth.getUser();
       const myId = u.user?.id ?? null;
       setMeId(myId);
-      const { data: w } = await supabase
+      let { data: w } = await supabase
         .from("wishes")
-        .select("id,title,image_url,image_urls,owner_id")
+        .select("id,title,image_url,image_urls,owner_id,cost")
         .eq("id", wishId)
         .maybeSingle();
-      setWish(w as Wish | null);
+      if (!w) {
+        ({ data: w } = await supabase
+          .from("wishes")
+          .select("id,title,image_url,image_urls,owner_id")
+          .eq("id", wishId)
+          .maybeSingle());
+      }
+      setWish(w ? ({ ...w, cost: Number((w as { cost?: number }).cost) || 1 } as Wish) : null);
       if (myId) {
         const { data: chat } = await supabase
           .from("chats")
@@ -222,13 +229,21 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
     setShowWisherConfirm(false);
     try {
       await confirmFn({ data: { transaction_id: transactionId } });
+      const c = wish?.cost ?? 1;
+      const w = c === 1 ? "балл" : c < 5 ? "балла" : "баллов";
       toast.success("Подтверждено! Спасибо 💚", {
-        description: "−0.8 балла, +10 XP тебе. Дарителю +1 балл, +80 XP",
+        description: `−${c} ${w} у тебя, +10 XP. Исполнителю +${c} ${w}, +80 XP`,
       });
     } catch (e) {
-      toast.error("Не получилось подтвердить", {
-        description: e instanceof Error ? e.message : String(e),
-      });
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("INSUFFICIENT_BALANCE")) {
+        const c = wish?.cost ?? 1;
+        toast.error("Не хватает баллов", {
+          description: `Чтобы исполнить желание, нужно ${c} ${c === 1 ? "балл" : c < 5 ? "балла" : "баллов"}. Подари что-нибудь — и подтверди снова 💚`,
+        });
+      } else {
+        toast.error("Не получилось подтвердить", { description: msg });
+      }
     }
   };
 
@@ -381,8 +396,10 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           <AlertDialogHeader>
             <AlertDialogTitle>Пожелание исполнено?</AlertDialogTitle>
             <AlertDialogDescription>
-              Подтверди получение «{wish?.title ?? ""}». С твоего счёта спишется −0.8 балла,
-              а дарителю придёт +1 балл и +80 XP.
+              Подтверди получение «{wish?.title ?? ""}». С твоего счёта спишется{" "}
+              {wish?.cost ?? 1}{" "}
+              {(wish?.cost ?? 1) === 1 ? "балл" : (wish?.cost ?? 1) < 5 ? "балла" : "баллов"},
+              столько же придёт исполнителю (+80 XP).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

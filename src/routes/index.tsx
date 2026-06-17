@@ -200,6 +200,7 @@ function Index() {
         <GlobalChrome>
         <WishForm
           onBack={() => setFlow({ kind: "none" })}
+          userLevel={user.level}
           onDone={async (id) => {
             burstConfetti();
             haptic("success");
