@@ -124,6 +124,16 @@ export function ChatScreen({
 
   useEffect(() => {
     emitTour("chat-opened");
+    // Открыли конкретный чат — значит сообщения в нём прочитаны: сдвигаем
+    // отметку «последнего посещения», чтобы бейдж непрочитанных не возвращался.
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("cozy_last_seen_chats", new Date().toISOString());
+      } catch {
+        /* noop */
+      }
+      window.dispatchEvent(new Event("cozy:chats-activity"));
+    }
   }, []);
 
   useEffect(() => {

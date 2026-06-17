@@ -38,9 +38,10 @@ function SetPasswordPage() {
       if (!mounted) return;
       setUser(u);
       setChecked(true);
+      // Если пользователь не залогинен — отправляем на вход. Если пароль уже
+      // задан — НЕ выкидываем на главную: показываем форму смены пароля
+      // (заголовок и кнопки на странице это уже учитывают).
       if (!u) {
-        navigate({ to: "/" });
-      } else if (u.password_set) {
         navigate({ to: "/" });
       }
     })();
