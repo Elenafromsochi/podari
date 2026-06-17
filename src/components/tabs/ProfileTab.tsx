@@ -18,6 +18,7 @@ import {
   deleteGift,
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
+import { INVITE_MESSAGES, pickRandom } from "@/lib/random-copy";
 import { FirstSteps } from "@/components/FirstSteps";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
@@ -596,8 +597,8 @@ function InviteRow({
         ? window.location.origin
         : "https://podari.visokihelenasochi.workers.dev";
     const link = `${origin}/?ref=${userId}`;
-    const text =
-      "Привет, друг! 🎁 Хочу подарить тебе подарок — заходи в «Подари» и выбирай всё, что душе угодно, совершенно бесплатно! Тебя уже ждёт 1 балл на первый подарок 💚 Жми 👉";
+    // Тёплое приглашение — каждый раз случайное из набора, чтобы звучало живо.
+    const text = pickRandom(INVITE_MESSAGES);
     // Гид продвигаем ТОЛЬКО после фактической отправки.
     const advance = () => {
       let firstInvite = false;
