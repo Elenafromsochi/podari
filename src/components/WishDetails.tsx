@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { fulfillWish, deleteWish } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
+import { Share2 } from "lucide-react";
+import { InviteShareSheet } from "@/components/InviteShareSheet";
+import { wishShareVariants } from "@/lib/random-copy";
 
 type Wish = {
   id: string;
@@ -32,6 +35,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
   const [meId, setMeId] = useState<string | null>(null);
   const [ownerName, setOwnerName] = useState<string>("Гость");
   const [loading, setLoading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const fulfillFn = useServerFn(fulfillWish);
   const deleteFn = useServerFn(deleteWish);
 
@@ -186,9 +190,25 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
                 Уже исполняют — пожалуйста, найди другое 💚
               </p>
             )}
+
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent active:scale-[0.98]"
+            >
+              <Share2 className="h-4 w-4" /> Поделиться желанием
+            </button>
           </div>
         </div>
       </div>
+
+      <InviteShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={`${typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev"}/?${meId ? `ref=${meId}&` : ""}u=${wish.owner_id}`}
+        variants={wishShareVariants(wish.title)}
+        title="Поделиться желанием"
+      />
     </div>
   );
 }
