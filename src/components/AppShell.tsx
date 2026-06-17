@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BottomNav, type AppTab } from "@/components/BottomNav";
 import { AppHeader } from "@/components/AppHeader";
 import { HomeTab } from "@/components/tabs/HomeTab";
@@ -25,6 +25,11 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
   const [achievementsBadge, setAchievementsBadge] = useState(0);
   const unreadFn = useServerFn(getUnreadCounts);
   const touchFn = useServerFn(touchLastSeen);
+  // Пока человек на вкладке «Чаты» — бейдж всегда 0, даже если запрос, начатый
+  // до открытия вкладки, вернётся со старым значением (иначе циферка мигала
+  // обратно из-за гонки опроса со старой отметкой last_seen).
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
 
   useEffect(() => {
     touchFn({}).catch(() => {});
@@ -43,7 +48,7 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
           data: { last_seen_chats_at: lastChats, last_seen_gifts_at: null },
         })) as { chats_unread: number };
         if (!alive) return;
-        setUnreadChats(res.chats_unread ?? 0);
+        setUnreadChats(tabRef.current === "chats" ? 0 : res.chats_unread ?? 0);
       } catch {
         /* noop */
       }
