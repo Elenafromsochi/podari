@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
 import { emitTour } from "@/lib/tour";
 
@@ -206,6 +207,7 @@ export function ReceiveGiftFlow({
   );
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
+  const [feedCat, setFeedCat] = useState<string | null>(null);
   const [query, setQuery] = useState(seeded);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
@@ -457,10 +459,40 @@ export function ReceiveGiftFlow({
     );
   }
 
-  // Лента подарков выбранного вида (подкатегории убрали — пока подарков немного,
-  // незачем заставлять кликать ещё раз; сразу показываем все подарки вида).
+  // Лента подарков выбранного вида. Подкатегории показываем не сразу, а только
+  // когда их «много»: категория получает свою вкладку при 3+ подарках, всё
+  // остальное собираем во вкладку «Разное». Пока подарков мало — вкладок нет,
+  // просто общая лента.
   const kindMeta = kind ? getKindMeta(kind) : null;
-  const filtered = gifts.filter((g) => g.gift_kind === kind);
+  const inKind = gifts.filter((g) => g.gift_kind === kind);
+
+  const MISC = "разное";
+  const catCounts = new Map<string, number>();
+  for (const g of inKind) {
+    const c = (g.category || MISC).toLowerCase();
+    catCounts.set(c, (catCounts.get(c) ?? 0) + 1);
+  }
+  // «Крупные» категории (3+ подарка), кроме самой «Разное» — становятся вкладками.
+  const bigCats = [...catCounts.entries()]
+    .filter(([c, n]) => n >= 3 && c !== MISC)
+    .sort((a, b) => b[1] - a[1])
+    .map(([c]) => c);
+  const isBig = (g: Gift) => bigCats.includes((g.category || MISC).toLowerCase());
+  const miscGifts = inKind.filter((g) => !isBig(g));
+  const tabs = [
+    ...bigCats.map((c) => ({ id: c, label: getCategoryMeta(c).label, emoji: getCategoryMeta(c).emoji, n: catCounts.get(c)! })),
+    ...(miscGifts.length ? [{ id: MISC, label: "Разное", emoji: "🎁", n: miscGifts.length }] : []),
+  ];
+  // Вкладки имеют смысл только если есть хотя бы одна крупная категория.
+  const showTabs = bigCats.length > 0;
+  const activeTab = showTabs
+    ? (feedCat && tabs.some((t) => t.id === feedCat) ? feedCat : tabs[0].id)
+    : null;
+  const shown = !showTabs
+    ? inKind
+    : activeTab === MISC
+      ? miscGifts
+      : inKind.filter((g) => (g.category || MISC).toLowerCase() === activeTab);
 
   return (
     <div className="mx-auto w-full max-w-md px-5 py-8">
@@ -473,16 +505,37 @@ export function ReceiveGiftFlow({
       <h2 className="mb-1 text-2xl font-semibold">
         {kindMeta?.emoji} {kindMeta?.shortLabel}
       </h2>
-      <p className="mb-6 text-sm text-muted-foreground">
-        {filtered.length} {filtered.length === 1 ? "подарок" : "подарков"} доступно
+      <p className="mb-4 text-sm text-muted-foreground">
+        {inKind.length} {inKind.length === 1 ? "подарок" : "подарков"} доступно
       </p>
 
-      {filtered.length === 0 ? (
+      {showTabs && (
+        <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
+          {tabs.map((t) => {
+            const active = t.id === activeTab;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setFeedCat(t.id)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "border-mint bg-mint text-mint-foreground shadow-sm"
+                    : "border-input bg-card text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {t.emoji} {t.label} <span className="opacity-70">{t.n}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {shown.length === 0 ? (
         <div data-tour="tour-spot">
           <NothingHere note="В этой категории пока пусто 💚" />
         </div>
       ) : (
-        <div className="space-y-3" data-tour="tour-spot">{filtered.map(renderCard)}</div>
+        <div className="space-y-3" data-tour="tour-spot">{shown.map(renderCard)}</div>
       )}
     </div>
   );
