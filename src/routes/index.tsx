@@ -92,16 +92,23 @@ function Index() {
       localStorage.removeItem(ACTIVE_TX_KEY);
       try {
         const params = new URLSearchParams(window.location.search);
+        const UUID_RE =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const ref = params.get("ref");
-        const isUuid =
-          ref && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
+        const isUuid = ref && UUID_RE.test(ref);
         if (isUuid) localStorage.setItem("cozygift_pending_ref", ref!);
+        // Поделились конкретным подарком: u=<id дарителя>. После входа
+        // перебросим человека на страницу дарителя, где этот подарок ждёт.
+        const owner = params.get("u");
+        const ownerOk = owner && UUID_RE.test(owner);
+        if (ownerOk) localStorage.setItem("cozygift_pending_gift_owner", owner!);
         const login = params.get("login");
         if (login && /^[A-Za-z0-9_-]{8,32}$/.test(login)) setPendingLoginNonce(login);
-        if (isUuid || login) {
+        if (isUuid || login || ownerOk) {
           const url = new URL(window.location.href);
           url.searchParams.delete("ref");
           url.searchParams.delete("login");
+          url.searchParams.delete("u");
           window.history.replaceState({}, "", url.toString());
         }
       } catch {
@@ -122,6 +129,18 @@ function Index() {
       window.removeEventListener("cozy:nav-tab", onNavTab);
     };
   }, []);
+
+  // Если зашли по ссылке на конкретный подарок — после входа открываем
+  // страницу дарителя с этим подарком (один раз).
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const owner = localStorage.getItem("cozygift_pending_gift_owner");
+    if (!owner) return;
+    localStorage.removeItem("cozygift_pending_gift_owner");
+    if (owner !== user.user_id) {
+      navigate({ to: "/user/$userId", params: { userId: owner } });
+    }
+  }, [user, navigate]);
 
   if (!authChecked) return null;
 
