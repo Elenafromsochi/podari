@@ -128,14 +128,8 @@ export const TOUR_STEPS: TourStep[] = [
     id: "kinds-explain",
     target: '[data-tour="tour-spot"]',
     text:
-      "На 1 уровне тебе доступны категории «Вещи» и «Услуги и время» — выбери что-нибудь.",
+      "На 1 уровне тебе доступны категории «Вещи» и «Услуги и время» — выбери что-нибудь, и сразу увидишь подарки.",
     advanceOn: "kind-picked",
-  },
-  {
-    id: "subcat-explain",
-    target: '[data-tour="tour-spot"]',
-    text: "И здесь сделай выбор 🙂",
-    advanceOn: "subcat-picked",
   },
   {
     id: "feed-explain",
@@ -352,7 +346,6 @@ export function nextStepId(id: string): string | null {
 const SECTION_ENTRY: Record<string, string> = {
   // Получение подарка
   "kinds-explain": "point-receive",
-  "subcat-explain": "point-receive",
   "feed-explain": "point-receive",
   "chat-freeze": "point-receive",
   "chat-templates": "point-receive",

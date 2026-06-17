@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
-import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
 import { emitTour } from "@/lib/tour";
 
@@ -157,7 +156,7 @@ type Gift = {
   owner_level?: number;
 };
 
-type Step = "kinds" | "categories" | "feed" | "search";
+type Step = "kinds" | "feed" | "search";
 
 type SR = {
   start: () => void;
@@ -207,7 +206,6 @@ export function ReceiveGiftFlow({
   );
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
-  const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState(seeded);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
@@ -402,8 +400,7 @@ export function ReceiveGiftFlow({
                     return;
                   }
                   setKind(k.id);
-                  setCategory(null);
-                  setStep("categories");
+                  setStep("feed");
                   emitTour("kind-picked");
                 }}
                 aria-disabled={locked}
@@ -460,77 +457,33 @@ export function ReceiveGiftFlow({
     );
   }
 
-  // Within a kind: show its sub-categories
-  if (step === "categories" && kind) {
-    const kindMeta = getKindMeta(kind);
-    const inKind = gifts.filter((g) => g.gift_kind === kind);
-    const counts = new Map<string, number>();
-    for (const g of inKind) counts.set(g.category, (counts.get(g.category) ?? 0) + 1);
-    const cats = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-
-    return (
-      <div className="mx-auto w-full max-w-md px-5 py-8">
-        <button
-          onClick={() => setStep("kinds")}
-          className="mb-4 text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          ← К категориям
-        </button>
-        <h2 className="mb-1 text-2xl font-semibold">
-          {kindMeta?.emoji} {kindMeta?.shortLabel}
-        </h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Доступно {inKind.length} {inKind.length === 1 ? "подарок" : "подарков"}
-        </p>
-
-        {cats.length === 0 ? (
-          <div data-tour="tour-spot">
-            <NothingHere note="В этой категории пока пусто 💚" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3" data-tour="tour-spot">
-            {cats.map(([cat, n]) => {
-              const meta = getCategoryMeta(cat);
-              return (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setCategory(cat);
-                    setStep("feed");
-                    emitTour("subcat-picked");
-                  }}
-                  className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent"
-                >
-                  <div className="mb-1 text-2xl">{meta.emoji}</div>
-                  <div className="text-sm font-medium">{meta.label}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {n} {n === 1 ? "подарок" : "подарков"}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const filtered = gifts.filter((g) => g.gift_kind === kind && g.category === category);
+  // Лента подарков выбранного вида (подкатегории убрали — пока подарков немного,
+  // незачем заставлять кликать ещё раз; сразу показываем все подарки вида).
+  const kindMeta = kind ? getKindMeta(kind) : null;
+  const filtered = gifts.filter((g) => g.gift_kind === kind);
 
   return (
     <div className="mx-auto w-full max-w-md px-5 py-8">
       <button
-        onClick={() => setStep("categories")}
+        onClick={() => setStep("kinds")}
         className="mb-4 text-sm text-muted-foreground underline-offset-4 hover:underline"
       >
         ← К категориям
       </button>
-      <h2 className="mb-1 text-2xl font-semibold capitalize">{category}</h2>
+      <h2 className="mb-1 text-2xl font-semibold">
+        {kindMeta?.emoji} {kindMeta?.shortLabel}
+      </h2>
       <p className="mb-6 text-sm text-muted-foreground">
         {filtered.length} {filtered.length === 1 ? "подарок" : "подарков"} доступно
       </p>
 
-      <div className="space-y-3" data-tour="tour-spot">{filtered.map(renderCard)}</div>
+      {filtered.length === 0 ? (
+        <div data-tour="tour-spot">
+          <NothingHere note="В этой категории пока пусто 💚" />
+        </div>
+      ) : (
+        <div className="space-y-3" data-tour="tour-spot">{filtered.map(renderCard)}</div>
+      )}
     </div>
   );
 }
