@@ -255,9 +255,22 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
     try {
       setStatus("✨ ИИ придумывает название и категорию...");
       const desc = description.trim() || "Подарок с фотографии";
-      const { title, category } = await generateMeta({
-        data: { description: desc, hasImage: hasPhoto },
-      });
+      // ИИ-название/категория — необязательный шаг. Если он не прошёл (нет
+      // сети, ИИ недоступен) — НЕ роняем публикацию: берём название из первых
+      // слов описания и категорию «разное».
+      let title = "";
+      let category = "разное";
+      try {
+        const meta = await generateMeta({
+          data: { description: desc, hasImage: hasPhoto },
+        });
+        title = meta.title;
+        category = meta.category;
+      } catch {
+        const words = desc.replace(/\s+/g, " ").trim().split(" ").slice(0, 6).join(" ");
+        title = (words || "Подарок").slice(0, 80);
+        category = "разное";
+      }
 
       // Мягкая подсказка по средней оценке похожих подарков
       try {
@@ -295,7 +308,13 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
       });
       onDone(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Что-то пошло не так");
+      const msg = e instanceof Error ? e.message : "Что-то пошло не так";
+      // «Load failed» / fetch — это сорвавшаяся сеть. Подсказываем повторить.
+      setError(
+        /load failed|fetch|network|timeout|сет/i.test(msg)
+          ? "Не получилось — пропала связь. Проверь интернет и нажми «Выложить подарок» ещё раз."
+          : msg,
+      );
     } finally {
       setLoading(false);
       setStatus(null);
