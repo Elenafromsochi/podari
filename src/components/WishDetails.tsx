@@ -9,6 +9,7 @@ import { haptic } from "@/lib/haptics";
 import { Share2 } from "lucide-react";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { wishShareVariants } from "@/lib/random-copy";
+import { CityBadge } from "@/components/CityBadge";
 
 type Wish = {
   id: string;
@@ -21,6 +22,8 @@ type Wish = {
   cost: number;
   owner_id: string;
   created_at: string;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 interface Props {
@@ -43,18 +46,20 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       setMeId(u.user?.id ?? null);
-      let { data } = await supabase
-        .from("wishes")
-        .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost")
-        .eq("id", wishId)
-        .maybeSingle();
-      if (!data) {
-        // Возможно, столбца cost ещё нет (миграция не накатана) — пробуем без него.
-        ({ data } = await supabase
-          .from("wishes")
-          .select("id,title,description,category,image_url,image_urls,status,owner_id,created_at")
-          .eq("id", wishId)
-          .maybeSingle());
+      // Пробуем самый полный набор; если каких-то колонок нет (миграция не
+      // накатана) — откатываемся к более узким.
+      const colSets = [
+        "id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost,city,is_online",
+        "id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost",
+        "id,title,description,category,image_url,image_urls,status,owner_id,created_at",
+      ];
+      let data: Record<string, unknown> | null = null;
+      for (const cols of colSets) {
+        const res = await supabase.from("wishes").select(cols).eq("id", wishId).maybeSingle();
+        if (!res.error) {
+          data = res.data as Record<string, unknown> | null;
+          break;
+        }
       }
       setWish(data ? ({ ...data, cost: Number((data as { cost?: number }).cost) || 1 } as Wish) : null);
       if (data?.owner_id) {
@@ -140,6 +145,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {wish.category}
             </span>
+            <CityBadge city={wish.city} isOnline={wish.is_online} className="text-[11px]" />
             {!isOpen && (
               <span className="rounded-full bg-mint/60 px-2 py-0.5 text-[11px] font-semibold text-mint-foreground">
                 {wish.status === "reserved" ? "В работе" : "Исполнено"}

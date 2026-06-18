@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { CityBadge } from "@/components/CityBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
@@ -31,6 +32,8 @@ type Gift = {
   cost: number;
   condition: number | null;
   status: string;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 type Wish = {
@@ -39,6 +42,8 @@ type Wish = {
   description: string | null;
   image_url: string | null;
   category: string;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
@@ -67,23 +72,29 @@ function UserProfilePage() {
         setName(p.display_name || "Гость");
         setLevel(p.level ?? 1);
       }
-      const { data } = await supabase
-        .from("gifts")
-        .select("id,title,description,image_url,cost,condition,status")
-        .eq("owner_id", userId)
-        .in("status", ["available", "gifted"])
-        .order("created_at", { ascending: false });
-      const rows = (data as Gift[]) ?? [];
+      const giftQ = (cols: string) =>
+        supabase
+          .from("gifts")
+          .select(cols)
+          .eq("owner_id", userId)
+          .in("status", ["available", "gifted"])
+          .order("created_at", { ascending: false });
+      let gRes = await giftQ("id,title,description,image_url,cost,condition,status,city,is_online");
+      if (gRes.error) gRes = await giftQ("id,title,description,image_url,cost,condition,status");
+      const rows = (gRes.data as unknown as Gift[]) ?? [];
       setActive(rows.filter((g) => g.status === "available"));
       setGiven(rows.filter((g) => g.status === "gifted"));
 
-      const { data: wRows } = await supabase
-        .from("wishes")
-        .select("id,title,description,image_url,category")
-        .eq("owner_id", userId)
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
-      setWishes((wRows as Wish[]) ?? []);
+      const wishQ = (cols: string) =>
+        supabase
+          .from("wishes")
+          .select(cols)
+          .eq("owner_id", userId)
+          .eq("status", "open")
+          .order("created_at", { ascending: false });
+      let wRes = await wishQ("id,title,description,image_url,category,city,is_online");
+      if (wRes.error) wRes = await wishQ("id,title,description,image_url,category");
+      setWishes((wRes.data as unknown as Wish[]) ?? []);
 
       // Рейтинг человека из отзывов о нём
       const { data: revs } = await supabase
@@ -271,6 +282,11 @@ function UserProfilePage() {
                             {g.description}
                           </p>
                         )}
+                        {(g.city || g.is_online) && (
+                          <div className="mt-1">
+                            <CityBadge city={g.city} isOnline={g.is_online} />
+                          </div>
+                        )}
                       </div>
                     </button>
                     <div className="mt-2 pl-[92px]">
@@ -323,10 +339,11 @@ function UserProfilePage() {
                         {g.description}
                       </p>
                     )}
-                    <div className="mt-1.5">
+                    <div className="mt-1.5 flex items-center gap-1.5">
                       <span className="inline-flex items-center rounded-full bg-mint/60 px-1.5 py-0.5 text-[10px] font-medium text-mint-foreground">
                         подарено
                       </span>
+                      <CityBadge city={g.city} isOnline={g.is_online} />
                     </div>
                   </div>
                 </article>
@@ -375,6 +392,7 @@ function UserProfilePage() {
                       <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
                         загадано
                       </span>
+                      <CityBadge city={w.city} isOnline={w.is_online} />
                     </div>
                   </div>
                 </article>
