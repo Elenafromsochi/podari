@@ -102,9 +102,15 @@ export const publishGift = createServerFn({ method: "POST" })
     };
 
     // Пишем с городом/онлайн; если миграция ещё не применена (нет колонок) —
-    // повторяем без них, чтобы публикация не падала.
+    // повторяем без них, чтобы публикация не падала. PostgREST в этом случае
+    // отдаёт PGRST204 («Could not find the 'city' column … in the schema cache»),
+    // Postgres — 42703; ловим оба варианта.
     const isUndefinedColumn = (e: { code?: string; message?: string } | null) =>
-      e?.code === "42703" || /column .* does not exist/i.test(e?.message ?? "");
+      e?.code === "42703" ||
+      e?.code === "PGRST204" ||
+      /column .* does not exist|could not find the .* column|schema cache/i.test(
+        e?.message ?? "",
+      );
 
     let ins = await supabase
       .from("gifts")
