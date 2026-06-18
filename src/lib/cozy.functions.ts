@@ -56,6 +56,8 @@ export const publishGift = createServerFn({ method: "POST" })
         price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
         cost: z.number().int().min(1).max(5).default(1),
         condition: z.number().int().min(1).max(5).nullable().optional(),
+        city: z.string().max(80).nullable().optional(),
+        is_online: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -81,27 +83,49 @@ export const publishGift = createServerFn({ method: "POST" })
     const cover = data.image_url ?? urls[0] ?? null;
     const allUrls = cover && !urls.includes(cover) ? [cover, ...urls] : urls;
 
-    const { data: row, error } = await supabase
+    // Онлайн-подарок не привязан к городу; иначе берём указанный город.
+    const giftCity = data.is_online ? null : (data.city?.trim() || null);
+    const baseInsert = {
+      title: data.title,
+      description: data.description ?? null,
+      category: data.category,
+      image_url: cover,
+      image_urls: allUrls,
+      status: "available",
+      cost: data.cost,
+      owner_id: userId,
+      gift_kind: data.gift_kind,
+      price_tier: data.price_tier,
+      price_rub: data.price_rub ?? null,
+      condition: data.condition ?? null,
+      cost_flag,
+    };
+
+    // Пишем с городом/онлайн; если миграция ещё не применена (нет колонок) —
+    // повторяем без них, чтобы публикация не падала.
+    const isUndefinedColumn = (e: { code?: string; message?: string } | null) =>
+      e?.code === "42703" || /column .* does not exist/i.test(e?.message ?? "");
+
+    let ins = await supabase
       .from("gifts")
-      .insert({
-        title: data.title,
-        description: data.description ?? null,
-        category: data.category,
-        image_url: cover,
-        image_urls: allUrls,
-        status: "available",
-        cost: data.cost,
-        owner_id: userId,
-        gift_kind: data.gift_kind,
-        price_tier: data.price_tier,
-        price_rub: data.price_rub ?? null,
-        condition: data.condition ?? null,
-        cost_flag,
-      })
+      .insert({ ...baseInsert, city: giftCity, is_online: data.is_online })
       .select("id")
       .single();
-    if (error) failOp("GIFT_SAVE_FAILED", error);
-    return { id: row.id, cost_flag };
+    if (ins.error && isUndefinedColumn(ins.error)) {
+      ins = await supabase.from("gifts").insert(baseInsert).select("id").single();
+    }
+    if (ins.error) failOp("GIFT_SAVE_FAILED", ins.error);
+
+    // Запоминаем город в профиле (необязательно — игнорируем ошибки/отсутствие колонки).
+    if (giftCity) {
+      try {
+        await supabase.from("profiles").update({ city: giftCity }).eq("user_id", userId);
+      } catch {
+        /* noop */
+      }
+    }
+
+    return { id: ins.data.id, cost_flag };
   });
 
 // ---------- Check gift cost average for soft warning ----------
