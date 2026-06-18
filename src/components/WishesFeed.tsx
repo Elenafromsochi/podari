@@ -9,6 +9,8 @@ import { haptic } from "@/lib/haptics";
 import { Sparkles, Share2 } from "lucide-react";
 import { WISH_EXAMPLES, wishShareVariants } from "@/lib/random-copy";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
+import { CityChips } from "@/components/CityChips";
+import { applyCityFilter } from "@/lib/city-filter";
 
 type Wish = {
   id: string;
@@ -22,6 +24,8 @@ type Wish = {
   owner_name: string;
   owner_level: number;
   is_own: boolean;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 interface Props {
@@ -75,6 +79,15 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
               {w.category}
             </span>
+            {w.is_online ? (
+              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                🌐 Онлайн
+              </span>
+            ) : w.city ? (
+              <span className="rounded-full bg-peach/40 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                📍 {w.city}
+              </span>
+            ) : null}
           </div>
         </div>
       </button>
@@ -103,6 +116,9 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [wishIdx, setWishIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
+  const [cityFilter, setCityFilter] = useState<string | null>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") || null : null,
+  );
   const listFn = useServerFn(listWishes);
 
   useEffect(() => {
@@ -118,7 +134,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   }, []);
 
   const q = (searchQuery ?? "").trim().toLowerCase();
-  const list =
+  const matched =
     wishes && q
       ? wishes.filter(
           (w) =>
@@ -128,6 +144,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
             w.category.toLowerCase().includes(q),
         )
       : wishes;
+  const { cities, online, validCity, pool: list } = applyCityFilter(matched ?? [], cityFilter);
 
   return (
     <div>
@@ -147,6 +164,10 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
           <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">{WISH_EXAMPLES[wishIdx]}</span>
         </span>
       </button>
+
+      {wishes && (
+        <CityChips cities={cities} online={online} value={validCity} onChange={setCityFilter} />
+      )}
 
       {!wishes ? (
         <div className="space-y-3">

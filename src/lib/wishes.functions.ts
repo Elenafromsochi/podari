@@ -19,6 +19,8 @@ export const publishWish = createServerFn({ method: "POST" })
         cost: z.number().int().min(1).max(5).default(1),
         image_url: z.string().max(15_000_000).nullable().optional(),
         image_urls: z.array(z.string().max(15_000_000)).max(10).optional(),
+        city: z.string().max(80).nullable().optional(),
+        is_online: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -55,6 +57,19 @@ export const publishWish = createServerFn({ method: "POST" })
         .eq("id", wishId)
         .eq("owner_id", userId);
     }
+    // Город/онлайн дописываем отдельным апдейтом (RPC про них не знает).
+    // Если миграция ещё не накатана — ошибку молча игнорируем.
+    if (wishId) {
+      const wishCity = data.is_online ? null : (data.city?.trim() || null);
+      await supabase
+        .from("wishes")
+        .update({ city: wishCity, is_online: data.is_online })
+        .eq("id", wishId)
+        .eq("owner_id", userId);
+      if (wishCity) {
+        await supabase.from("profiles").update({ city: wishCity }).eq("user_id", userId);
+      }
+    }
     return { id: wishId };
   });
 
@@ -76,15 +91,18 @@ export const listWishes = createServerFn({ method: "GET" })
       if (data.category) q = q.eq("category", data.category);
       return q;
     };
-    // Пытаемся выбрать со стоимостью; если миграция со столбцом cost ещё не
-    // накатана — откатываемся к набору без неё (cost тогда считаем за 1).
-    let { data: rows, error } = await build(
+    // Пытаемся выбрать с городом/онлайн/стоимостью; если какие-то колонки ещё
+    // не накатаны миграцией — откатываемся к более узкому набору.
+    const colSets = [
+      "id,title,description,category,image_url,status,owner_id,created_at,cost,city,is_online",
       "id,title,description,category,image_url,status,owner_id,created_at,cost",
-    );
-    if (error && /cost/i.test(error.message || "")) {
-      ({ data: rows, error } = await build(
-        "id,title,description,category,image_url,status,owner_id,created_at",
-      ));
+      "id,title,description,category,image_url,status,owner_id,created_at",
+    ];
+    let rows: unknown[] | null = null;
+    let error: { message?: string } | null = null;
+    for (const cols of colSets) {
+      ({ data: rows, error } = await build(cols));
+      if (!error) break;
     }
     if (error) failOp("LIST_WISHES_FAILED", error);
 
@@ -98,6 +116,8 @@ export const listWishes = createServerFn({ method: "GET" })
       owner_id: string;
       created_at: string;
       cost?: number;
+      city?: string | null;
+      is_online?: boolean | null;
     }>);
     const ids = Array.from(new Set(wishes.map((w) => w.owner_id)));
     const nameMap = new Map<string, { name: string; level: number }>();
@@ -110,6 +130,8 @@ export const listWishes = createServerFn({ method: "GET" })
     return wishes.map((w) => ({
       ...w,
       cost: Number(w.cost) || 1,
+      city: w.city ?? null,
+      is_online: !!w.is_online,
       is_own: w.owner_id === userId,
       owner_name: nameMap.get(w.owner_id)?.name ?? "Гость",
       owner_level: nameMap.get(w.owner_id)?.level ?? 1,
