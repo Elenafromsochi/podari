@@ -247,6 +247,10 @@ export function ReceiveGiftFlow({
   const [meId, setMeId] = useState<string | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
   const [feedCat, setFeedCat] = useState<string | null>(null);
+  // Фильтр по городу/онлайн. По умолчанию — мой город (если знаем), иначе все.
+  const [cityFilter, setCityFilter] = useState<string | null>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") || null : null,
+  );
   const [query, setQuery] = useState(seeded);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
@@ -512,9 +516,33 @@ export function ReceiveGiftFlow({
   const kindMeta = kind ? getKindMeta(kind) : null;
   const inKind = gifts.filter((g) => g.gift_kind === kind);
 
+  // Фильтр по местоположению: города + «Онлайн». Онлайн-подарки доступны
+  // в любом городе, поэтому показываются и при выбранном городе.
+  const cityCounts = new Map<string, number>();
+  let onlineCount = 0;
+  for (const g of inKind) {
+    if (g.is_online) onlineCount++;
+    else if (g.city && g.city.trim()) cityCounts.set(g.city, (cityCounts.get(g.city) ?? 0) + 1);
+  }
+  const cityList = [...cityCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const showCityFilter = cityList.length + (onlineCount > 0 ? 1 : 0) >= 2;
+  const validCity =
+    cityFilter === "__online__"
+      ? onlineCount > 0
+        ? "__online__"
+        : null
+      : cityFilter && cityCounts.has(cityFilter)
+        ? cityFilter
+        : null;
+  const cityPool = !validCity
+    ? inKind
+    : validCity === "__online__"
+      ? inKind.filter((g) => g.is_online)
+      : inKind.filter((g) => g.city === validCity || g.is_online);
+
   const MISC = "разное";
   const catCounts = new Map<string, number>();
-  for (const g of inKind) {
+  for (const g of cityPool) {
     const c = (g.category || MISC).toLowerCase();
     catCounts.set(c, (catCounts.get(c) ?? 0) + 1);
   }
@@ -524,7 +552,7 @@ export function ReceiveGiftFlow({
     .sort((a, b) => b[1] - a[1])
     .map(([c]) => c);
   const isBig = (g: Gift) => bigCats.includes((g.category || MISC).toLowerCase());
-  const miscGifts = inKind.filter((g) => !isBig(g));
+  const miscGifts = cityPool.filter((g) => !isBig(g));
   const tabs = [
     ...bigCats.map((c) => ({ id: c, label: getCategoryMeta(c).label, emoji: getCategoryMeta(c).emoji, n: catCounts.get(c)! })),
     ...(miscGifts.length ? [{ id: MISC, label: "Разное", emoji: "🎁", n: miscGifts.length }] : []),
@@ -535,10 +563,10 @@ export function ReceiveGiftFlow({
     ? (feedCat && tabs.some((t) => t.id === feedCat) ? feedCat : tabs[0].id)
     : null;
   const shown = !showTabs
-    ? inKind
+    ? cityPool
     : activeTab === MISC
       ? miscGifts
-      : inKind.filter((g) => (g.category || MISC).toLowerCase() === activeTab);
+      : cityPool.filter((g) => (g.category || MISC).toLowerCase() === activeTab);
 
   return (
     <div className="mx-auto w-full max-w-md px-5 py-8">
@@ -554,6 +582,49 @@ export function ReceiveGiftFlow({
       <p className="mb-4 text-sm text-muted-foreground">
         {inKind.length} {inKind.length === 1 ? "подарок" : "подарков"} доступно
       </p>
+
+      {showCityFilter && (
+        <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button
+            onClick={() => setCityFilter(null)}
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+              !validCity
+                ? "border-mint bg-mint text-mint-foreground shadow-sm"
+                : "border-input bg-card text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            🌍 Все города
+          </button>
+          {cityList.map(([c, n]) => {
+            const active = validCity === c;
+            return (
+              <button
+                key={c}
+                onClick={() => setCityFilter(c)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "border-mint bg-mint text-mint-foreground shadow-sm"
+                    : "border-input bg-card text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                📍 {c} <span className="opacity-70">{n}</span>
+              </button>
+            );
+          })}
+          {onlineCount > 0 && (
+            <button
+              onClick={() => setCityFilter("__online__")}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                validCity === "__online__"
+                  ? "border-mint bg-mint text-mint-foreground shadow-sm"
+                  : "border-input bg-card text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              🌐 Онлайн <span className="opacity-70">{onlineCount}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {showTabs && (
         <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
