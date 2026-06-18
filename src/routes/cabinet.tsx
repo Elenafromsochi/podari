@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { GlobalChrome } from "@/components/GlobalChrome";
 
 import { useEffect, useState } from "react";
@@ -46,13 +46,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/cabinet")({
-  head: () => ({
-    meta: [
-      { title: "Личный кабинет — Подари" },
-      { name: "description", content: "Ваш прогресс, Опыт и подарки" },
-    ],
-  }),
-  component: CabinetPage,
+  // Старый «Кабинет» объединён с новым экраном «Профиль». Все переходы на
+  // /cabinet ведут на единый профиль (вкладка «Профиль» на главной).
+  beforeLoad: () => {
+    throw redirect({ to: "/", search: { tab: "profile" } as never });
+  },
 });
 
 type Gift = {

@@ -79,11 +79,12 @@ export function WelcomeScreen({ onChoose, userXp = 0 }: Props) {
       </div>
 
       <Link
-        to="/cabinet"
+        to="/"
+        search={{ tab: "profile" } as never}
         data-coach="cabinet"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
-        <User className="h-4 w-4" /> Личный кабинет
+        <User className="h-4 w-4" /> Мой профиль
       </Link>
 
       <div className="w-full">

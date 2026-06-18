@@ -288,7 +288,7 @@ export function TourOverlay() {
     else {
       // финал гида — отправляем человека в профиль (к достижениям)
       completeTour();
-      navigate({ to: "/cabinet" });
+      navigate({ to: "/", search: { tab: "profile" } as never });
     }
   };
 

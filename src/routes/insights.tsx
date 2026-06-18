@@ -74,7 +74,7 @@ function InsightsPage() {
       setUsers(u);
     } catch (e: any) {
       toast.error(e?.message?.includes("FORBIDDEN") ? "Нет доступа" : "Ошибка загрузки");
-      if (e?.message?.includes("FORBIDDEN")) navigate({ to: "/cabinet" });
+      if (e?.message?.includes("FORBIDDEN")) navigate({ to: "/", search: { tab: "profile" } as never });
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ function InsightsPage() {
       <div className="max-w-6xl mx-auto px-4 py-5">
         <header className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <Link to="/cabinet" className="text-zinc-400 hover:text-zinc-100">
+            <Link to="/" search={{ tab: "profile" } as never} className="text-zinc-400 hover:text-zinc-100">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <h1 className="text-xl font-semibold">Insights</h1>

@@ -205,9 +205,11 @@ function Index() {
           onCreateWish={() => setFlow({ kind: "wish_form" })}
           onOpenWish={(wishId) => setFlow({ kind: "wish_details", wishId })}
           initialTab={
-            typeof window !== "undefined" &&
-            new URLSearchParams(window.location.search).get("tab") === "chats"
-              ? "chats"
+            typeof window !== "undefined"
+              ? (() => {
+                  const t = new URLSearchParams(window.location.search).get("tab");
+                  return t === "chats" || t === "profile" ? t : "home";
+                })()
               : "home"
           }
         />

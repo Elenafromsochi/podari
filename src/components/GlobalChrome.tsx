@@ -65,7 +65,7 @@ export function GlobalChrome({ children }: { children: React.ReactNode }) {
       window.dispatchEvent(new CustomEvent("cozy:nav-tab", { detail: t }));
     }
     if (t === "home") navigate({ to: "/" });
-    else if (t === "profile") navigate({ to: "/cabinet" });
+    else if (t === "profile") navigate({ to: "/", search: { tab: "profile" } as never });
     else if (t === "chats") navigate({ to: "/", search: { tab: "chats" } as never });
   };
 
