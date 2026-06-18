@@ -116,9 +116,8 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [wishIdx, setWishIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
-  const [cityFilter, setCityFilter] = useState<string | null>(() =>
-    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") || null : null,
-  );
+  // По умолчанию показываем все города (иначе желания без города «исчезают»).
+  const [cityFilter, setCityFilter] = useState<string | null>(null);
   const listFn = useServerFn(listWishes);
 
   useEffect(() => {
