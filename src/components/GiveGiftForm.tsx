@@ -557,7 +557,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           </div>
 
           {/* Город / онлайн */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="give-city">
             <Label htmlFor="city">Город</Label>
             <input
               id="city"

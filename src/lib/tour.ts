@@ -206,6 +206,13 @@ export const TOUR_STEPS: TourStep[] = [
     cta: "Далее",
   },
   {
+    id: "give-city",
+    target: '[data-tour="give-city"]',
+    text:
+      "Укажи город, где можно забрать вещь или встретиться. А если это онлайн (например, консультация или медитация) — поставь галочку «🌐 Онлайн», и город не понадобится.",
+    cta: "Далее",
+  },
+  {
     id: "give-publish",
     target: '[data-tour="give-publish"]',
     text:
@@ -358,6 +365,7 @@ const SECTION_ENTRY: Record<string, string> = {
   "give-photo": "give-start",
   "give-condition": "give-start",
   "give-cost": "give-start",
+  "give-city": "give-start",
   "give-publish": "give-start",
   "give-done": "give-start",
   // Профиль
