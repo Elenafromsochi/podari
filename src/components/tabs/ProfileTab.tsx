@@ -21,6 +21,7 @@ import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { Journey } from "@/components/Journey";
+import { CityBadge } from "@/components/CityBadge";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +51,8 @@ type Gift = {
   description: string | null;
   image_url: string | null;
   status: string;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 type TxRow = { id: string; status: string; gift: Gift | null };
 type BookedItem = {
@@ -80,6 +83,8 @@ type MyWish = {
   category: string;
   image_url: string | null;
   status: string;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish, onGive, onReceive }: Props) {
@@ -485,7 +490,10 @@ function EditableActiveItem({
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{gift.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
+          <CityBadge city={gift.city} isOnline={gift.is_online} />
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
@@ -613,9 +621,12 @@ function MyWishItem({
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate pr-7 text-sm font-medium">{w.title}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {w.category} · {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-xs text-muted-foreground">
+              {w.category} · {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
+            </p>
+            <CityBadge city={w.city} isOnline={w.is_online} />
+          </div>
         </div>
       </button>
 

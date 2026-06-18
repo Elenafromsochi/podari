@@ -143,11 +143,20 @@ export const getMyWishes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data, error } = await supabase
-      .from("wishes")
-      .select("id,title,description,category,image_url,status,created_at")
-      .eq("owner_id", userId)
-      .order("created_at", { ascending: false });
+    const build = (cols: string) =>
+      supabase
+        .from("wishes")
+        .select(cols)
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false });
+    // С городом/онлайн; если миграция желаний ещё не накатана — без них.
+    let { data, error } = await build(
+      "id,title,description,category,image_url,status,created_at,city,is_online",
+    );
+    if (error)
+      ({ data, error } = await build(
+        "id,title,description,category,image_url,status,created_at",
+      ));
     if (error) failOp("MY_WISHES_FAILED", error);
     return data ?? [];
   });
