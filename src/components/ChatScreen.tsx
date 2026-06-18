@@ -335,7 +335,7 @@ export function ChatScreen({
     toast.success("Вы отказались от подарка", {
       description: "Замороженные баллы возвращены на ваш счёт 💚",
     });
-    setTimeout(() => navigate({ to: "/cabinet" }), 800);
+    setTimeout(() => navigate({ to: "/", search: { tab: "chats" } as never }), 800);
   };
 
   const handleRequestHandover = async () => {
@@ -387,7 +387,7 @@ export function ChatScreen({
     toast.success("Вы отказались от дарения", {
       description: "Подарок снова в активных, баллы возвращены получателю",
     });
-    setTimeout(() => navigate({ to: "/cabinet" }), 800);
+    setTimeout(() => navigate({ to: "/", search: { tab: "chats" } as never }), 800);
   };
 
   const hints = isOwner ? OWNER_HINTS : RECEIVER_HINTS;

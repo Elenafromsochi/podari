@@ -109,9 +109,10 @@ export function AppHeader({ user }: Props) {
     >
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-2.5">
         <Link
-          to="/cabinet"
+          to="/"
+          search={{ tab: "profile" } as never}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-peach text-base font-semibold text-peach-foreground shadow-sm"
-          aria-label="Личный кабинет"
+          aria-label="Профиль"
         >
           {initial}
         </Link>

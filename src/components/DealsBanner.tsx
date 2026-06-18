@@ -75,7 +75,7 @@ export function DealsBanner() {
   const single = data.deals[0];
   const linkTo = single
     ? { to: "/chat/$giftId" as const, params: { giftId: single.gift_id } }
-    : { to: "/cabinet" as const };
+    : { to: "/" as const, search: { tab: "chats" } as never };
 
   return (
     <div className="sticky top-0 z-40 w-full bg-mint/95 backdrop-blur supports-[backdrop-filter]:bg-mint/80 shadow-sm">
