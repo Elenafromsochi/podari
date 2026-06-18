@@ -249,10 +249,8 @@ export function ReceiveGiftFlow({
   const [meId, setMeId] = useState<string | null>(null);
   const [kind, setKind] = useState<GiftKind | null>(null);
   const [feedCat, setFeedCat] = useState<string | null>(null);
-  // Фильтр по городу/онлайн. По умолчанию — мой город (если знаем), иначе все.
-  const [cityFilter, setCityFilter] = useState<string | null>(() =>
-    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") || null : null,
-  );
+  // По умолчанию — все города (иначе подарки без города «исчезают» из ленты).
+  const [cityFilter, setCityFilter] = useState<string | null>(null);
   const [query, setQuery] = useState(seeded);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
