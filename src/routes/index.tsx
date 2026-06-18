@@ -135,12 +135,10 @@ function Index() {
   useEffect(() => {
     if (!user || typeof window === "undefined") return;
     const owner = localStorage.getItem("cozygift_pending_gift_owner");
-    if (!owner) return;
-    localStorage.removeItem("cozygift_pending_gift_owner");
-    if (owner !== user.user_id) {
-      navigate({ to: "/user/$userId", params: { userId: owner } });
-    }
-  }, [user, navigate]);
+    if (owner) localStorage.removeItem("cozygift_pending_gift_owner");
+    // Намеренно НЕ перенаправляем: реферальные ссылки не должны уводить
+    // человека со страницы и открывать посторонние экраны/чаты.
+  }, [user]);
 
   if (!authChecked) return null;
 

@@ -422,8 +422,8 @@ function EditableActiveItem({
   const [shareOpen, setShareOpen] = useState(false);
   const shareOrigin =
     typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
-  // Ссылка на свой подарок: реферал — на меня, переход — на мою же страницу.
-  const shareLink = `${shareOrigin}/?ref=${ownerId}&u=${ownerId}`;
+  // Ссылка с реферальной меткой на меня. Никуда не перенаправляем.
+  const shareLink = `${shareOrigin}/?ref=${ownerId}`;
   const [title, setTitle] = useState(gift.title);
   const [category, setCategory] = useState(gift.category);
   const [description, setDescription] = useState(gift.description ?? "");
@@ -593,7 +593,7 @@ function MyWishItem({
   const [shareOpen, setShareOpen] = useState(false);
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
-  const shareLink = `${origin}/?ref=${ownerId}&u=${ownerId}`;
+  const shareLink = `${origin}/?ref=${ownerId}`;
   return (
     <li className="relative">
       <button
