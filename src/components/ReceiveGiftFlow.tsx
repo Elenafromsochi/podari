@@ -36,11 +36,11 @@ function timeAgo(iso?: string | null): string {
 function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; meId: string | null }) {
   const [expanded, setExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  // Ссылка ведёт на главную (там вход для новых + засчитывается реферал),
-  // а после входа человека перебрасывает на страницу дарителя с этим подарком.
+  // Ссылка ведёт на главную и засчитывает реферал. Никуда не перенаправляем —
+  // человек остаётся там, где открыл ссылку.
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
-  const shareLink = `${origin}/?${meId ? `ref=${meId}&` : ""}u=${g.owner_id ?? ""}`;
+  const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   const longDesc = !!g.description && g.description.length > 38;
   const photos =
     g.image_urls && g.image_urls.length > 0

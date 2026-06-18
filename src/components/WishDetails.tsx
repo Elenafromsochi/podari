@@ -205,7 +205,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
       <InviteShareSheet
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        link={`${typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev"}/?${meId ? `ref=${meId}&` : ""}u=${wish.owner_id}`}
+        link={`${typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev"}/${meId ? `?ref=${meId}` : ""}`}
         variants={wishShareVariants(wish.title)}
         title="Поделиться желанием"
       />

@@ -34,8 +34,8 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
   const [shareOpen, setShareOpen] = useState(false);
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
-  // Ссылка ведёт на главную (вход + реферал), а после входа — на страницу автора желания.
-  const shareLink = `${origin}/?${meId ? `ref=${meId}&` : ""}u=${w.owner_id}`;
+  // Ссылка ведёт на главную и засчитывает реферал. Никуда не уводим.
+  const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   return (
     <li className="relative">
       <button
