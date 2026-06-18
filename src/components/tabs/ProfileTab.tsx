@@ -757,7 +757,7 @@ function InviteRow({
           <Send className="h-4 w-4" /> Пригласить друга
         </button>
         <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
-          Другу +1 балл, тебе +50 XP
+          Другу — 1 балл на старт, тебе +50 XP за каждого
         </p>
       </section>
 
