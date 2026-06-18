@@ -30,6 +30,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [condition, setCondition] = useState<number | null>(null);
+  // Город запоминаем локально из прошлой публикации (подставляем по умолчанию).
+  const [city, setCity] = useState<string>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") ?? "" : "",
+  );
+  const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -304,8 +309,17 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           gift_kind: giftKind,
           cost,
           condition: showCondition ? condition : null,
+          city: isOnline ? null : city.trim() || null,
+          is_online: isOnline,
         },
       });
+      if (!isOnline && city.trim() && typeof localStorage !== "undefined") {
+        try {
+          localStorage.setItem("cozygift_city", city.trim());
+        } catch {
+          /* noop */
+        }
+      }
       onDone(id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Что-то пошло не так";
@@ -539,6 +553,51 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
             <p className="text-[11px] text-muted-foreground">
               {COST_TIERS.find((t) => t.cost === cost)?.range}
               {userLevel < 5 && " · дороже — с ростом уровня"}
+            </p>
+          </div>
+
+          {/* Город / онлайн */}
+          <div className="space-y-2">
+            <Label htmlFor="city">Город</Label>
+            <input
+              id="city"
+              type="text"
+              value={isOnline ? "" : city}
+              onChange={(e) => setCity(e.target.value)}
+              disabled={isOnline}
+              placeholder="Например, Сочи"
+              maxLength={80}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            {!isOnline && (
+              <div className="flex flex-wrap gap-1.5">
+                {["Сочи", "Краснодар", "Москва", "Санкт-Петербург"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCity(c)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                      city === c
+                        ? "border-emerald-500 bg-emerald-100 text-emerald-800"
+                        : "border-input bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-input bg-background px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={isOnline}
+                onChange={(e) => setIsOnline(e.target.checked)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span className="font-medium">🌐 Онлайн — доступно в любом городе</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              Для вещей и встреч укажи город. Для онлайн-услуг (консультация, медитация и т.п.) поставь галочку — город не нужен.
             </p>
           </div>
 

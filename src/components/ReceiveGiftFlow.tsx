@@ -122,6 +122,15 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
             <LevelBadge level={g.owner_level ?? 1} />
 
             <span>· {timeAgo(g.created_at)}</span>
+            {g.is_online ? (
+              <span className="rounded-full bg-sky-100 px-1.5 py-0.5 font-medium text-sky-700">
+                🌐 Онлайн
+              </span>
+            ) : g.city ? (
+              <span className="rounded-full bg-peach/40 px-1.5 py-0.5 font-medium text-foreground">
+                📍 {g.city}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -182,6 +191,8 @@ type Gift = {
   created_at?: string;
   owner_name?: string;
   owner_level?: number;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 type Step = "kinds" | "feed" | "search";
@@ -248,15 +259,21 @@ export function ReceiveGiftFlow({
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setMeId(user?.id ?? null);
-      let q = supabase
-        .from("gifts")
-        .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,gift_kind,created_at")
-        .eq("status", "available")
-        .not("owner_id", "is", null)
-        .order("created_at", { ascending: false });
-      if (user?.id) q = q.neq("owner_id", user.id);
-      const { data } = await q;
-      const rows = (data as Gift[]) ?? [];
+      const baseCols = "id,title,description,category,image_url,image_urls,cost,condition,owner_id,gift_kind,created_at";
+      const buildQ = (cols: string) => {
+        let q = supabase
+          .from("gifts")
+          .select(cols)
+          .eq("status", "available")
+          .not("owner_id", "is", null)
+          .order("created_at", { ascending: false });
+        if (user?.id) q = q.neq("owner_id", user.id);
+        return q;
+      };
+      // Пробуем с городом/онлайн; если колонок ещё нет — без них.
+      let res = await buildQ(`${baseCols},city,is_online`);
+      if (res.error) res = await buildQ(baseCols);
+      const rows = (res.data as unknown as Gift[]) ?? [];
       const ownerIds = Array.from(
         new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)),
       );
