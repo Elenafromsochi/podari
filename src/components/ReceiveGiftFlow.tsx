@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
+import { CityChips } from "@/components/CityChips";
+import { applyCityFilter } from "@/lib/city-filter";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { LevelBadge } from "@/components/LevelBadge";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
@@ -356,7 +358,7 @@ export function ReceiveGiftFlow({
       GIFT_KINDS.filter((k) => userLevel >= k.minLevel).map((k) => k.id),
     );
     const pool = gifts.filter((g) => unlockedKinds.has(g.gift_kind));
-    const results = q
+    const matched = q
       ? pool.filter(
           (g) =>
             g.title.toLowerCase().includes(q) ||
@@ -364,6 +366,8 @@ export function ReceiveGiftFlow({
             (g.description ?? "").toLowerCase().includes(q),
         )
       : pool;
+    const { cities: sCities, online: sOnline, validCity: sValid, pool: results } =
+      applyCityFilter(matched, cityFilter);
     return (
       <div className="mx-auto w-full max-w-md px-5 py-8">
         <button
@@ -401,6 +405,7 @@ export function ReceiveGiftFlow({
             <Send className="h-4 w-4" />
           </button>
         </div>
+        <CityChips cities={sCities} online={sOnline} value={sValid} onChange={setCityFilter} />
         <div className="space-y-3">
           {results.length === 0 ? (
             <NothingHere note="По запросу ничего не нашлось 🌿" />
@@ -518,27 +523,8 @@ export function ReceiveGiftFlow({
 
   // Фильтр по местоположению: города + «Онлайн». Онлайн-подарки доступны
   // в любом городе, поэтому показываются и при выбранном городе.
-  const cityCounts = new Map<string, number>();
-  let onlineCount = 0;
-  for (const g of inKind) {
-    if (g.is_online) onlineCount++;
-    else if (g.city && g.city.trim()) cityCounts.set(g.city, (cityCounts.get(g.city) ?? 0) + 1);
-  }
-  const cityList = [...cityCounts.entries()].sort((a, b) => b[1] - a[1]);
-  const showCityFilter = cityList.length + (onlineCount > 0 ? 1 : 0) >= 2;
-  const validCity =
-    cityFilter === "__online__"
-      ? onlineCount > 0
-        ? "__online__"
-        : null
-      : cityFilter && cityCounts.has(cityFilter)
-        ? cityFilter
-        : null;
-  const cityPool = !validCity
-    ? inKind
-    : validCity === "__online__"
-      ? inKind.filter((g) => g.is_online)
-      : inKind.filter((g) => g.city === validCity || g.is_online);
+  const { cities: cityList, online: onlineCount, validCity, pool: cityPool } =
+    applyCityFilter(inKind, cityFilter);
 
   const MISC = "разное";
   const catCounts = new Map<string, number>();
@@ -583,48 +569,7 @@ export function ReceiveGiftFlow({
         {inKind.length} {inKind.length === 1 ? "подарок" : "подарков"} доступно
       </p>
 
-      {showCityFilter && (
-        <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
-          <button
-            onClick={() => setCityFilter(null)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-              !validCity
-                ? "border-mint bg-mint text-mint-foreground shadow-sm"
-                : "border-input bg-card text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            🌍 Все города
-          </button>
-          {cityList.map(([c, n]) => {
-            const active = validCity === c;
-            return (
-              <button
-                key={c}
-                onClick={() => setCityFilter(c)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                  active
-                    ? "border-mint bg-mint text-mint-foreground shadow-sm"
-                    : "border-input bg-card text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                📍 {c} <span className="opacity-70">{n}</span>
-              </button>
-            );
-          })}
-          {onlineCount > 0 && (
-            <button
-              onClick={() => setCityFilter("__online__")}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                validCity === "__online__"
-                  ? "border-mint bg-mint text-mint-foreground shadow-sm"
-                  : "border-input bg-card text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              🌐 Онлайн <span className="opacity-70">{onlineCount}</span>
-            </button>
-          )}
-        </div>
-      )}
+      <CityChips cities={cityList} online={onlineCount} value={validCity} onChange={setCityFilter} />
 
       {showTabs && (
         <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">

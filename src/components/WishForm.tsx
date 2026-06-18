@@ -47,6 +47,11 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
   const [cost, setCost] = useState<number>(1);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  // Город (подставляется из прошлой публикации) + флаг «откуда угодно / онлайн».
+  const [city, setCity] = useState<string>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") ?? "" : "",
+  );
+  const [isOnline, setIsOnline] = useState(false);
   // Когда человек ставит курсор в поле — текст-пример (placeholder) убираем,
   // чтобы поле выглядело пустым и готовым к своему тексту.
   const [titleFocus, setTitleFocus] = useState(false);
@@ -114,8 +119,17 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
           cost,
           image_url: uploadedUrls[0] ?? null,
           image_urls: uploadedUrls,
+          city: isOnline ? null : city.trim() || null,
+          is_online: isOnline,
         },
       });
+      if (!isOnline && city.trim() && typeof localStorage !== "undefined") {
+        try {
+          localStorage.setItem("cozygift_city", city.trim());
+        } catch {
+          /* noop */
+        }
+      }
       haptic("success");
       onDone(id);
     } catch (e) {
@@ -212,6 +226,49 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
             <p className="text-[11px] text-muted-foreground">
               Загадать — бесплатно. Эти баллы спишутся у тебя и достанутся тому,
               кто исполнит желание — уже когда подтвердишь, что всё получил 💚
+            </p>
+          </div>
+
+          {/* Город / онлайн */}
+          <div className="space-y-2">
+            <Label htmlFor="wish-city">Город</Label>
+            <Input
+              id="wish-city"
+              value={isOnline ? "" : city}
+              onChange={(e) => setCity(e.target.value)}
+              disabled={isOnline}
+              placeholder="Например, Сочи"
+              maxLength={80}
+            />
+            {!isOnline && (
+              <div className="flex flex-wrap gap-1.5">
+                {["Сочи", "Краснодар", "Москва", "Санкт-Петербург"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCity(c)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                      city === c
+                        ? "border-emerald-500 bg-emerald-100 text-emerald-800"
+                        : "border-input bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-input bg-background px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={isOnline}
+                onChange={(e) => setIsOnline(e.target.checked)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span className="font-medium">🌐 Можно онлайн / из любого города</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              Укажи город — дарители рядом увидят, кому помочь. Если вещь/услугу можно получить онлайн или откуда угодно — поставь галочку.
             </p>
           </div>
 
