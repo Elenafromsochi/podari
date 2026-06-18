@@ -717,6 +717,14 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
     return {
       items,
       newly_granted: (granted ?? []) as { code: string; xp_granted: number }[],
+      stats: {
+        posted: postedN,
+        gifted: giftedN,
+        received: receivedN,
+        reviews: reviewsN,
+        referrals: referralsN,
+        level: levelN,
+      },
     };
   });
 

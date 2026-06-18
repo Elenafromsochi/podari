@@ -20,7 +20,7 @@ import {
 import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
-import { FirstSteps } from "@/components/FirstSteps";
+import { Journey } from "@/components/Journey";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,7 +101,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
 
-  const { items: achievements } = useAchievements();
+  const { items: achievements, stats: journeyStats } = useAchievements();
   // «Новые» = открытые, которые пользователь ещё не видел
   const seenKey = "cozy_seen_achievements";
   const [seenVersion, setSeenVersion] = useState(0);
@@ -169,8 +169,8 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
-      {/* Трекер «Первые шаги» — 8 достижений новичка (скрывается, когда все пройдены) */}
-      <FirstSteps />
+      {/* Единое окно прогресса: ступени пути (первые шаги → активный даритель → …) */}
+      <Journey stats={journeyStats} />
 
       {/* Пригласить друга + быстрые действия */}
       <InviteRow

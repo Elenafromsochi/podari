@@ -5,9 +5,19 @@ import confetti from "canvas-confetti";
 import { Lock, Check } from "lucide-react";
 import { ACHIEVEMENT_META, syncAndGetAchievements, type AchievementRow } from "@/lib/cozy.functions";
 
+export type JourneyStats = {
+  posted: number;
+  gifted: number;
+  received: number;
+  reviews: number;
+  referrals: number;
+  level: number;
+};
+
 export function useAchievements() {
   const fn = useServerFn(syncAndGetAchievements);
   const [items, setItems] = useState<AchievementRow[]>([]);
+  const [stats, setStats] = useState<JourneyStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,6 +27,7 @@ export function useAchievements() {
         const res = await fn();
         if (!mounted) return;
         setItems(res.items);
+        if (res.stats) setStats(res.stats as JourneyStats);
         // Поздравляем за свежевыданные
         if (res.newly_granted.length > 0) {
           const totalXp = res.newly_granted.reduce((s, n) => s + n.xp_granted, 0);
@@ -47,7 +58,7 @@ export function useAchievements() {
     };
   }, [fn]);
 
-  return { items, loading };
+  return { items, stats, loading };
 }
 
 type Props = { variant?: "preview" | "full" };
