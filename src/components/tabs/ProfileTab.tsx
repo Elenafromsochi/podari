@@ -20,7 +20,7 @@ import {
 } from "@/lib/cozy.functions";
 import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
-import { InviteShareSheet } from "@/components/InviteShareSheet";
+import { shareToTelegram, thirdVariant } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { CityBadge } from "@/components/CityBadge";
 import { APP_VERSION } from "@/lib/version";
@@ -425,7 +425,6 @@ function EditableActiveItem({
 }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const shareOrigin = APP_BASE_URL;
   // Ссылка с реферальной меткой на меня. Никуда не перенаправляем.
   const shareLink = `${shareOrigin}/?ref=${ownerId}`;
@@ -498,7 +497,10 @@ function EditableActiveItem({
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
-          onClick={() => setShareOpen(true)}
+          onClick={() => {
+            shareToTelegram(thirdVariant(giftShareVariants(gift.title)), shareLink);
+            toast.success("Ссылка на подарок готова — зови друзей 💚");
+          }}
           aria-label="Поделиться подарком"
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
         >
@@ -525,15 +527,6 @@ function EditableActiveItem({
           </>
         )}
       </div>
-
-      <InviteShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        link={shareLink}
-        variants={giftShareVariants(gift.title)}
-        title="Поделиться подарком"
-        onShared={() => toast.success("Ссылка на подарок готова — зови друзей 💚")}
-      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
@@ -598,7 +591,6 @@ function MyWishItem({
   ownerId: string;
   onOpen?: (wishId: string) => void;
 }) {
-  const [shareOpen, setShareOpen] = useState(false);
   const origin = APP_BASE_URL;
   const shareLink = `${origin}/?ref=${ownerId}`;
   return (
@@ -631,20 +623,12 @@ function MyWishItem({
 
       <button
         type="button"
-        onClick={() => setShareOpen(true)}
+        onClick={() => shareToTelegram(thirdVariant(wishShareVariants(w.title)), shareLink)}
         aria-label="Поделиться желанием"
         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
       >
         <Share2 className="h-3.5 w-3.5" />
       </button>
-
-      <InviteShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        link={shareLink}
-        variants={wishShareVariants(w.title)}
-        title="Поделиться желанием"
-      />
     </li>
   );
 }
@@ -662,7 +646,6 @@ function InviteRow({
   onReceive?: () => void;
   onCreateWish?: () => void;
 }) {
-  const [shareOpen, setShareOpen] = useState(false);
   const origin = APP_BASE_URL;
   const inviteLink = `${origin}/?ref=${userId}`;
 
@@ -758,7 +741,10 @@ function InviteRow({
         <button
           type="button"
           data-tour="invite-btn"
-          onClick={() => setShareOpen(true)}
+          onClick={() => {
+            shareToTelegram(thirdVariant([...INVITE_VARIANTS]), inviteLink);
+            onInviteShared();
+          }}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
         >
           <Send className="h-4 w-4" /> Пригласить друга
@@ -767,15 +753,6 @@ function InviteRow({
           Другу — 1 балл на старт, тебе +50 XP за каждого
         </p>
       </section>
-
-      <InviteShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        link={inviteLink}
-        variants={[...INVITE_VARIANTS]}
-        title="Пригласить друга"
-        onShared={onInviteShared}
-      />
     </>
   );
 }
