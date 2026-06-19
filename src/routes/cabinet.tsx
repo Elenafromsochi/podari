@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
+import { APP_BASE_URL } from "@/lib/app-url";
 import {
   getMyPostedGifts,
   getMyReceivedGifts,
@@ -430,12 +431,10 @@ function ChatGroup({
   );
 }
 
-const APP_PUBLIC_URL = "https://podari.visokihelenasochi.workers.dev";
-
 function getAppOrigin() {
-  // Адрес текущего сайта (работает на любом домене, не привязан к Lovable)
-  if (typeof window !== "undefined") return window.location.origin;
-  return APP_PUBLIC_URL;
+  // Канонический адрес — все ссылки-приглашения ведут на основной домен,
+  // даже если приложение открыто по старому длинному адресу.
+  return APP_BASE_URL;
 }
 
 function InviteCard({ userId }: { userId: string }) {

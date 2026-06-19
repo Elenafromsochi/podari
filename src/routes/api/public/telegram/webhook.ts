@@ -3,8 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { tgApiSafe } from "@/lib/telegram-api";
 
-const APP_URL =
-  process.env.APP_URL ?? "https://podari.visokihelenasochi.workers.dev";
+const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
 
 function safeEqual(a: string, b: string) {
   const A = Buffer.from(a);

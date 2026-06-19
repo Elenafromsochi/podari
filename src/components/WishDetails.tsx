@@ -10,6 +10,7 @@ import { Share2 } from "lucide-react";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { wishShareVariants } from "@/lib/random-copy";
 import { CityBadge } from "@/components/CityBadge";
+import { APP_BASE_URL } from "@/lib/app-url";
 
 type Wish = {
   id: string;
@@ -211,7 +212,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
       <InviteShareSheet
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        link={`${typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev"}/${meId ? `?ref=${meId}` : ""}`}
+        link={`${APP_BASE_URL}/${meId ? `?ref=${meId}` : ""}`}
         variants={wishShareVariants(wish.title)}
         title="Поделиться желанием"
       />
