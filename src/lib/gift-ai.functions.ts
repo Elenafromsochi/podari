@@ -46,6 +46,65 @@ async function callGateway(body: Record<string, unknown>) {
   return res.json();
 }
 
+// Распознавание речи на сервере (через OpenAI-совместимый /audio/transcriptions).
+// Работает в любом браузере: клиент пишет звук (MediaRecorder) и шлёт сюда,
+// в отличие от браузерной диктовки (Web Speech), которой нет на многих телефонах.
+const AI_TRANSCRIBE_MODEL = process.env.AI_TRANSCRIBE_MODEL ?? "whisper-1";
+
+function base64ToBytes(b64: string): Uint8Array {
+  const clean = b64.includes(",") ? b64.slice(b64.indexOf(",") + 1) : b64;
+  const bin = atob(clean);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+function mimeToExt(mime: string): string {
+  if (mime.includes("webm")) return "webm";
+  if (mime.includes("mp4") || mime.includes("m4a") || mime.includes("aac")) return "mp4";
+  if (mime.includes("ogg")) return "ogg";
+  if (mime.includes("wav")) return "wav";
+  if (mime.includes("mpeg") || mime.includes("mp3")) return "mp3";
+  return "webm";
+}
+
+export const transcribeAudio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { audioBase64: string; mimeType?: string }) => {
+    const b64 = String(input?.audioBase64 ?? "");
+    if (!b64) throw new Error("Пустая запись");
+    // ~8 МБ в base64 ≈ 6 МБ аудио — больше короткого отзыва не нужно.
+    if (b64.length > 8_000_000) throw new Error("Слишком длинная запись");
+    return { audioBase64: b64, mimeType: String(input?.mimeType ?? "audio/webm") };
+  })
+  .handler(async ({ data }): Promise<{ text: string }> => {
+    const apiKey = process.env.AI_API_KEY;
+    if (!apiKey) throw new Error("ИИ не подключён: добавь AI_API_KEY");
+    const bytes = base64ToBytes(data.audioBase64);
+    if (bytes.byteLength < 1200) return { text: "" }; // почти тишина
+
+    const ext = mimeToExt(data.mimeType);
+    const file = new File([bytes], `voice.${ext}`, { type: data.mimeType });
+    const form = new FormData();
+    form.append("file", file);
+    form.append("model", AI_TRANSCRIBE_MODEL);
+    form.append("language", "ru");
+
+    const res = await fetch(`${AI_BASE_URL}/audio/transcriptions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`Распознавание не удалось (${res.status}): ${t.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as { text?: string };
+    let text = String(json?.text ?? "").trim().slice(0, 1500);
+    if (looksUnsafe(text)) text = "";
+    return { text };
+  });
+
 export const generateGiftMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { description: string; hasImage?: boolean }) => {
