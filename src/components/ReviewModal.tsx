@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,12 +18,14 @@ const PRESETS_GIVER = [
   { id: "failed",  label: "Что-то пошло не так 😕", rating: 2 },
 ] as const;
 
+type SRResult = ArrayLike<{ transcript: string }> & { isFinal: boolean };
+type SREvent = { resultIndex: number; results: ArrayLike<SRResult> };
 type SR = {
   start: () => void;
   stop: () => void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((e: SREvent) => void) | null;
   onend: (() => void) | null;
-  onerror: ((e: unknown) => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
   lang: string;
   continuous: boolean;
   interimResults: boolean;
@@ -53,6 +55,10 @@ export function ReviewModal({
   const [selected, setSelected] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [listening, setListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const recognitionRef = useRef<SR | null>(null);
+  const wantsRecordingRef = useRef(false);
+  const baseTextRef = useRef("");
   const [confirmedCondition, setConfirmedCondition] = useState<number | null>(
     claimedCondition,
   );
@@ -66,47 +72,103 @@ export function ReviewModal({
     reader.readAsDataURL(file);
   };
 
-  const toggleMic = () => {
+  // Голос как в форме подарка: непрерывная запись с авто-перезапуском после
+  // пауз, накопление распознанного текста, понятное сообщение, если браузер
+  // не поддерживает диктовку (например, в некоторых WebView).
+  const createRecognition = (): SR | null => {
     const W = window as unknown as {
       SpeechRecognition?: new () => SR;
       webkitSpeechRecognition?: new () => SR;
     };
     const Ctor = W.SpeechRecognition ?? W.webkitSpeechRecognition;
-    if (!Ctor) return;
-    if (listening) { setListening(false); return; }
+    if (!Ctor) return null;
     const r = new Ctor();
     r.lang = "ru-RU";
-    r.continuous = false;
+    r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
-      let t = "";
-      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-      setComment(t);
+      let interim = "";
+      let finalText = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) finalText += res[0].transcript;
+        else interim += res[0].transcript;
+      }
+      if (finalText) baseTextRef.current += finalText + " ";
+      setComment((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
     };
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
-    r.start();
-    setListening(true);
+    r.onerror = (e) => {
+      if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
+        setMicError("Не удалось распознать речь. Попробуй ещё раз.");
+      }
+    };
+    r.onend = () => {
+      // Пауза в речи завершает сессию — перезапускаем, пока пользователь не нажал «Стоп».
+      if (wantsRecordingRef.current) {
+        try {
+          r.start();
+        } catch {
+          wantsRecordingRef.current = false;
+          setListening(false);
+        }
+      } else {
+        setListening(false);
+      }
+    };
+    return r;
   };
 
-  const canSubmit = !!selected;
-  const isAuto = !comment.trim();
+  const toggleMic = () => {
+    setMicError(null);
+    if (listening) {
+      wantsRecordingRef.current = false;
+      try {
+        recognitionRef.current?.stop?.();
+      } catch { /* noop */ }
+      setListening(false);
+      baseTextRef.current = comment ? comment.trim() + " " : "";
+      return;
+    }
+    const r = createRecognition();
+    if (!r) {
+      setMicError("Голосовой ввод не поддерживается в этом браузере — напиши текстом 💚");
+      return;
+    }
+    baseTextRef.current = comment ? comment.trim() + " " : "";
+    recognitionRef.current = r;
+    wantsRecordingRef.current = true;
+    setListening(true);
+    try {
+      r.start();
+    } catch {
+      wantsRecordingRef.current = false;
+      setListening(false);
+      setMicError("Не удалось включить микрофон. Проверь разрешение для сайта.");
+    }
+  };
+
+  const trimmedComment = comment.trim();
+  // Кнопка активна, если выбран готовый ответ ИЛИ написан текст от 20 символов.
+  const canSubmit = !!selected || trimmedComment.length >= 20;
+  const isAuto = !trimmedComment;
   const xpHint = isAuto ? "+5 XP" : "+20 XP";
 
   const submit = () => {
-    if (!selected) return;
-    const preset = PRESETS.find((p) => p.id === selected)!;
+    if (!canSubmit) return;
+    // Если вариант не выбран — это текстовый отзыв: метки нет, рейтинг по
+    // умолчанию положительный (5), сам текст несёт суть.
+    const preset = selected ? PRESETS.find((p) => p.id === selected) ?? null : null;
     try {
       localStorage.setItem(
         `cozygift_review_${giftId}_${role}`,
-        JSON.stringify({ presetId: preset.id, label: preset.label, comment, ts: Date.now() }),
+        JSON.stringify({ presetId: preset?.id ?? "custom", label: preset?.label ?? "", comment, ts: Date.now() }),
       );
     } catch { /* noop */ }
     onSubmit({
-      presetId: preset.id,
-      label: preset.label,
+      presetId: preset?.id ?? "custom",
+      label: preset?.label ?? "",
       comment,
-      rating: preset.rating,
+      rating: preset?.rating ?? 5,
       isAuto,
       conditionConfirmed: showCondition ? confirmedCondition : null,
       proofPhoto: showCondition ? proofPhoto : null,
@@ -191,11 +253,12 @@ export function ReviewModal({
           <Textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Хочешь — допиши свой отзыв (+20 XP)"
+            placeholder="Допиши свой отзыв от 20 символов или надиктуй голосом (+20 XP)"
             rows={3}
             className="pr-12"
           />
           <button
+            type="button"
             onClick={toggleMic}
             aria-label="Голосовой ввод"
             className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border ${
@@ -205,6 +268,17 @@ export function ReviewModal({
             {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </button>
         </div>
+        {listening && (
+          <p className="text-xs text-muted-foreground">
+            🎙️ Говори — текст появляется сам. Нажми кнопку ещё раз, чтобы остановить.
+          </p>
+        )}
+        {micError && <p className="text-xs text-amber-600">{micError}</p>}
+        {!selected && trimmedComment.length > 0 && trimmedComment.length < 20 && (
+          <p className="text-xs text-muted-foreground">
+            Ещё {20 - trimmedComment.length} симв. — и можно отправлять
+          </p>
+        )}
 
         <Button onClick={submit} disabled={!canSubmit} className="mt-2 w-full" size="lg">
           Отправить отзыв ({xpHint})
