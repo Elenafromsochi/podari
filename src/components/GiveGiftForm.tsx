@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage, enhanceGiftDescription } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
+import { useVoiceRecorder } from "@/lib/use-voice-recorder";
 
 import { COST_TIERS, hasCondition, type GiftKind } from "@/lib/gift-kinds";
 
@@ -38,14 +39,14 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [interimText, setInterimText] = useState("");
   const [recSeconds, setRecSeconds] = useState(0);
 
-  const recognitionRef = useRef<any>(null);
-  const baseTextRef = useRef<string>("");
-  const wantsRecordingRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Голос: запись на устройстве + распознавание на сервере (работает в любом
+  // браузере). Распознанный текст дописываем к описанию.
+  const voice = useVoiceRecorder((text) =>
+    setDescription((prev) => (prev ? prev.trim() + " " : "") + text),
+  );
+
   const generateMeta = useServerFn(generateGiftMeta);
   const describeImage = useServerFn(describeGiftImage);
   const enhanceFn = useServerFn(enhanceGiftDescription);
@@ -71,105 +72,13 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const publishGiftFn = useServerFn(publishGift);
   const checkCostFn = useServerFn(checkGiftCost);
 
+  // Таймер записи для отображения «Запись 0:07».
   useEffect(() => {
-    return () => {
-      wantsRecordingRef.current = false;
-      try {
-        recognitionRef.current?.stop?.();
-      } catch {}
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
-  const startTimer = () => {
+    if (voice.status !== "recording") return;
     setRecSeconds(0);
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setRecSeconds((s) => s + 1), 1000);
-  };
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  const createRecognition = () => {
-    const SR =
-      (typeof window !== "undefined" &&
-        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
-      null;
-    if (!SR) return null;
-    const rec = new SR();
-    rec.lang = "ru-RU";
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onresult = (event: any) => {
-      let interim = "";
-      let finalText = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const res = event.results[i];
-        if (res.isFinal) finalText += res[0].transcript;
-        else interim += res[0].transcript;
-      }
-      if (finalText) baseTextRef.current += finalText + " ";
-      setInterimText(interim);
-      setDescription((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
-    };
-    rec.onerror = (e: any) => {
-      if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
-        setError("Ошибка распознавания. Попробуйте ещё раз.");
-      }
-    };
-    rec.onend = () => {
-      if (wantsRecordingRef.current) {
-        try {
-          rec.start();
-        } catch {
-          wantsRecordingRef.current = false;
-          setRecording(false);
-          setInterimText("");
-          stopTimer();
-        }
-      } else {
-        setRecording(false);
-        setInterimText("");
-        stopTimer();
-      }
-    };
-    return rec;
-  };
-
-  const toggleMic = () => {
-    if (recording) {
-      wantsRecordingRef.current = false;
-      try {
-        recognitionRef.current?.stop?.();
-      } catch {}
-      setRecording(false);
-      setInterimText("");
-      stopTimer();
-      baseTextRef.current = description ? description.trim() + " " : "";
-      return;
-    }
-    const rec = createRecognition();
-    if (!rec) {
-      setError("Голосовой ввод не поддерживается в этом браузере");
-      return;
-    }
-    baseTextRef.current = description ? description.trim() + " " : "";
-    recognitionRef.current = rec;
-    wantsRecordingRef.current = true;
-    setError(null);
-    setRecording(true);
-    startTimer();
-    try {
-      rec.start();
-    } catch {
-      wantsRecordingRef.current = false;
-      setRecording(false);
-      stopTimer();
-    }
-  };
+    const id = setInterval(() => setRecSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [voice.status]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -435,15 +344,16 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
               />
               <button
                 type="button"
-                onClick={toggleMic}
-                aria-label={recording ? "Остановить запись" : "Голосовой ввод"}
+                onClick={voice.toggle}
+                disabled={voice.status === "transcribing"}
+                aria-label={voice.status === "recording" ? "Остановить запись" : "Голосовой ввод"}
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border text-lg transition-all ${
-                  recording
+                  voice.status === "recording"
                     ? "animate-pulse border-destructive bg-destructive text-destructive-foreground shadow-md"
                     : "border-input bg-background hover:bg-accent"
                 }`}
               >
-                {recording ? "⏹" : "🎙️"}
+                {voice.status === "recording" ? "⏹" : voice.status === "transcribing" ? "⏳" : "🎙️"}
               </button>
             </div>
             <button
@@ -454,29 +364,25 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
             >
               {enhancing ? "✨ ИИ дополняет…" : "✨ Дополнить с ИИ"}
             </button>
-            {recording ? (
+            {voice.status === "recording" ? (
               <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
                 </span>
                 <span className="font-medium">Запись {formatTime(recSeconds)}</span>
-                <span className="truncate text-destructive/80">
-                  {interimText ? `«${interimText}»` : "слушаю..."}
+                <span className="ml-auto text-destructive/80">
+                  Нажми ⏹, когда закончишь
                 </span>
-                <button
-                  type="button"
-                  onClick={toggleMic}
-                  className="ml-auto rounded border border-destructive/40 bg-background px-2 py-0.5 text-[11px] font-medium text-destructive hover:bg-destructive/10"
-                >
-                  Стоп
-                </button>
               </div>
+            ) : voice.status === "transcribing" ? (
+              <p className="text-xs text-muted-foreground">⏳ Распознаём речь…</p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Нажмите 🎙️ и продиктуйте описание голосом. Можно делать паузы — запись не прервётся, пока не нажмёте «Стоп».
+                Нажмите 🎙️ и продиктуйте описание голосом. Запись остановится по кнопке ⏹ — потом текст подставится сам.
               </p>
             )}
+            {voice.error && <p className="text-xs text-amber-600">{voice.error}</p>}
           </div>
           </div>
 
