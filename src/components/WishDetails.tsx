@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { fulfillWish, deleteWish } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Share2 } from "lucide-react";
-import { InviteShareSheet } from "@/components/InviteShareSheet";
+import { shareToTelegram, thirdVariant } from "@/lib/share";
 import { wishShareVariants } from "@/lib/random-copy";
 import { CityBadge } from "@/components/CityBadge";
 import { APP_BASE_URL } from "@/lib/app-url";
@@ -39,7 +39,6 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
   const [meId, setMeId] = useState<string | null>(null);
   const [ownerName, setOwnerName] = useState<string>("Гость");
   const [loading, setLoading] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const fulfillFn = useServerFn(fulfillWish);
   const deleteFn = useServerFn(deleteWish);
 
@@ -200,7 +199,12 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
 
             <button
               type="button"
-              onClick={() => setShareOpen(true)}
+              onClick={() =>
+                shareToTelegram(
+                  thirdVariant(wishShareVariants(wish.title)),
+                  `${APP_BASE_URL}/${meId ? `?ref=${meId}` : ""}`,
+                )
+              }
               className="flex w-full items-center justify-center gap-2 rounded-2xl border py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent active:scale-[0.98]"
             >
               <Share2 className="h-4 w-4" /> Поделиться желанием
@@ -208,14 +212,6 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
           </div>
         </div>
       </div>
-
-      <InviteShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        link={`${APP_BASE_URL}/${meId ? `?ref=${meId}` : ""}`}
-        variants={wishShareVariants(wish.title)}
-        title="Поделиться желанием"
-      />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles, Share2 } from "lucide-react";
 import { WISH_EXAMPLES, wishShareVariants } from "@/lib/random-copy";
-import { InviteShareSheet } from "@/components/InviteShareSheet";
+import { shareToTelegram, thirdVariant } from "@/lib/share";
 import { CityChips } from "@/components/CityChips";
 import { applyCityFilter } from "@/lib/city-filter";
 import { APP_BASE_URL } from "@/lib/app-url";
@@ -36,7 +36,6 @@ interface Props {
 }
 
 function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (id: string) => void }) {
-  const [shareOpen, setShareOpen] = useState(false);
   // Канонический адрес — чтобы ссылка всегда вела на 23podari.ru, даже если
   // приложение открыто по старому длинному адресу.
   const origin = APP_BASE_URL;
@@ -96,20 +95,12 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
 
       <button
         type="button"
-        onClick={() => setShareOpen(true)}
+        onClick={() => shareToTelegram(thirdVariant(wishShareVariants(w.title)), shareLink)}
         aria-label="Поделиться желанием"
         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
       >
         <Share2 className="h-3.5 w-3.5" />
       </button>
-
-      <InviteShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        link={shareLink}
-        variants={wishShareVariants(w.title)}
-        title="Поделиться желанием"
-      />
     </li>
   );
 }

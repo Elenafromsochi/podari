@@ -12,8 +12,8 @@ import { applyCityFilter } from "@/lib/city-filter";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { APP_BASE_URL } from "@/lib/app-url";
 import { LevelBadge } from "@/components/LevelBadge";
-import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { giftShareVariants } from "@/lib/random-copy";
+import { shareToTelegram, thirdVariant } from "@/lib/share";
 import { emitTour } from "@/lib/tour";
 
 
@@ -38,7 +38,6 @@ function timeAgo(iso?: string | null): string {
  *  и кликабельным дарителем (ведёт на его профиль). */
 function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; meId: string | null }) {
   const [expanded, setExpanded] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   // Ссылка ведёт на главную и засчитывает реферал. Никуда не перенаправляем —
   // человек остаётся там, где открыл ссылку. Адрес всегда канонический
   // (23podari.ru), даже если открыто по старому длинному адресу.
@@ -72,7 +71,10 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
             <div className="min-w-0 flex-1 text-base font-semibold leading-tight break-words">{g.title}</div>
             <button
               type="button"
-              onClick={() => setShareOpen(true)}
+              onClick={() => {
+                shareToTelegram(thirdVariant(giftShareVariants(g.title)), shareLink);
+                toast.success("Спасибо, что зовёшь друзей 💚");
+              }}
               aria-label="Поделиться подарком"
               className="-mr-1 -mt-0.5 shrink-0 rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground active:scale-95"
             >
@@ -168,14 +170,6 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
         🎁 Получить за {g.cost ?? 1} балл
       </Button>
 
-      <InviteShareSheet
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        link={shareLink}
-        variants={giftShareVariants(g.title)}
-        title="Поделиться подарком"
-        onShared={() => toast.success("Спасибо, что зовёшь друзей 💚")}
-      />
     </Card>
   );
 }
