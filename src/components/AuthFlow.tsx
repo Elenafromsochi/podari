@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { APP_VERSION } from "@/lib/version";
+import { getPlatformStats } from "@/lib/stats.functions";
+import { plural } from "@/lib/plural";
 
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
@@ -72,6 +74,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const startFn = useServerFn(startTelegramLogin);
   const pollFn = useServerFn(pollTelegramLogin);
   const completeFn = useServerFn(completeTelegramLogin);
+
+  const statsFn = useServerFn(getPlatformStats);
+  const [stats, setStats] = useState<{ gifts: number; wishes: number } | null>(null);
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [nonce, setNonce] = useState<string | null>(initialNonce ?? null);
@@ -325,6 +330,22 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     if (pwMode !== "form") void ensureLink();
   };
 
+  // Живой счётчик подарков/желаний для посадочной — без авторизации.
+  useEffect(() => {
+    let alive = true;
+    statsFn()
+      .then((s) => {
+        if (alive) setStats(s);
+      })
+      .catch(() => {
+        /* нет связи — просто не показываем счётчик */
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Если пользователь пришёл по ссылке t.me-бота (?login=<nonce>) —
   // сразу начинаем polling, не открывая новый deep-link.
   useEffect(() => {
@@ -394,6 +415,27 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                 И исполняй желания
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Живой счётчик-соцдоказательство: сколько подарков/желаний прямо
+            сейчас на платформе. Пульсирующая точка добавляет ощущение «живого». */}
+        {phase === "idle" && stats && stats.gifts > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-xs text-muted-foreground">
+            <span className="relative mr-0.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Уже на платформе{" "}
+            <span className="font-semibold text-foreground">{stats.gifts}</span>{" "}
+            {plural(stats.gifts, ["подарок", "подарка", "подарков"])}
+            {stats.wishes > 0 && (
+              <>
+                {" "}и{" "}
+                <span className="font-semibold text-foreground">{stats.wishes}</span>{" "}
+                {plural(stats.wishes, ["желание", "желания", "желаний"])}
+              </>
+            )}
           </div>
         )}
 
