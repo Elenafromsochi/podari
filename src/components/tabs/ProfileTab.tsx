@@ -7,6 +7,7 @@ import { useNavigate, Link } from "@tanstack/react-router";
 import type { UserProfile } from "@/lib/auth-state";
 import { signOut } from "@/lib/auth-state";
 import { getMyRoles } from "@/lib/roles.functions";
+import { APP_BASE_URL } from "@/lib/app-url";
 
 import { Achievements, useAchievements } from "@/components/Achievements";
 import {
@@ -425,8 +426,7 @@ function EditableActiveItem({
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const shareOrigin =
-    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  const shareOrigin = APP_BASE_URL;
   // Ссылка с реферальной меткой на меня. Никуда не перенаправляем.
   const shareLink = `${shareOrigin}/?ref=${ownerId}`;
   const [title, setTitle] = useState(gift.title);
@@ -599,8 +599,7 @@ function MyWishItem({
   onOpen?: (wishId: string) => void;
 }) {
   const [shareOpen, setShareOpen] = useState(false);
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  const origin = APP_BASE_URL;
   const shareLink = `${origin}/?ref=${ownerId}`;
   return (
     <li className="relative">
@@ -664,10 +663,7 @@ function InviteRow({
   onCreateWish?: () => void;
 }) {
   const [shareOpen, setShareOpen] = useState(false);
-  const origin =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "https://podari.visokihelenasochi.workers.dev";
+  const origin = APP_BASE_URL;
   const inviteLink = `${origin}/?ref=${userId}`;
 
   // Засчитываем приглашение ТОЛЬКО после фактической отправки (из окна выбора).

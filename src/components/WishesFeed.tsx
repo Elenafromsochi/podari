@@ -11,6 +11,7 @@ import { WISH_EXAMPLES, wishShareVariants } from "@/lib/random-copy";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { CityChips } from "@/components/CityChips";
 import { applyCityFilter } from "@/lib/city-filter";
+import { APP_BASE_URL } from "@/lib/app-url";
 
 type Wish = {
   id: string;
@@ -36,8 +37,9 @@ interface Props {
 
 function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (id: string) => void }) {
   const [shareOpen, setShareOpen] = useState(false);
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  // Канонический адрес — чтобы ссылка всегда вела на 23podari.ru, даже если
+  // приложение открыто по старому длинному адресу.
+  const origin = APP_BASE_URL;
   // Ссылка ведёт на главную и засчитывает реферал. Никуда не уводим.
   const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   return (

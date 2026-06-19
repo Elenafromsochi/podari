@@ -10,6 +10,7 @@ import { GIFT_KINDS, getKindMeta, type GiftKind } from "@/lib/gift-kinds";
 import { CityChips } from "@/components/CityChips";
 import { applyCityFilter } from "@/lib/city-filter";
 import { getCategoryMeta } from "@/lib/gift-categories";
+import { APP_BASE_URL } from "@/lib/app-url";
 import { LevelBadge } from "@/components/LevelBadge";
 import { InviteShareSheet } from "@/components/InviteShareSheet";
 import { giftShareVariants } from "@/lib/random-copy";
@@ -39,9 +40,9 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
   const [expanded, setExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   // Ссылка ведёт на главную и засчитывает реферал. Никуда не перенаправляем —
-  // человек остаётся там, где открыл ссылку.
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://podari.visokihelenasochi.workers.dev";
+  // человек остаётся там, где открыл ссылку. Адрес всегда канонический
+  // (23podari.ru), даже если открыто по старому длинному адресу.
+  const origin = APP_BASE_URL;
   const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   const longDesc = !!g.description && g.description.length > 38;
   const photos =
