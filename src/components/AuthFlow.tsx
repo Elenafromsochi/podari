@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { Sparkles, ShieldCheck, Loader2, Gift, HandHeart } from "lucide-react";
+import { ShieldCheck, Loader2, Gift } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
 import {
@@ -363,34 +363,35 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
             «Подари» — дари и получай 🎁
           </h1>
           <p className="text-balance text-sm text-muted-foreground">
-            Сервис добрых подарков: люди рядом отдают друг другу вещи, услуги
-            и заботу — бесплатно.
+            Выбирай подарки, загадывай желания и дари другим — бесплатно
+            и рядом с тобой.
           </p>
         </div>
 
-        {/* Короткая инфографика «что я тут получу» — только на стартовом
-            экране для новичков, чтобы сразу было понятно, зачем входить. */}
+        {/* Короткая инфографика «что тут можно делать» — только на стартовом
+            экране для новичков, чтобы сразу было понятно, зачем входить.
+            Крупные эмодзи делают плашки живее и ярче. */}
         {phase === "idle" && pwMode === "hidden" && (
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="flex flex-col items-center gap-1 rounded-2xl bg-mint px-2 py-3 text-mint-foreground">
-              <Gift className="h-6 w-6" />
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-mint px-2 py-3.5 text-mint-foreground">
+              <span className="text-[28px] leading-none">🎁</span>
               <span className="text-sm font-semibold">Получай</span>
               <span className="text-[11px] leading-tight opacity-80">
-                Нужное рядом, даром
+                Выбирай из предложенных
               </span>
             </div>
-            <div className="flex flex-col items-center gap-1 rounded-2xl bg-lavender px-2 py-3 text-lavender-foreground">
-              <HandHeart className="h-6 w-6" />
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-lavender px-2 py-3.5 text-lavender-foreground">
+              <span className="text-[28px] leading-none">🌟</span>
+              <span className="text-sm font-semibold">Загадывай</span>
+              <span className="text-[11px] leading-tight opacity-80">
+                Желание — его исполнят
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-peach px-2 py-3.5 text-peach-foreground">
+              <span className="text-[28px] leading-none">💚</span>
               <span className="text-sm font-semibold">Дари</span>
               <span className="text-[11px] leading-tight opacity-80">
-                Отдай ненужное
-              </span>
-            </div>
-            <div className="flex flex-col items-center gap-1 rounded-2xl bg-peach px-2 py-3 text-peach-foreground">
-              <Sparkles className="h-6 w-6" />
-              <span className="text-sm font-semibold">Расти</span>
-              <span className="text-[11px] leading-tight opacity-80">
-                Баллы за доброту
+                И исполняй желания
               </span>
             </div>
           </div>
