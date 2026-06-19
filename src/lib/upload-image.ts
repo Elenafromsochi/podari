@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { safeUUID } from "@/lib/uuid";
 
 const BUCKET = "gift-images";
 
@@ -25,7 +26,7 @@ export async function uploadImage(dataUrl: string): Promise<string> {
   const uid = s.session?.user?.id;
   if (!uid) throw new Error("Не авторизован");
   const { blob, ext } = dataUrlToBlob(dataUrl);
-  const filename = `${uid}/${crypto.randomUUID()}.${ext === "jpeg" ? "jpg" : ext}`;
+  const filename = `${uid}/${safeUUID()}.${ext === "jpeg" ? "jpg" : ext}`;
 
   // Небольшой ретрай на случай обрыва связи при заливке.
   let lastErr: unknown = null;
