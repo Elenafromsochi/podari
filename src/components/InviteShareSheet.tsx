@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { toast } from "sonner";
 import { Send, Copy, X } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -8,7 +7,7 @@ interface Props {
   onClose: () => void;
   /** Ссылка-приглашение (с ?ref=…). Подставляется в шеринг. */
   link: string;
-  /** До трёх вариантов текста — пользователь выбирает один. */
+  /** Набор текстов; используется последний («третий формат»). */
   variants: string[];
   /** Заголовок окна. */
   title?: string;
@@ -17,15 +16,15 @@ interface Props {
 }
 
 /**
- * Нижнее окно «Поделиться»: пользователь выбирает один из текстов приглашения
- * и отправляет его через системное окно (или копирует). Текст + ссылка уходят
- * вместе, так что реферальная ссылка засчитывается.
+ * Нижнее окно «Поделиться»: показывает один готовый текст приглашения
+ * (последний из набора — «третий формат») и отправляет его через системное
+ * окно или копирует. Текст + ссылка уходят вместе, чтобы реферальная ссылка
+ * засчиталась. Без выбора из нескольких вариантов — так окно компактное, и
+ * кнопка «Поделиться» всегда рядом с текстом, не уезжает вниз.
  */
-export function InviteShareSheet({ open, onClose, link, variants, title = "Выбери приглашение", onShared }: Props) {
-  const [idx, setIdx] = useState(0);
+export function InviteShareSheet({ open, onClose, link, variants, title = "Поделиться", onShared }: Props) {
   if (!open) return null;
-  const list = variants.slice(0, 3);
-  const text = list[idx] ?? list[0] ?? "";
+  const text = variants[variants.length - 1] ?? variants[0] ?? "";
 
   const doShare = async () => {
     haptic("medium");
@@ -81,31 +80,9 @@ export function InviteShareSheet({ open, onClose, link, variants, title = "Вы�
           </button>
         </div>
 
-        <div className="space-y-2">
-          {list.map((v, i) => {
-            const active = i === idx;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setIdx(i)}
-                className={`flex w-full items-start gap-2.5 rounded-2xl border-2 p-3 text-left text-sm transition ${
-                  active
-                    ? "border-mint bg-mint/15"
-                    : "border-input bg-card hover:bg-accent"
-                }`}
-              >
-                <span
-                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                    active ? "border-mint" : "border-muted-foreground/40"
-                  }`}
-                >
-                  {active && <span className="h-2 w-2 rounded-full bg-mint" />}
-                </span>
-                <span className="leading-snug">{v}</span>
-              </button>
-            );
-          })}
+        {/* Готовый текст приглашения (для предпросмотра, без выбора). */}
+        <div className="rounded-2xl border-2 border-mint bg-mint/15 p-3 text-sm leading-snug">
+          {text}
         </div>
 
         <button
