@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { Sparkles, ShieldCheck, Loader2 } from "lucide-react";
+import { Sparkles, ShieldCheck, Loader2, Gift, HandHeart } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
 import {
@@ -354,18 +354,47 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 py-8">
-      <div className="flex flex-1 flex-col gap-7">
-        <div className="flex flex-col items-center gap-3 pt-6 text-center">
+      <div className="flex flex-1 flex-col gap-5">
+        <div className="flex flex-col items-center gap-2.5 pt-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-peach shadow-sm">
-            <Sparkles className="h-8 w-8 text-peach-foreground" />
+            <Gift className="h-8 w-8 text-peach-foreground" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Выбери свой первый подарок 🎁
+            «Подари» — дари и получай 🎁
           </h1>
           <p className="text-balance text-sm text-muted-foreground">
-            Один клик — подтверждение в Telegram-боте.
+            Сервис добрых подарков: люди рядом отдают друг другу вещи, услуги
+            и заботу — бесплатно.
           </p>
         </div>
+
+        {/* Короткая инфографика «что я тут получу» — только на стартовом
+            экране для новичков, чтобы сразу было понятно, зачем входить. */}
+        {phase === "idle" && pwMode === "hidden" && (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-mint px-2 py-3 text-mint-foreground">
+              <Gift className="h-6 w-6" />
+              <span className="text-sm font-semibold">Получай</span>
+              <span className="text-[11px] leading-tight opacity-80">
+                Нужное рядом, даром
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-lavender px-2 py-3 text-lavender-foreground">
+              <HandHeart className="h-6 w-6" />
+              <span className="text-sm font-semibold">Дари</span>
+              <span className="text-[11px] leading-tight opacity-80">
+                Отдай ненужное
+              </span>
+            </div>
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-peach px-2 py-3 text-peach-foreground">
+              <Sparkles className="h-6 w-6" />
+              <span className="text-sm font-semibold">Расти</span>
+              <span className="text-[11px] leading-tight opacity-80">
+                Баллы за доброту
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col items-center gap-3">
           {phase === "idle" && pwMode === "form" && (
@@ -507,14 +536,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           )}
         </div>
 
-        <div className="rounded-2xl bg-muted/40 p-4 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">Как это устроено</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Жмёшь кнопку — открывается бот в Telegram</li>
-            <li>В боте нажимаешь Start, потом ✅ Это я</li>
-            <li>Возвращаешься — мы уже впустили 💚</li>
-          </ul>
-        </div>
+        <p className="text-center text-xs text-muted-foreground">
+          Жмёшь кнопку → в боте «Start» и «✅ Это я» → ты уже в «Подари» 💚
+        </p>
 
         <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" /> Безопасно • через Telegram или по паролю
