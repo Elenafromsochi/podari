@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyUser, chatPath } from "@/lib/notify.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 
 function failOp(code: string, err: unknown): never {
@@ -737,6 +738,48 @@ export const getOnboardingSteps = createServerFn({ method: "GET" })
       received: received > 0,
       reviewed: reviewed > 0,
       gifted: gifted > 0,
+    };
+  });
+
+// ---------- Public journey (для профиля любого пользователя, только чтение) ----------
+export const getUserJourney = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const uid = data.user_id;
+    const cnt = async (
+      q: PromiseLike<{ count: number | null }>,
+    ): Promise<number> => ((await q).count ?? 0);
+
+    const [chosen, messaged, posted, referrals, received, reviewsWritten, gifted] =
+      await Promise.all([
+        cnt(supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("receiver_id", uid)),
+        cnt(supabaseAdmin.from("messages").select("id", { count: "exact", head: true }).eq("sender_id", uid)),
+        cnt(supabaseAdmin.from("gifts").select("id", { count: "exact", head: true }).eq("owner_id", uid)),
+        cnt(supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", uid)),
+        cnt(supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("receiver_id", uid).eq("status", "completed")),
+        cnt(supabaseAdmin.from("reviews").select("id", { count: "exact", head: true }).eq("author_id", uid)),
+        cnt(supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("sender_id", uid).eq("status", "completed")),
+      ]);
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("level")
+      .eq("user_id", uid)
+      .maybeSingle();
+    const level = (prof?.level as number | undefined) ?? 1;
+
+    return {
+      db: {
+        chosen: chosen > 0,
+        messaged: messaged > 0,
+        posted: posted > 0,
+        invited: referrals > 0,
+        received: received > 0,
+        reviewed: reviewsWritten > 0,
+        gifted: gifted > 0,
+      },
+      stats: { posted, gifted, received, reviews: reviewsWritten, referrals, level },
     };
   });
 
