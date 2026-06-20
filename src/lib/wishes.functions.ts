@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { notifyUser } from "@/lib/notify.server";
 
 function failOp(code: string, err: unknown): never {
   console.error(`[wishes] ${code}`, err);
@@ -166,10 +167,23 @@ export const fulfillWish = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ wish_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: rows, error } = await supabase.rpc("fulfill_wish", { _wish_id: data.wish_id });
     if (error) failOp(error.message || "FULFILL_WISH_FAILED", error);
     const first = (rows as Array<{ transaction_id: string; chat_id: string }>)?.[0];
+    // Уведомляем автора желания.
+    const { data: w } = await supabase
+      .from("wishes")
+      .select("owner_id, title")
+      .eq("id", data.wish_id)
+      .maybeSingle();
+    if (w?.owner_id && w.owner_id !== userId) {
+      await notifyUser(
+        w.owner_id,
+        `💫 Кто-то хочет исполнить твоё желание «${w.title}»! Загляни в чаты.`,
+        "/?tab=chats",
+      );
+    }
     return {
       transaction_id: first?.transaction_id,
       chat_id: first?.chat_id,
@@ -181,11 +195,24 @@ export const requestWishHandover = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ transaction_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("request_wish_handover", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp(error.message || "WISH_HANDOVER_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `📦 Исполнитель отметил, что передал — подтверди получение в чате.`,
+        "/?tab=chats",
+      );
+    }
     return { ok: true };
   });
 
@@ -194,11 +221,24 @@ export const confirmWishReceived = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ transaction_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("confirm_wish_received", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp(error.message || "WISH_CONFIRM_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `✅ Получатель подтвердил исполнение желания — спасибо! 💚`,
+        "/?tab=chats",
+      );
+    }
     return { ok: true };
   });
 

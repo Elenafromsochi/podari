@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyUser } from "@/lib/notify.server";
 
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? "Podari_podarki_bot";
 const NONCE_TTL_MS = 5 * 60 * 1000;
@@ -204,6 +205,12 @@ export const completeTelegramLogin = createServerFn({ method: "POST" })
         .from("telegram_referrals")
         .delete()
         .eq("telegram_id", tgId);
+      // Уведомляем пригласившего, что друг присоединился.
+      await notifyUser(
+        referredBy,
+        `👋 Твой друг ${displayName} присоединился по твоей ссылке! Тебе +50 XP 💚`,
+        "/?tab=profile",
+      );
     }
 
     await supabaseAdmin

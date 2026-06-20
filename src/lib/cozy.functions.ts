@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { notifyUser, chatPath } from "@/lib/notify.server";
 
 
 function failOp(code: string, err: unknown): never {
@@ -182,6 +183,19 @@ export const claimGift = createServerFn({ method: "POST" })
       failOp("CLAIM_FAILED", error);
     }
     const first = Array.isArray(rows) ? rows[0] : rows;
+    // Уведомляем владельца подарка о брони.
+    const { data: g } = await supabase
+      .from("gifts")
+      .select("owner_id, title")
+      .eq("id", data.gift_id)
+      .maybeSingle();
+    if (g?.owner_id && g.owner_id !== userId) {
+      await notifyUser(
+        g.owner_id,
+        `🎁 Кто-то забронировал твой подарок «${g.title}»! Загляни в чат — договоритесь о встрече.`,
+        chatPath(data.gift_id),
+      );
+    }
     return {
       transaction_id: first?.transaction_id as string,
       chat_id: first?.chat_id as string,
@@ -211,6 +225,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .select("id, sender_id, content, created_at")
       .single();
     if (error) failOp("MESSAGE_SEND_FAILED", error);
+    // Уведомляем собеседника о новом сообщении.
+    const { data: ch } = await supabase
+      .from("chats")
+      .select("user_a, user_b, gift_id")
+      .eq("id", data.chat_id)
+      .maybeSingle();
+    const other = ch ? (ch.user_a === userId ? ch.user_b : ch.user_a) : null;
+    if (other && other !== userId) {
+      const preview =
+        data.content.length > 80 ? `${data.content.slice(0, 80)}…` : data.content;
+      await notifyUser(other, `💬 Новое сообщение: «${preview}»`, chatPath(ch?.gift_id));
+    }
     return row;
   });
 
@@ -221,11 +247,24 @@ export const confirmHandover = createServerFn({ method: "POST" })
     z.object({ transaction_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("confirm_handover", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("HANDOVER_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, gift_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `✅ Получатель подтвердил, что получил подарок. Спасибо за добро! 💚`,
+        chatPath(tx.gift_id),
+      );
+    }
     return { ok: true };
   });
 
@@ -236,11 +275,24 @@ export const requestHandover = createServerFn({ method: "POST" })
     z.object({ transaction_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("request_handover", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("HANDOVER_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, gift_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `📦 Даритель отметил, что передал подарок — подтверди получение в чате.`,
+        chatPath(tx.gift_id),
+      );
+    }
     return { ok: true };
   });
 
@@ -360,6 +412,41 @@ export const submitReview = createServerFn({ method: "POST" })
       proof_image_url: data.proof_image_url ?? null,
     });
     if (error) failOp("REVIEW_FAILED", error);
+    await notifyUser(
+      data.target_id,
+      `⭐ Тебе оставили новый отзыв! Загляни в профиль.`,
+      "/?tab=profile",
+    );
+    return { ok: true };
+  });
+
+// ---------- Notifications preference ----------
+export const getNotificationsEnabled = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ enabled: boolean }> => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("notifications_enabled")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) return { enabled: true }; // колонки ещё нет — по умолчанию включено
+    return {
+      enabled:
+        (data as { notifications_enabled?: boolean } | null)?.notifications_enabled !== false,
+    };
+  });
+
+export const setNotificationsEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ notifications_enabled: data.enabled })
+      .eq("user_id", userId);
+    if (error) console.error("[notifications] set failed", error);
     return { ok: true };
   });
 
