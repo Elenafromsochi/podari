@@ -236,7 +236,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     if (other && other !== userId) {
       const preview =
         data.content.length > 80 ? `${data.content.slice(0, 80)}…` : data.content;
-      await notifyUser(other, `💬 Новое сообщение: «${preview}»`, chatPath(ch?.gift_id));
+      await notifyUser(other, `💬 Новое сообщение: «${preview}»`, chatPath(ch?.gift_id), {
+        skipIfActiveWithinSec: 90,
+      });
     }
     return row;
   });
@@ -304,11 +306,24 @@ export const declineHandover = createServerFn({ method: "POST" })
     z.object({ transaction_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("decline_handover", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("HANDOVER_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, gift_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `⚠️ Получатель отметил, что пока не получил подарок. Загляни в чат — разберитесь вместе.`,
+        chatPath(tx.gift_id),
+      );
+    }
     return { ok: true };
   });
 
@@ -319,11 +334,24 @@ export const cancelClaim = createServerFn({ method: "POST" })
     z.object({ transaction_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("cancel_claim", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("CLAIM_CANCEL_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, gift_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `↩️ Получатель отказался от подарка — он снова доступен другим.`,
+        chatPath(tx.gift_id),
+      );
+    }
     return { ok: true };
   });
 
@@ -334,11 +362,24 @@ export const cancelBySender = createServerFn({ method: "POST" })
     z.object({ transaction_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("cancel_by_sender", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("SENDER_CANCEL_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, gift_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `↩️ Даритель отменил передачу подарка. Балл вернулся — выбери другой 💚`,
+        chatPath(tx.gift_id),
+      );
+    }
     return { ok: true };
   });
 
