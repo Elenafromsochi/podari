@@ -247,11 +247,24 @@ export const cancelWishClaim = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ transaction_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { error } = await supabase.rpc("cancel_wish_claim", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp(error.message || "WISH_CANCEL_FAILED", error);
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
+    if (tx) {
+      const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
+      await notifyUser(
+        other,
+        `↩️ Исполнение желания отменено. Желание снова открыто.`,
+        "/?tab=chats",
+      );
+    }
     return { ok: true };
   });
 

@@ -3,44 +3,71 @@ import { tgApiSafe } from "@/lib/telegram-api";
 
 const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
 
+type NotifyOpts = {
+  /**
+   * Не слать, если пользователь был активен (last_seen_at) в течение указанного
+   * числа секунд — чтобы не дублировать то, что человек и так видит в приложении
+   * (например, новые сообщения в открытом чате).
+   */
+  skipIfActiveWithinSec?: number;
+};
+
 /**
  * Отправляет пользователю уведомление в Telegram-бота с кнопкой-ссылкой
  * «Открыть» на нужный экран. Молча выходит, если у пользователя нет
- * telegram_id или он отключил уведомления. Никогда не бросает исключение —
- * сбой уведомления не должен ломать основное действие.
+ * telegram_id, он отключил уведомления или (по опции) сейчас онлайн.
+ * Никогда не бросает исключение — сбой уведомления не должен ломать действие.
  *
  * @param userId  кому шлём (supabase user_id)
  * @param text    текст уведомления
  * @param path    путь в приложении, напр. "/chat/abc" или "/?tab=chats"
+ * @param opts    дополнительные условия отправки
  */
-export async function notifyUser(userId: string | null | undefined, text: string, path = "/") {
+export async function notifyUser(
+  userId: string | null | undefined,
+  text: string,
+  path = "/",
+  opts: NotifyOpts = {},
+) {
   try {
     if (!userId) return;
 
     let telegramId: number | string | null = null;
     let enabled = true;
+    let lastSeenAt: string | null = null;
 
     // Пытаемся прочитать настройку уведомлений; если колонки ещё нет
     // (миграция не применена) — считаем, что уведомления включены.
     const withPref = await supabaseAdmin
       .from("profiles")
-      .select("telegram_id, notifications_enabled")
+      .select("telegram_id, notifications_enabled, last_seen_at")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (withPref.error) {
       const only = await supabaseAdmin
         .from("profiles")
-        .select("telegram_id")
+        .select("telegram_id, last_seen_at")
         .eq("user_id", userId)
         .maybeSingle();
       telegramId = (only.data?.telegram_id as number | null) ?? null;
+      lastSeenAt = (only.data as { last_seen_at?: string | null } | null)?.last_seen_at ?? null;
     } else {
-      telegramId = (withPref.data?.telegram_id as number | null) ?? null;
-      enabled = (withPref.data as { notifications_enabled?: boolean } | null)?.notifications_enabled !== false;
+      const row = withPref.data as
+        | { telegram_id?: number | null; notifications_enabled?: boolean; last_seen_at?: string | null }
+        | null;
+      telegramId = row?.telegram_id ?? null;
+      enabled = row?.notifications_enabled !== false;
+      lastSeenAt = row?.last_seen_at ?? null;
     }
 
     if (!telegramId || !enabled) return;
+
+    // Онлайн-проверка: если человек только что был в приложении — не дублируем.
+    if (opts.skipIfActiveWithinSec && lastSeenAt) {
+      const ageSec = (Date.now() - new Date(lastSeenAt).getTime()) / 1000;
+      if (ageSec >= 0 && ageSec < opts.skipIfActiveWithinSec) return;
+    }
 
     const url = path.startsWith("http") ? path : `${APP_URL}${path.startsWith("/") ? path : `/${path}`}`;
     await tgApiSafe("sendMessage", {
