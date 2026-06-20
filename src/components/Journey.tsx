@@ -50,7 +50,9 @@ const goal = (
   xp?: number,
 ): Task => ({ key, emoji, label, done: value >= target, value, target, xp });
 
-function buildStages(
+export type { DbSteps, Stage, Task };
+
+export function buildStages(
   db: DbSteps,
   tourDone: boolean,
   invited: boolean,
@@ -110,7 +112,7 @@ function buildStages(
   return stages;
 }
 
-const isStageDone = (s: Stage) => s.tasks.every((t) => t.done);
+export const isStageDone = (s: Stage) => s.tasks.every((t) => t.done);
 
 /** Единое окно прогресса: ступени открываются одна за другой.
  *  Первая — «Твои первые шаги», затем «Активный даритель», «Душа сообщества». */

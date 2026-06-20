@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
+import { UserJourney } from "@/components/UserJourney";
 import { GlobalChrome } from "@/components/GlobalChrome";
 
 
@@ -56,7 +57,6 @@ function UserProfilePage() {
   const [name, setName] = useState<string>("Гость");
   const [level, setLevel] = useState<number>(1);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
-  const [reviewsWritten, setReviewsWritten] = useState<number>(0);
   const [active, setActive] = useState<Gift[] | null>(null);
   const [given, setGiven] = useState<Gift[] | null>(null);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
@@ -108,13 +108,6 @@ function UserProfilePage() {
       } else {
         setRating({ avg: 0, count: 0 });
       }
-
-      // Скилл «Коммуникатор» — сколько отзывов человек написал сам
-      const { count: written } = await supabase
-        .from("reviews")
-        .select("id", { count: "exact", head: true })
-        .eq("author_id", userId);
-      setReviewsWritten(written ?? 0);
     })();
   }, [userId]);
 
@@ -182,49 +175,7 @@ function UserProfilePage() {
 
       </div>
 
-      <section className="space-y-2">
-        <h2 className="pt-2 text-lg font-semibold tracking-tight">Скиллы</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {(() => {
-            const givenCount = given?.length ?? 0;
-            const valueGiven = (given ?? []).reduce((s, g) => s + (g.cost ?? 0), 0);
-            const tier = (v: number, b: number, s2: number, g: number) =>
-              v >= g
-                ? { t: "Золото", i: "🥇" }
-                : v >= s2
-                  ? { t: "Серебро", i: "🥈" }
-                  : v >= b
-                    ? { t: "Бронза", i: "🥉" }
-                    : { t: "Новичок", i: "🐣" };
-            const ratingTier =
-              rating && rating.count > 0
-                ? rating.avg >= 4.7 && rating.count >= 5
-                  ? { t: "Золото", i: "🥇" }
-                  : rating.avg >= 4.3
-                    ? { t: "Серебро", i: "🥈" }
-                    : { t: "Бронза", i: "🥉" }
-                : { t: "Новичок", i: "🐣" };
-            const skills = [
-              { emoji: "🎁", name: "Щедрый даритель", ...tier(givenCount, 1, 5, 15), hint: `${givenCount} подарено` },
-              { emoji: "⭐", name: "Мастер услуг", ...ratingTier, hint: rating && rating.count > 0 ? `${rating.avg.toFixed(1)} · ${rating.count} отз.` : "нет отзывов" },
-              { emoji: "💎", name: "Ценные подарки", ...tier(valueGiven, 3, 12, 30), hint: `${valueGiven} баллов` },
-              { emoji: "💬", name: "Коммуникатор", ...tier(reviewsWritten, 1, 5, 15), hint: `${reviewsWritten} отзывов` },
-            ];
-            return skills.map((sk) => (
-              <div key={sk.name} className="rounded-2xl border bg-card p-3">
-                <div className="flex items-center gap-1.5 text-sm font-medium">
-                  <span className="text-lg">{sk.emoji}</span>
-                  <span className="truncate">{sk.name}</span>
-                </div>
-                <div className="mt-1 text-xs">
-                  <span className="font-semibold">{sk.i} {sk.t}</span>
-                  <span className="ml-1 text-muted-foreground">· {sk.hint}</span>
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
-      </section>
+      <UserJourney userId={userId} />
 
       <section className="space-y-3">
         <h2 className="pt-2 text-lg font-semibold tracking-tight">Активные подарки</h2>
