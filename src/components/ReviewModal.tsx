@@ -92,7 +92,7 @@ export function ReviewModal({
   return (
     <Dialog open onOpenChange={() => {}}>
       <DialogContent
-        className="max-w-md [&>button[aria-label='Close']]:hidden [&>button:last-child]:hidden"
+        className="max-h-[88dvh] max-w-md gap-2.5 overflow-y-auto p-4 [&>button[aria-label='Close']]:hidden [&>button:last-child]:hidden"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
@@ -110,7 +110,7 @@ export function ReviewModal({
             <button
               key={p.id}
               onClick={() => setSelected(p.id)}
-              className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+              className={`rounded-2xl border px-3.5 py-2.5 text-left text-sm leading-snug transition ${
                 selected === p.id
                   ? "border-primary bg-primary/10"
                   : "border-border bg-card hover:bg-accent"

@@ -355,6 +355,7 @@ export function ChatScreen({
     try {
       await confirmHandoverFn({ data: { transaction_id: transactionId } });
       toast.success("Подтверждено! Спасибо 💚");
+      window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
     } catch (e) {
       toast.error("Не удалось подтвердить", {
         description: e instanceof Error ? e.message : String(e),
@@ -665,6 +666,7 @@ export function ChatScreen({
             }
             setShowReview(false);
             onReview?.();
+            window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
           }}
         />
       )}
