@@ -8,6 +8,7 @@ import { restartTour } from "@/lib/tour";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WishesFeed } from "@/components/WishesFeed";
 import { LevelBadge } from "@/components/LevelBadge";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { getHomeStats } from "@/lib/cozy.functions";
 
 import {
@@ -24,6 +25,7 @@ type Gift = {
   description: string | null;
   category: string;
   image_url: string | null;
+  image_urls?: string[] | null;
   cost: number;
   condition?: number | null;
   owner_id: string | null;
@@ -79,7 +81,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,condition,owner_id,created_at")
+        .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at")
         .eq("status", "gifted")
         .not("owner_id", "is", null)
         .order("updated_at", { ascending: false })
@@ -110,7 +112,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,cost,condition,owner_id,created_at")
+        .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at")
         .eq("status", "available")
         .not("owner_id", "is", null)
         .order("created_at", { ascending: false })
@@ -359,31 +361,59 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
   );
 }
 
+function giftPhotos(gift: Gift): string[] {
+  if (gift.image_urls && gift.image_urls.length > 0) return gift.image_urls.filter(Boolean);
+  return gift.image_url ? [gift.image_url] : [];
+}
+
+function GiftThumb({ gift, onOpen }: { gift: Gift; onOpen: () => void }) {
+  const photos = giftPhotos(gift);
+  if (!photos.length) {
+    return (
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+        🎁
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        haptic("light");
+        onOpen();
+      }}
+      aria-label="Посмотреть фото"
+      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl"
+    >
+      <img src={photos[0]} alt="" className="h-full w-full object-cover" loading="lazy" />
+      {photos.length > 1 && (
+        <span className="absolute bottom-1 right-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          📷 {photos.length}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function ActiveGiftCard({ gift, onClaim }: { gift: Gift; onClaim: (giftId: string) => void }) {
+  const [lightbox, setLightbox] = useState(false);
   if (!gift.owner_id) return null;
   const word = gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов";
+  const photos = giftPhotos(gift);
   return (
     <li className="rounded-2xl border bg-card p-3 shadow-sm">
-      {/* Шапка карточки ведёт на профиль дарителя (детали, другие подарки) */}
-      <Link
-        to="/user/$userId"
-        params={{ userId: gift.owner_id }}
-        onClick={() => haptic("light")}
-        className="flex gap-3 transition active:scale-[0.99]"
-      >
-        {gift.image_url ? (
-          <img
-            src={gift.image_url}
-            alt={gift.title}
-            className="h-20 w-20 shrink-0 rounded-xl object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-            🎁
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
+      <div className="flex gap-3">
+        {/* Фото — открывает полноэкранную карусель */}
+        <GiftThumb gift={gift} onOpen={() => setLightbox(true)} />
+        {/* Контент ведёт на профиль дарителя (детали, другие подарки) */}
+        <Link
+          to="/user/$userId"
+          params={{ userId: gift.owner_id }}
+          onClick={() => haptic("light")}
+          className="min-w-0 flex-1 transition active:scale-[0.99]"
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="truncate text-[15px] font-semibold leading-tight">
               {gift.title}
@@ -400,8 +430,8 @@ function ActiveGiftCard({ gift, onClaim }: { gift: Gift; onClaim: (giftId: strin
           <span className="mt-1.5 inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
             {gift.owner_name}
           </span>
-        </div>
-      </Link>
+        </Link>
+      </div>
 
       {/* Прямая бронь: списываем балл и открываем чат с дарителем */}
       <button
@@ -419,65 +449,59 @@ function ActiveGiftCard({ gift, onClaim }: { gift: Gift; onClaim: (giftId: strin
       >
         🎁 Получить за {gift.cost} {word}
       </button>
+
+      {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </li>
   );
 }
 
 function GiftedCard({ gift }: { gift: Gift }) {
-  // Карточка целиком ведёт на страницу дарителя (его активные подарки + загаданные желания)
+  const [lightbox, setLightbox] = useState(false);
   if (!gift.owner_id) return null;
+  const photos = giftPhotos(gift);
   return (
-    <li>
+    <li className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+      {/* Фото — открывает карусель */}
+      <GiftThumb gift={gift} onOpen={() => setLightbox(true)} />
+      {/* Контент ведёт на профиль дарителя */}
       <Link
         to="/user/$userId"
         params={{ userId: gift.owner_id }}
         onClick={() => haptic("light")}
-        className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm transition active:scale-[0.98]"
+        className="min-w-0 flex-1 transition active:scale-[0.99]"
       >
-        {gift.image_url ? (
-          <img
-            src={gift.image_url}
-            alt={gift.title}
-            className="h-20 w-20 shrink-0 rounded-xl object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-            🎁
+        <div className="truncate text-[15px] font-semibold leading-tight">
+          {gift.title}
+        </div>
+        {gift.condition ? (
+          <div
+            className="mt-0.5 text-sm leading-none"
+            aria-label={`Состояние ${gift.condition} из 5`}
+            title={`Состояние: ${gift.condition} из 5`}
+          >
+            {[1, 2, 3, 4, 5].map((n) => (
+              <span key={n}>{n <= gift.condition! ? "❤️" : "🤍"}</span>
+            ))}
           </div>
+        ) : null}
+        {gift.description && (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+            {gift.description}
+          </p>
         )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-semibold leading-tight">
-            {gift.title}
-          </div>
-          {gift.condition ? (
-            <div
-              className="mt-0.5 text-sm leading-none"
-              aria-label={`Состояние ${gift.condition} из 5`}
-              title={`Состояние: ${gift.condition} из 5`}
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n}>{n <= gift.condition! ? "❤️" : "🤍"}</span>
-              ))}
-            </div>
-          ) : null}
-          {gift.description && (
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-              {gift.description}
-            </p>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
-              {gift.owner_name}
-            </span>
-            <LevelBadge level={gift.owner_level ?? 1} />
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+            {gift.owner_name}
+          </span>
+          <LevelBadge level={gift.owner_level ?? 1} />
 
-            <span className="ml-auto inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[10px] font-semibold text-mint-foreground">
-              💝 подарено
-            </span>
-          </div>
+          <span className="ml-auto inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[10px] font-semibold text-mint-foreground">
+            💝 подарено
+          </span>
         </div>
       </Link>
+
+      {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </li>
   );
 }
