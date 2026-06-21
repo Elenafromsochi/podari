@@ -136,9 +136,15 @@ function Index() {
     if (!user || typeof window === "undefined") return;
     const owner = localStorage.getItem("cozygift_pending_gift_owner");
     if (owner) localStorage.removeItem("cozygift_pending_gift_owner");
-    // Намеренно НЕ перенаправляем: реферальные ссылки не должны уводить
-    // человека со страницы и открывать посторонние экраны/чаты.
-  }, [user]);
+    // Если человек пришёл по ссылке на конкретный подарок и вошёл, чтобы его
+    // получить — возвращаем его на страницу этого подарка.
+    const pendingGift = localStorage.getItem("cozygift_pending_gift");
+    if (pendingGift && /^[0-9a-f-]{36}$/i.test(pendingGift)) {
+      localStorage.removeItem("cozygift_pending_gift");
+      navigate({ to: "/gift/$giftId", params: { giftId: pendingGift } });
+    }
+    // Реферальные ссылки на главную никуда не уводят.
+  }, [user, navigate]);
 
   if (!authChecked) return null;
 

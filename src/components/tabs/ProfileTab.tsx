@@ -466,9 +466,8 @@ function EditableActiveItem({
 }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const shareOrigin = APP_BASE_URL;
-  // Ссылка с реферальной меткой на меня. Никуда не перенаправляем.
-  const shareLink = `${shareOrigin}/?ref=${ownerId}`;
+  // Ссылка ведёт на страницу самого подарка (с реферальной меткой).
+  const shareLink = `${APP_BASE_URL}/gift/${gift.id}?ref=${ownerId}`;
   const [title, setTitle] = useState(gift.title);
   const [category, setCategory] = useState(gift.category);
   const [description, setDescription] = useState(gift.description ?? "");
