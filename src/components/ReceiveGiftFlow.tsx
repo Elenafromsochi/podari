@@ -40,11 +40,8 @@ function timeAgo(iso?: string | null): string {
 function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; meId: string | null }) {
   const [expanded, setExpanded] = useState(false);
   const [lightbox, setLightbox] = useState(false);
-  // Ссылка ведёт на главную и засчитывает реферал. Никуда не перенаправляем —
-  // человек остаётся там, где открыл ссылку. Адрес всегда канонический
-  // (23podari.ru), даже если открыто по старому длинному адресу.
-  const origin = APP_BASE_URL;
-  const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
+  // Ссылка ведёт на страницу самого подарка (и засчитывает реферал).
+  const shareLink = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
   const longDesc = !!g.description && g.description.length > 38;
   const photos =
     g.image_urls && g.image_urls.length > 0

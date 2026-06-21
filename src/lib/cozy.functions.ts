@@ -523,6 +523,36 @@ export const republishGift = createServerFn({ method: "POST" })
     return { id: ins.data.id };
   });
 
+// ---------- Public single gift (для страницы подарка по ссылке, без входа) ----------
+export const getPublicGift = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const full =
+      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online";
+    let { data: g, error } = await supabaseAdmin.from("gifts").select(full).eq("id", data.gift_id).maybeSingle();
+    if (error)
+      ({ data: g, error } = await supabaseAdmin
+        .from("gifts")
+        .select("id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind")
+        .eq("id", data.gift_id)
+        .maybeSingle());
+    if (error || !g) return null;
+    const gg = g as Record<string, unknown>;
+    let owner_name = "Гость";
+    let owner_level = 1;
+    if (gg.owner_id) {
+      const { data: profs } = await supabaseAdmin.rpc("get_public_profiles", {
+        _user_ids: [gg.owner_id],
+      });
+      const p = ((profs ?? []) as Array<{ display_name: string; level: number }>)[0];
+      if (p) {
+        owner_name = p.display_name || "Гость";
+        owner_level = p.level ?? 1;
+      }
+    }
+    return { ...gg, owner_name, owner_level };
+  });
+
 // ---------- Reviews about a user (тексты отзывов) ----------
 export const getReviewsAbout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
