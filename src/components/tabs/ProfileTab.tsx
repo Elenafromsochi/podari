@@ -27,6 +27,7 @@ import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/ran
 import { shareToTelegram, thirdVariant } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { CityBadge } from "@/components/CityBadge";
+import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -208,6 +209,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         onReceive={onReceive}
         onCreateWish={onCreateWish}
       />
+
+      {/* Отзывы обо мне — перед достижениями */}
+      <ReviewsAboutMe userId={user.user_id} />
 
       {/* Achievements accordion */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
