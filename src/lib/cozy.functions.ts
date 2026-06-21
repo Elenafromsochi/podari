@@ -471,6 +471,58 @@ export const submitReview = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Republish (подарить тот же подарок снова — для услуг/аренды) ----------
+export const republishGift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const isUndefinedColumn = (e: { code?: string; message?: string } | null) =>
+      e?.code === "42703" ||
+      e?.code === "PGRST204" ||
+      /column .* does not exist|could not find the .* column|schema cache/i.test(e?.message ?? "");
+
+    const full =
+      "owner_id, title, description, category, image_url, image_urls, cost, gift_kind, price_tier, price_rub, condition, city, is_online";
+    let { data: g, error } = await supabase.from("gifts").select(full).eq("id", data.gift_id).maybeSingle();
+    if (error)
+      ({ data: g, error } = await supabase
+        .from("gifts")
+        .select("owner_id, title, description, category, image_url, image_urls, cost, gift_kind, price_tier, price_rub, condition")
+        .eq("id", data.gift_id)
+        .maybeSingle());
+    if (error) failOp("GIFT_LOAD_FAILED", error);
+    if (!g) throw new Error("GIFT_NOT_FOUND");
+    const gg = g as Record<string, unknown>;
+    if (gg.owner_id !== userId) throw new Error("NOT_OWNER");
+
+    const base: Record<string, unknown> = {
+      title: gg.title,
+      description: gg.description ?? null,
+      category: gg.category,
+      image_url: gg.image_url ?? null,
+      image_urls: gg.image_urls ?? [],
+      status: "available",
+      cost: gg.cost ?? 1,
+      owner_id: userId,
+      gift_kind: gg.gift_kind ?? "specialist_time",
+      price_tier: gg.price_tier ?? "under_3k",
+      price_rub: gg.price_rub ?? null,
+      condition: gg.condition ?? null,
+    };
+
+    let ins = await supabase
+      .from("gifts")
+      .insert({ ...base, city: gg.city ?? null, is_online: gg.is_online ?? false })
+      .select("id")
+      .single();
+    if (ins.error && isUndefinedColumn(ins.error)) {
+      ins = await supabase.from("gifts").insert(base).select("id").single();
+    }
+    if (ins.error) failOp("GIFT_SAVE_FAILED", ins.error);
+    return { id: ins.data.id };
+  });
+
 // ---------- Reviews about a user (тексты отзывов) ----------
 export const getReviewsAbout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

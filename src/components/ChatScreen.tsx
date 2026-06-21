@@ -23,6 +23,7 @@ import {
   confirmHandover,
   declineHandover,
   requestHandover,
+  republishGift,
   sendChatMessage,
   submitReview,
 } from "@/lib/cozy.functions";
@@ -56,7 +57,7 @@ function Linkified({ text, isMe }: { text: string; isMe: boolean }) {
     </span>
   );
 }
-type Gift = { id: string; title: string; description?: string | null; image_url: string | null; image_urls?: string[] | null; owner_id: string | null; condition?: number | null };
+type Gift = { id: string; title: string; description?: string | null; image_url: string | null; image_urls?: string[] | null; owner_id: string | null; condition?: number | null; gift_kind?: string | null };
 
 const RECEIVER_HINTS = [
   "Мне понравился ваш подарок. Как могу его забрать? 😊",
@@ -111,6 +112,9 @@ export function ChatScreen({
   const navigate = useNavigate();
 
   const reviewFn = useServerFn(submitReview);
+  const republishFn = useServerFn(republishGift);
+  const [regiftOpen, setRegiftOpen] = useState(false);
+  const [regifting, setRegifting] = useState(false);
   const cancelFn = useServerFn(cancelClaim);
   const cancelBySenderFn = useServerFn(cancelBySender);
   const sendMessageFn = useServerFn(sendChatMessage);
@@ -143,7 +147,7 @@ export function ChatScreen({
       setMeId(myId);
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,image_url,image_urls,owner_id,condition")
+        .select("id,title,description,image_url,image_urls,owner_id,condition,gift_kind")
         .eq("id", giftId)
         .maybeSingle();
       setGift(data as Gift | null);
@@ -667,8 +671,54 @@ export function ChatScreen({
             setShowReview(false);
             onReview?.();
             window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
+            // Услуги/аренду/впечатления можно подарить снова — предлагаем дарителю.
+            if (isOwner && gift?.gift_kind && gift.gift_kind !== "used_item") {
+              setRegiftOpen(true);
+            }
           }}
         />
+      )}
+
+      {regiftOpen && (
+        <div className="fixed inset-0 z-[96] flex items-end justify-center bg-black/50 p-0 animate-fade-in sm:items-center sm:p-6">
+          <div className="w-full max-w-md rounded-t-3xl bg-background p-5 shadow-xl animate-scale-in sm:rounded-3xl">
+            <h3 className="text-base font-semibold">Подарить это снова? 🔁</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              «{gift?.title ?? "Подарок"}» можно предложить ещё раз — он снова появится
+              в ленте активных подарков для других людей.
+            </p>
+            <button
+              type="button"
+              disabled={regifting}
+              onClick={async () => {
+                if (!gift) return;
+                setRegifting(true);
+                try {
+                  await republishFn({ data: { gift_id: gift.id } });
+                  window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
+                  toast.success("Готово — подарок снова в ленте 🎁");
+                  setRegiftOpen(false);
+                } catch (e) {
+                  toast.error("Не удалось опубликовать снова", {
+                    description: e instanceof Error ? e.message : String(e),
+                  });
+                } finally {
+                  setRegifting(false);
+                }
+              }}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90 disabled:opacity-60"
+            >
+              {regifting ? "Публикуем…" : "Да, подарить снова"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRegiftOpen(false)}
+              className="mt-2 w-full rounded-2xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent"
+            >
+              Нет, спасибо
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
