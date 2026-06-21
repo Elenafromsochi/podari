@@ -46,16 +46,11 @@ export function GlobalChrome({ children }: { children: React.ReactNode }) {
     };
   }, [user, unreadFn]);
 
-  // В чате и на под-экранах поверх главной («/») вкладку НЕ подсвечиваем:
-  // человек и так понимает, что он в чате, а «активная» вкладка мешала по ней
-  // нажать (тап по уже активной вкладке не срабатывал).
-  const active: AppTab | null = pathname.startsWith("/cabinet")
-    ? "profile"
-    : pathname.startsWith("/chat")
-      ? null
-      : pathname === "/"
-        ? null
-        : "home";
+  // На под-экранах (чат, чужой профиль /user/…, инсайты и т.п.) вкладку НЕ
+  // подсвечиваем: тап по уже активной вкладке в BottomNav не срабатывает, и
+  // из-за ложной подсветки «Главная» человек не мог по ней нажать и «застревал».
+  // Подсвечиваем только реальный «Профиль» (/cabinet редиректит на него).
+  const active: AppTab | null = pathname.startsWith("/cabinet") ? "profile" : null;
 
   const goTab = (t: AppTab) => {
     // Сбрасываем возможный внутренний экран (чат/форму) на «/», иначе при
