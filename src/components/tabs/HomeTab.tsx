@@ -32,6 +32,8 @@ type Gift = {
   owner_level?: number;
 };
 
+type FeedTab = "active" | "wishes" | "gifted";
+
 interface Props {
   userName: string;
   onGive: () => void;
@@ -39,14 +41,15 @@ interface Props {
   onPickGift: (giftId: string) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;
-  initialFeedTab?: "gifts" | "wishes";
+  initialFeedTab?: FeedTab;
 }
 
 type Stats = { active_gifts: number; gifted_total: number; wishes_open: number };
 
-export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, onCreateWish, onOpenWish, initialFeedTab = "gifts" }: Props) {
+export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, onCreateWish, onOpenWish, initialFeedTab = "active" }: Props) {
   const [gifted, setGifted] = useState<Gift[] | null>(null);
-  const [feedTab, setFeedTab] = useState<"gifts" | "wishes">(initialFeedTab);
+  const [activeGifts, setActiveGifts] = useState<Gift[] | null>(null);
+  const [feedTab, setFeedTab] = useState<FeedTab>(initialFeedTab);
   const [stats, setStats] = useState<Stats | null>(null);
   const [query, setQuery] = useState("");
   const statsFn = useServerFn(getHomeStats);
@@ -68,7 +71,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   const tour = useTourState();
   useEffect(() => {
     if (tour.step === "home-wishes") setFeedTab("wishes");
-    else if (tour.step === "home-gifted") setFeedTab("gifts");
+    else if (tour.step === "home-gifted") setFeedTab("gifted");
   }, [tour.step]);
 
   // Лента уже подаренных подарков
@@ -102,20 +105,56 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
     })();
   }, []);
 
+  // Лента активных (доступных) подарков — свежие сверху.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("gifts")
+        .select("id,title,description,category,image_url,cost,condition,owner_id,created_at")
+        .eq("status", "available")
+        .not("owner_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      const rows = (data as Gift[]) ?? [];
+      const ids = Array.from(new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)));
+      const nameMap = new Map<string, string>();
+      const levelMap = new Map<string, number>();
+      if (ids.length) {
+        const { data: profs } = await supabase.rpc("get_public_profiles", { _user_ids: ids });
+        for (const p of ((profs ?? []) as Array<{ user_id: string; display_name: string; level: number }>)) {
+          nameMap.set(p.user_id, p.display_name || "Гость");
+          levelMap.set(p.user_id, p.level ?? 1);
+        }
+      }
+      setActiveGifts(
+        rows.map((g) => ({
+          ...g,
+          owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
+          owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
+        })),
+      );
+    })();
+  }, []);
+
   useEffect(() => {
     statsFn().then((s) => setStats(s as Stats)).catch(() => setStats(null));
   }, [statsFn]);
 
   const q = query.trim().toLowerCase();
+  const matchGift = (g: Gift) =>
+    g.title.toLowerCase().includes(q) ||
+    (g.description && g.description.toLowerCase().includes(q)) ||
+    (g.owner_name && g.owner_name.toLowerCase().includes(q));
   const filteredGifted = useMemo(() => {
     if (!gifted || !q) return gifted;
-    return gifted.filter(
-      (g) =>
-        g.title.toLowerCase().includes(q) ||
-        (g.description && g.description.toLowerCase().includes(q)) ||
-        (g.owner_name && g.owner_name.toLowerCase().includes(q)),
-    );
+    return gifted.filter(matchGift);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gifted, q]);
+  const filteredActive = useMemo(() => {
+    if (!activeGifts || !q) return activeGifts;
+    return activeGifts.filter(matchGift);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGifts, q]);
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
@@ -221,11 +260,12 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         </section>
       )}
 
-      {/* Feed tabs: Подарили / Загадали */}
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-2xl border bg-muted/60 p-1">
+      {/* Feed tabs: Активные / Желания / Подаренные */}
+      <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
         {([
-          ["gifts", "💝 Подарили"],
-          ["wishes", "✨ Загадали"],
+          ["active", "🎁 Активные"],
+          ["wishes", "✨ Желания"],
+          ["gifted", "💝 Подаренные"],
         ] as const).map(([k, label]) => {
           const active = feedTab === k;
           return (
@@ -249,7 +289,45 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
         })}
       </div>
 
-      {feedTab === "gifts" ? (
+      {feedTab === "active" ? (
+        <section data-tour="feed-active">
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">Свежие подарки</h2>
+            <span className="text-xs text-muted-foreground">
+              {filteredActive ? `${filteredActive.length}` : ""}
+            </span>
+          </div>
+
+          {!activeGifts ? (
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+            </div>
+          ) : filteredActive && filteredActive.length === 0 ? (
+            <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
+              {q ? "Ничего не нашлось 🌿" : "Пока нет активных подарков — будь первым, подари что-нибудь 🎁"}
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {filteredActive?.map((g) => (
+                <ActiveGiftCard key={g.id} gift={g} />
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : feedTab === "wishes" ? (
+        <section data-tour="feed-wishes">
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
+          </div>
+          <WishesFeed
+            searchQuery={query}
+            onCreate={() => onCreateWish?.()}
+            onOpen={(id) => onOpenWish?.(id)}
+          />
+        </section>
+      ) : (
         <section data-tour="feed-gifts">
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Уже нашли хозяев</h2>
@@ -276,19 +354,57 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
             </ul>
           )}
         </section>
-      ) : (
-        <section data-tour="feed-wishes">
-          <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">Ждут исполнения</h2>
-          </div>
-          <WishesFeed
-            searchQuery={query}
-            onCreate={() => onCreateWish?.()}
-            onOpen={(id) => onOpenWish?.(id)}
-          />
-        </section>
       )}
     </div>
+  );
+}
+
+function ActiveGiftCard({ gift }: { gift: Gift }) {
+  // Карточка ведёт на профиль дарителя, где подарок можно получить.
+  if (!gift.owner_id) return null;
+  return (
+    <li>
+      <Link
+        to="/user/$userId"
+        params={{ userId: gift.owner_id }}
+        onClick={() => haptic("light")}
+        className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm transition active:scale-[0.98]"
+      >
+        {gift.image_url ? (
+          <img
+            src={gift.image_url}
+            alt={gift.title}
+            className="h-20 w-20 shrink-0 rounded-xl object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+            🎁
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="truncate text-[15px] font-semibold leading-tight">
+              {gift.title}
+            </div>
+            <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
+              {gift.cost} {gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов"}
+            </span>
+          </div>
+          {gift.description && (
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              {gift.description}
+            </p>
+          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+              {gift.owner_name}
+            </span>
+            <span className="text-[11px] text-primary">Открыть и получить →</span>
+          </div>
+        </div>
+      </Link>
+    </li>
   );
 }
 
