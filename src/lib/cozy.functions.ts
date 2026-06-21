@@ -184,6 +184,15 @@ export const claimGift = createServerFn({ method: "POST" })
       failOp("CLAIM_FAILED", error);
     }
     const first = Array.isArray(rows) ? rows[0] : rows;
+    // Автоматическое первое сообщение в чат — чтобы у владельца появилось
+    // непрочитанное (счётчик считает только сообщения) и виден живой чат.
+    if (first?.chat_id) {
+      await supabase.from("messages").insert({
+        chat_id: first.chat_id as string,
+        sender_id: userId,
+        content: "Привет! 🎁 Хочу получить твой подарок. Давай договоримся о встрече?",
+      });
+    }
     // Уведомляем владельца подарка о брони.
     const { data: g } = await supabase
       .from("gifts")

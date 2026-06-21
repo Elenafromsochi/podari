@@ -171,6 +171,14 @@ export const fulfillWish = createServerFn({ method: "POST" })
     const { data: rows, error } = await supabase.rpc("fulfill_wish", { _wish_id: data.wish_id });
     if (error) failOp(error.message || "FULFILL_WISH_FAILED", error);
     const first = (rows as Array<{ transaction_id: string; chat_id: string }>)?.[0];
+    // Авто-сообщение в чат — чтобы у автора желания появилось непрочитанное.
+    if (first?.chat_id) {
+      await supabase.from("messages").insert({
+        chat_id: first.chat_id,
+        sender_id: context.userId,
+        content: "Привет! 💫 Хочу исполнить твоё желание. Расскажешь подробности?",
+      });
+    }
     // Уведомляем автора желания.
     const { data: w } = await supabase
       .from("wishes")
