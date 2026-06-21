@@ -542,11 +542,11 @@ export const getMyPostedGifts = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
     // С городом/онлайн; если миграция ещё не накатана — без них.
     let { data, error } = await build(
-      "id, title, category, description, image_url, status, created_at, city, is_online",
+      "id, title, category, description, image_url, status, cost, created_at, city, is_online",
     );
     if (error)
       ({ data, error } = await build(
-        "id, title, category, description, image_url, status, created_at",
+        "id, title, category, description, image_url, status, cost, created_at",
       ));
     if (error) failOp("GIFTS_LOAD_FAILED", error);
     return data ?? [];
@@ -1001,6 +1001,7 @@ export const updateGift = createServerFn({ method: "POST" })
         title: z.string().min(1).max(200),
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80),
+        cost: z.number().int().min(1).max(5).optional(),
       })
       .parse(input),
   )
@@ -1015,14 +1016,25 @@ export const updateGift = createServerFn({ method: "POST" })
     if (!existing) throw new Error("GIFT_NOT_FOUND");
     if (existing.owner_id !== userId) throw new Error("NOT_OWNER");
     if (existing.status !== "available") throw new Error("GIFT_IN_DEAL");
-    const { error } = await supabase
-      .from("gifts")
-      .update({
-        title: data.title,
-        description: data.description ?? null,
-        category: data.category,
-      })
-      .eq("id", data.id);
+
+    const patch: Record<string, unknown> = {
+      title: data.title,
+      description: data.description ?? null,
+      category: data.category,
+    };
+    // Стоимость менять можно, но не выше своего уровня (как и при публикации).
+    if (typeof data.cost === "number") {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("level")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const level = (prof?.level as number | undefined) ?? 1;
+      if (data.cost > level) throw new Error("LEVEL_TOO_LOW");
+      patch.cost = data.cost;
+    }
+
+    const { error } = await supabase.from("gifts").update(patch).eq("id", data.id);
     if (error) failOp("GIFT_UPDATE_FAILED", error);
     return { ok: true };
   });
