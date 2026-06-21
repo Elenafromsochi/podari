@@ -471,6 +471,49 @@ export const submitReview = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Reviews about a user (тексты отзывов) ----------
+export const getReviewsAbout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: rows } = await supabase
+      .from("reviews")
+      .select("id, rating, comment, created_at, author_id, is_auto")
+      .eq("target_id", data.user_id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    const list = (rows ?? []) as Array<{
+      id: string;
+      rating: number;
+      comment: string | null;
+      created_at: string;
+      author_id: string;
+      is_auto: boolean;
+    }>;
+    const ids = Array.from(new Set(list.map((r) => r.author_id).filter(Boolean)));
+    const nameMap = new Map<string, string>();
+    if (ids.length) {
+      const { data: profs } = await supabase.rpc("get_public_profiles", { _user_ids: ids });
+      for (const p of (profs ?? []) as Array<{ user_id: string; display_name: string }>) {
+        nameMap.set(p.user_id, p.display_name || "Гость");
+      }
+    }
+    const avg =
+      list.length > 0 ? list.reduce((s, r) => s + (r.rating ?? 0), 0) / list.length : 0;
+    return {
+      count: list.length,
+      avg: Math.round(avg * 10) / 10,
+      items: list.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        created_at: r.created_at,
+        author_name: nameMap.get(r.author_id) ?? "Гость",
+      })),
+    };
+  });
+
 // ---------- Notifications preference ----------
 export const getNotificationsEnabled = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

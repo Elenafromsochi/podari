@@ -46,7 +46,7 @@ interface Props {
 
 type Stats = { active_gifts: number; gifted_total: number; wishes_open: number };
 
-export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, onCreateWish, onOpenWish, initialFeedTab = "active" }: Props) {
+export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish, onOpenWish, initialFeedTab = "active" }: Props) {
   const [gifted, setGifted] = useState<Gift[] | null>(null);
   const [activeGifts, setActiveGifts] = useState<Gift[] | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTab>(initialFeedTab);
@@ -311,7 +311,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
           ) : (
             <ul className="space-y-3">
               {filteredActive?.map((g) => (
-                <ActiveGiftCard key={g.id} gift={g} />
+                <ActiveGiftCard key={g.id} gift={g} onClaim={onPickGift} />
               ))}
             </ul>
           )}
@@ -359,16 +359,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift: _onPickGift, 
   );
 }
 
-function ActiveGiftCard({ gift }: { gift: Gift }) {
-  // Карточка ведёт на профиль дарителя, где подарок можно получить.
+function ActiveGiftCard({ gift, onClaim }: { gift: Gift; onClaim: (giftId: string) => void }) {
   if (!gift.owner_id) return null;
+  const word = gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов";
   return (
-    <li>
+    <li className="rounded-2xl border bg-card p-3 shadow-sm">
+      {/* Шапка карточки ведёт на профиль дарителя (детали, другие подарки) */}
       <Link
         to="/user/$userId"
         params={{ userId: gift.owner_id }}
         onClick={() => haptic("light")}
-        className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm transition active:scale-[0.98]"
+        className="flex gap-3 transition active:scale-[0.99]"
       >
         {gift.image_url ? (
           <img
@@ -388,7 +389,7 @@ function ActiveGiftCard({ gift }: { gift: Gift }) {
               {gift.title}
             </div>
             <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
-              {gift.cost} {gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов"}
+              {gift.cost} {word}
             </span>
           </div>
           {gift.description && (
@@ -396,14 +397,28 @@ function ActiveGiftCard({ gift }: { gift: Gift }) {
               {gift.description}
             </p>
           )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
-              {gift.owner_name}
-            </span>
-            <span className="text-[11px] text-primary">Открыть и получить →</span>
-          </div>
+          <span className="mt-1.5 inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+            {gift.owner_name}
+          </span>
         </div>
       </Link>
+
+      {/* Прямая бронь: списываем балл и открываем чат с дарителем */}
+      <button
+        type="button"
+        onClick={() => {
+          haptic("medium");
+          try {
+            localStorage.setItem("cozygift_last_claim_cost", String(gift.cost ?? 1));
+          } catch {
+            /* noop */
+          }
+          onClaim(gift.id);
+        }}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
+      >
+        🎁 Получить за {gift.cost} {word}
+      </button>
     </li>
   );
 }
