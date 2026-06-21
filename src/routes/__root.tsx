@@ -92,12 +92,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/13393fc9-4e60-4336-9b01-e334914d190b/id-preview-851278b3--bd25f75c-2201-409b-aa60-d7c459f781a6.lovable.app-1779714519302.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/13393fc9-4e60-4336-9b01-e334914d190b/id-preview-851278b3--bd25f75c-2201-409b-aa60-d7c459f781a6.lovable.app-1779714519302.png" },
+      // Иконка приложения на экране «Домой» (PWA)
+      { name: "theme-color", content: "#FFD2B0" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Подари" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
