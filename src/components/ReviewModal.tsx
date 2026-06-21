@@ -144,13 +144,16 @@ export function ReviewModal({
                 {confirmedCondition ? `${confirmedCondition} из 5` : "оцени"}
               </span>
             </div>
-            <label className="block text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               📸 Фото-подтверждение состояния (по желанию):
+            </div>
+            <label className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-xl border bg-background px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] hover:bg-accent">
+              📷 {proofPhoto ? "Заменить фото" : "Выбрать фото"}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleProofPhoto}
-                className="mt-1 block w-full text-xs"
+                className="hidden"
               />
             </label>
             {proofPhoto && (
