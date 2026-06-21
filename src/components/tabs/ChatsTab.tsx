@@ -88,18 +88,38 @@ export function ChatsTab() {
   const chatsFn = useServerFn(getMyChats);
 
   useEffect(() => {
-    (async () => {
-      const c = (await chatsFn()) as {
-        with_givers: ChatItem[];
-        with_receivers: ChatItem[];
-        archive_with_givers?: ChatItem[];
-        archive_with_receivers?: ChatItem[];
-      };
-      setGivers(c.with_givers ?? []);
-      setReceivers(c.with_receivers ?? []);
-      setArchiveG(c.archive_with_givers ?? []);
-      setArchiveR(c.archive_with_receivers ?? []);
-    })();
+    let alive = true;
+    const load = async () => {
+      try {
+        const c = (await chatsFn()) as {
+          with_givers: ChatItem[];
+          with_receivers: ChatItem[];
+          archive_with_givers?: ChatItem[];
+          archive_with_receivers?: ChatItem[];
+        };
+        if (!alive) return;
+        setGivers(c.with_givers ?? []);
+        setReceivers(c.with_receivers ?? []);
+        setArchiveG(c.archive_with_givers ?? []);
+        setArchiveR(c.archive_with_receivers ?? []);
+      } catch {
+        /* нет связи — оставляем прежний список */
+      }
+    };
+    load();
+    // Обновляем список при возврате в приложение и после завершения сделки —
+    // иначе завершённый чат «зависает» в активных, пока не перезагрузишь.
+    const onFocus = () => load();
+    const onChanged = () => load();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("cozy:chats-changed", onChanged);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("cozy:chats-changed", onChanged);
+    };
   }, [chatsFn]);
 
   // Непрочитанный = последнее сообщение от собеседника и пришло позже,

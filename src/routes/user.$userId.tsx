@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
-import { UserJourney } from "@/components/UserJourney";
 import { GlobalChrome } from "@/components/GlobalChrome";
 
 
@@ -174,8 +173,6 @@ function UserProfilePage() {
         </div>
 
       </div>
-
-      <UserJourney userId={userId} />
 
       <section className="space-y-3">
         <h2 className="pt-2 text-lg font-semibold tracking-tight">Активные подарки</h2>
