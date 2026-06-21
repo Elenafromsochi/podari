@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LevelBadge } from "@/components/LevelBadge";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (id: string) => void }) {
+  const [lightbox, setLightbox] = useState(false);
   // Канонический адрес — чтобы ссылка всегда вела на 23podari.ru, даже если
   // приложение открыто по старому длинному адресу.
   const origin = APP_BASE_URL;
@@ -43,27 +45,32 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
   const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   return (
     <li className="relative">
-      <button
-        type="button"
-        onClick={() => {
-          haptic("select");
-          onOpen(w.id);
-        }}
-        className="flex w-full gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.98]"
-      >
+      <div className="flex w-full gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm">
         {w.image_url ? (
-          <img
-            src={w.image_url}
-            alt={w.title}
-            loading="lazy"
-            className="h-20 w-20 shrink-0 rounded-xl object-cover"
-          />
+          <button
+            type="button"
+            onClick={() => {
+              haptic("light");
+              setLightbox(true);
+            }}
+            aria-label="Посмотреть фото"
+            className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"
+          >
+            <img src={w.image_url} alt={w.title} loading="lazy" className="h-full w-full object-cover" />
+          </button>
         ) : (
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-3xl">
             ✨
           </div>
         )}
-        <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => {
+            haptic("select");
+            onOpen(w.id);
+          }}
+          className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
+        >
           <div className="truncate pr-7 text-[15px] font-semibold leading-tight">{w.title}</div>
           {w.description && (
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{w.description}</p>
@@ -90,8 +97,8 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
               </span>
             ) : null}
           </div>
-        </div>
-      </button>
+        </button>
+      </div>
 
       <button
         type="button"
@@ -101,6 +108,9 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
       >
         <Share2 className="h-3.5 w-3.5" />
       </button>
+      {lightbox && w.image_url && (
+        <PhotoLightbox photos={[w.image_url]} onClose={() => setLightbox(false)} />
+      )}
     </li>
   );
 }

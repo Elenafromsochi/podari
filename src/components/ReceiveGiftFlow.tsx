@@ -14,6 +14,7 @@ import { APP_BASE_URL } from "@/lib/app-url";
 import { LevelBadge } from "@/components/LevelBadge";
 import { giftShareVariants } from "@/lib/random-copy";
 import { shareToTelegram, thirdVariant } from "@/lib/share";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { emitTour } from "@/lib/tour";
 
 
@@ -38,6 +39,7 @@ function timeAgo(iso?: string | null): string {
  *  и кликабельным дарителем (ведёт на его профиль). */
 function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; meId: string | null }) {
   const [expanded, setExpanded] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
   // Ссылка ведёт на главную и засчитывает реферал. Никуда не перенаправляем —
   // человек остаётся там, где открыл ссылку. Адрес всегда канонический
   // (23podari.ru), даже если открыто по старому длинному адресу.
@@ -55,12 +57,20 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
   return (
     <Card className="overflow-hidden p-3">
       <div className="flex gap-3">
-        {g.image_url ? (
-          <img
-            src={g.image_url}
-            alt={g.title}
-            className="h-20 w-20 shrink-0 rounded-lg object-cover"
-          />
+        {photos.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setLightbox(true)}
+            aria-label="Посмотреть фото"
+            className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg"
+          >
+            <img src={photos[0]} alt={g.title} className="h-full w-full object-cover" />
+            {photos.length > 1 && (
+              <span className="absolute bottom-1 right-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                📷 {photos.length}
+              </span>
+            )}
+          </button>
         ) : (
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-3xl">
             🎁
@@ -170,6 +180,7 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
         🎁 Получить за {g.cost ?? 1} балл
       </Button>
 
+      {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </Card>
   );
 }
