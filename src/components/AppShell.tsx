@@ -6,6 +6,7 @@ import { ProfileTab } from "@/components/tabs/ProfileTab";
 import { ChatsTab } from "@/components/tabs/ChatsTab";
 import { getUnreadCounts } from "@/lib/cozy.functions";
 import { touchLastSeen } from "@/lib/last-seen.functions";
+import { setAppBadge } from "@/lib/app-badge";
 import { useServerFn } from "@tanstack/react-start";
 import type { UserProfile } from "@/lib/auth-state";
 
@@ -48,7 +49,9 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
           data: { last_seen_chats_at: lastChats, last_seen_gifts_at: null },
         })) as { chats_unread: number };
         if (!alive) return;
-        setUnreadChats(tabRef.current === "chats" ? 0 : res.chats_unread ?? 0);
+        const n = tabRef.current === "chats" ? 0 : res.chats_unread ?? 0;
+        setUnreadChats(n);
+        setAppBadge(n);
       } catch {
         /* noop */
       }

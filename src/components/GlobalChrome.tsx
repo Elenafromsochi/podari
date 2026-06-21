@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav, type AppTab } from "@/components/BottomNav";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
 import { getUnreadCounts } from "@/lib/cozy.functions";
+import { setAppBadge } from "@/lib/app-badge";
 
 /**
  * Глобальная "обвязка" для страниц вне AppShell (чат, кабинет, профиль).
@@ -33,7 +34,10 @@ export function GlobalChrome({ children }: { children: React.ReactNode }) {
         const r = (await unreadFn({
           data: { last_seen_chats_at: last, last_seen_gifts_at: null },
         })) as { chats_unread: number };
-        if (alive) setUnread(r.chats_unread ?? 0);
+        if (alive) {
+          setUnread(r.chats_unread ?? 0);
+          setAppBadge(r.chats_unread ?? 0);
+        }
       } catch {
         /* noop */
       }

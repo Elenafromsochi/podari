@@ -51,6 +51,7 @@ type Stats = { active_gifts: number; gifted_total: number; wishes_open: number }
 export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish, onOpenWish, initialFeedTab = "active" }: Props) {
   const [gifted, setGifted] = useState<Gift[] | null>(null);
   const [activeGifts, setActiveGifts] = useState<Gift[] | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTab>(initialFeedTab);
   const [stats, setStats] = useState<Stats | null>(null);
   const [query, setQuery] = useState("");
@@ -136,6 +137,10 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
         })),
       );
     })();
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setMeId(data.session?.user?.id ?? null));
   }, []);
 
   useEffect(() => {
@@ -313,7 +318,7 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
           ) : (
             <ul className="space-y-3">
               {filteredActive?.map((g) => (
-                <ActiveGiftCard key={g.id} gift={g} onClaim={onPickGift} />
+                <ActiveGiftCard key={g.id} gift={g} onClaim={onPickGift} isMine={g.owner_id === meId} />
               ))}
             </ul>
           )}
@@ -397,7 +402,7 @@ function GiftThumb({ gift, onOpen }: { gift: Gift; onOpen: () => void }) {
   );
 }
 
-function ActiveGiftCard({ gift, onClaim }: { gift: Gift; onClaim: (giftId: string) => void }) {
+function ActiveGiftCard({ gift, onClaim, isMine }: { gift: Gift; onClaim: (giftId: string) => void; isMine: boolean }) {
   const [lightbox, setLightbox] = useState(false);
   if (!gift.owner_id) return null;
   const word = gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов";
@@ -433,22 +438,29 @@ function ActiveGiftCard({ gift, onClaim }: { gift: Gift; onClaim: (giftId: strin
         </Link>
       </div>
 
-      {/* Прямая бронь: списываем балл и открываем чат с дарителем */}
-      <button
-        type="button"
-        onClick={() => {
-          haptic("medium");
-          try {
-            localStorage.setItem("cozygift_last_claim_cost", String(gift.cost ?? 1));
-          } catch {
-            /* noop */
-          }
-          onClaim(gift.id);
-        }}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
-      >
-        🎁 Получить за {gift.cost} {word}
-      </button>
+      {/* Прямая бронь: списываем балл и открываем чат с дарителем.
+          У своих подарков кнопку не показываем. */}
+      {isMine ? (
+        <div className="mt-3 rounded-xl bg-muted/60 px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">
+          Это твой подарок
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            haptic("medium");
+            try {
+              localStorage.setItem("cozygift_last_claim_cost", String(gift.cost ?? 1));
+            } catch {
+              /* noop */
+            }
+            onClaim(gift.id);
+          }}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
+        >
+          🎁 Получить за {gift.cost} {word}
+        </button>
+      )}
 
       {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </li>
