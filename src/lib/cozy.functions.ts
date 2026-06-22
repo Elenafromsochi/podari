@@ -1224,7 +1224,7 @@ export const getGiftForEdit = createServerFn({ method: "POST" })
     const sel = (cols: string) =>
       supabase.from("gifts").select(cols).eq("id", data.id).maybeSingle();
     let res = await sel(
-      "id, owner_id, status, title, description, category, image_url, image_urls, cost, condition, gift_kind, price_tier, price_rub, city, is_online, quantity",
+      "id, owner_id, status, title, description, category, image_url, image_urls, cost, condition, gift_kind, city, is_online, quantity",
     );
     if (res.error)
       res = await sel(

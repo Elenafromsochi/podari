@@ -48,6 +48,7 @@ function GiftPage() {
   const [meId, setMeId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [lightbox, setLightbox] = useState(false);
+  const [photoIdx, setPhotoIdx] = useState(0);
   // «Подарить снова»: показываем степпер количества и сохраняем заново.
   const [reofferQty, setReofferQty] = useState(3);
   const [reoffering, setReoffering] = useState(false);
@@ -189,19 +190,48 @@ function GiftPage() {
       ) : (
         <div className="mt-4">
           {photos.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setLightbox(true)}
-              className="relative block w-full overflow-hidden rounded-2xl"
-              aria-label="Посмотреть фото"
-            >
-              <img src={photos[0]} alt={gift.title} className="max-h-80 w-full object-cover" />
+            <div className="relative">
+              <div
+                className="flex snap-x snap-mandatory overflow-x-auto rounded-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  const idx = Math.round(el.scrollLeft / el.clientWidth);
+                  if (idx !== photoIdx) setPhotoIdx(idx);
+                }}
+              >
+                {photos.map((src, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setPhotoIdx(i);
+                      setLightbox(true);
+                    }}
+                    className="w-full shrink-0 snap-center"
+                    aria-label={`Фото ${i + 1} из ${photos.length}`}
+                  >
+                    <img src={src} alt={gift.title} className="max-h-80 w-full object-cover" />
+                  </button>
+                ))}
+              </div>
               {photos.length > 1 && (
-                <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-2 py-0.5 text-xs font-semibold text-white">
-                  📷 {photos.length}
-                </span>
+                <>
+                  <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-black/55 px-2 py-0.5 text-xs font-semibold text-white">
+                    {photoIdx + 1}/{photos.length}
+                  </span>
+                  <div className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+                    {photos.map((_, n) => (
+                      <span
+                        key={n}
+                        className={`h-1.5 w-1.5 rounded-full transition ${
+                          n === photoIdx ? "bg-white" : "bg-white/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
-            </button>
+            </div>
           ) : (
             <div className="flex h-56 w-full items-center justify-center rounded-2xl bg-muted text-6xl">
               🎁
@@ -256,13 +286,13 @@ function GiftPage() {
             </button>
             {canEditOwn && (
               <>
-                <button
-                  type="button"
-                  onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId } })}
+                <Link
+                  to="/gift/$giftId/edit"
+                  params={{ giftId }}
                   className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
                 >
                   ✏️ Редактировать
-                </button>
+                </Link>
                 <button
                   type="button"
                   onClick={doDelete}
@@ -338,7 +368,7 @@ function GiftPage() {
       )}
 
       {lightbox && photos.length > 0 && (
-        <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />
+        <PhotoLightbox photos={photos} startIndex={photoIdx} onClose={() => setLightbox(false)} />
       )}
     </div>
   );
