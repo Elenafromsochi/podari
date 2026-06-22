@@ -20,7 +20,15 @@ interface Props {
   initialTab?: AppTab;
 }
 
-export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, onOpenWish, initialTab = "home" }: Props) {
+export function AppShell({
+  user,
+  onGive,
+  onReceive,
+  onPickGift,
+  onCreateWish,
+  onOpenWish,
+  initialTab = "home",
+}: Props) {
   const [tab, setTab] = useState<AppTab>(initialTab);
   const [unreadChats, setUnreadChats] = useState(0);
   const [achievementsBadge, setAchievementsBadge] = useState(0);
@@ -38,7 +46,6 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
     return () => window.clearInterval(id);
   }, [touchFn]);
 
-
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
@@ -49,7 +56,7 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
           data: { last_seen_chats_at: lastChats, last_seen_gifts_at: null },
         })) as { chats_unread: number };
         if (!alive) return;
-        const n = tabRef.current === "chats" ? 0 : res.chats_unread ?? 0;
+        const n = tabRef.current === "chats" ? 0 : (res.chats_unread ?? 0);
         setUnreadChats(n);
         setAppBadge(n);
       } catch {
@@ -71,9 +78,7 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
     }
     // Гид: сообщаем о смене вкладки, чтобы туториал мог продвинуться
     if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("cozy:tour-event", { detail: `${tab}-opened` }),
-      );
+      window.dispatchEvent(new CustomEvent("cozy:tour-event", { detail: `${tab}-opened` }));
     }
   }, [tab]);
 
@@ -92,6 +97,7 @@ export function AppShell({ user, onGive, onReceive, onPickGift, onCreateWish, on
             onPickGift={onPickGift}
             onCreateWish={onCreateWish}
             onOpenWish={onOpenWish}
+            onOpenProfile={() => setTab("profile")}
           />
         )}
         {tab === "profile" && (
