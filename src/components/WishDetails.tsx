@@ -4,6 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { fulfillWish, deleteWish } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Share2 } from "lucide-react";
@@ -39,6 +49,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
   const [meId, setMeId] = useState<string | null>(null);
   const [ownerName, setOwnerName] = useState<string>("Гость");
   const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const fulfillFn = useServerFn(fulfillWish);
   const deleteFn = useServerFn(deleteWish);
 
@@ -61,7 +72,9 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
           break;
         }
       }
-      setWish(data ? ({ ...data, cost: Number((data as { cost?: number }).cost) || 1 } as Wish) : null);
+      setWish(
+        data ? ({ ...data, cost: Number((data as { cost?: number }).cost) || 1 } as Wish) : null,
+      );
       if (data?.owner_id) {
         const { data: profs } = await supabase.rpc("get_public_profiles", {
           _user_ids: [data.owner_id],
@@ -93,20 +106,24 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Снять пожелание с публикации?")) return;
     try {
       await deleteFn({ data: { wish_id: wishId } });
+      setConfirmDelete(false);
       toast.success("Пожелание удалено");
       onDeleted();
     } catch (e) {
-      toast.error("Не удалось удалить", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Не удалось удалить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     }
   };
 
   if (!wish) {
     return (
       <div className="mx-auto w-full max-w-md px-5 py-8">
-        <button onClick={onBack} className="mb-4 text-sm text-muted-foreground">← Назад</button>
+        <button onClick={onBack} className="mb-4 text-sm text-muted-foreground">
+          ← Назад
+        </button>
         <p className="text-sm text-muted-foreground">Загружаем…</p>
       </div>
     );
@@ -122,7 +139,9 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
         {wish.image_url ? (
           <img src={wish.image_url} alt={wish.title} className="h-56 w-full object-cover" />
         ) : (
-          <div className="flex h-40 w-full items-center justify-center bg-peach/40 text-6xl">✨</div>
+          <div className="flex h-40 w-full items-center justify-center bg-peach/40 text-6xl">
+            ✨
+          </div>
         )}
         {wish.image_urls && wish.image_urls.length > 1 && (
           <div className="flex gap-2 overflow-x-auto border-b bg-background/60 px-3 py-2">
@@ -140,7 +159,8 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
         <div className="p-5">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[12px] font-semibold text-emerald-800">
-              🎁 {wish.cost} {wish.cost === 1 ? "балл" : wish.cost < 5 ? "балла" : "баллов"} за исполнение
+              🎁 {wish.cost} {wish.cost === 1 ? "балл" : wish.cost < 5 ? "балла" : "баллов"} за
+              исполнение
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {wish.category}
@@ -154,7 +174,9 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
           </div>
           <h1 className="text-xl font-semibold tracking-tight">{wish.title}</h1>
           {wish.description && (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">{wish.description}</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">
+              {wish.description}
+            </p>
           )}
           <div className="mt-4 text-sm">
             <span className="text-muted-foreground">Пожелатель: </span>
@@ -171,10 +193,28 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
             {isOwn ? (
               <>
                 {isOpen && (
-                  <Button onClick={handleDelete} variant="outline" className="w-full rounded-2xl">
+                  <Button
+                    onClick={() => setConfirmDelete(true)}
+                    variant="outline"
+                    className="w-full rounded-2xl"
+                  >
                     Снять с публикации
                   </Button>
                 )}
+                <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Снять пожелание с публикации?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Пожелание исчезнет из ленты. Это действие нельзя отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Отмена</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete}>Снять</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 {!isOpen && (
                   <p className="rounded-2xl bg-muted p-3 text-center text-xs text-muted-foreground">
                     Это твоё пожелание — следи за ним в «Моих пожеланиях».
@@ -187,7 +227,8 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
                 disabled={loading}
                 className="w-full rounded-2xl bg-mint text-mint-foreground hover:bg-mint/90"
               >
-                🎁 {loading
+                🎁{" "}
+                {loading
                   ? "Открываем чат…"
                   : `Исполнить — получить ${wish.cost} ${wish.cost === 1 ? "балл" : wish.cost < 5 ? "балла" : "баллов"}`}
               </Button>
