@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getPublicGift, claimGift, reofferGift } from "@/lib/cozy.functions";
+import { getPublicGift, claimGift, reofferGift, deleteGift } from "@/lib/cozy.functions";
+import { shareGift } from "@/lib/share";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { LevelBadge } from "@/components/LevelBadge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +41,7 @@ function GiftPage() {
   const getGift = useServerFn(getPublicGift);
   const claim = useServerFn(claimGift);
   const reoffer = useServerFn(reofferGift);
+  const deleteFn = useServerFn(deleteGift);
 
   const [gift, setGift] = useState<PublicGift | null | undefined>(undefined);
   const [authed, setAuthed] = useState(false);
@@ -139,7 +141,24 @@ function GiftPage() {
     }
   };
 
+  const doDelete = async () => {
+    if (!gift) return;
+    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»? Это нельзя отменить.`)) return;
+    try {
+      await deleteFn({ data: { id: giftId } });
+      toast.success("Подарок удалён");
+      navigate({ to: "/" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(
+        msg.includes("GIFT_IN_DEAL") ? "Нельзя удалить: подарок уже в сделке" : "Не удалось удалить",
+        { description: msg.includes("GIFT_IN_DEAL") ? undefined : msg },
+      );
+    }
+  };
+
   const isOwner = !!meId && gift?.owner_id === meId;
+  const canEditOwn = isOwner && gift?.status === "available";
   // «Подарить снова» имеет смысл, когда экземпляры кончились (не available):
   // у многоразового (тираж > 1) или у любого уже подаренного.
   const canReoffer =
@@ -225,6 +244,35 @@ function GiftPage() {
               <LevelBadge level={gift.owner_level} />
             </Link>
           )}
+
+          {/* Поделиться (всем) + редактировать/удалить (владельцу) */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => shareGift(giftId, gift.title)}
+              className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+            >
+              📤 Поделиться
+            </button>
+            {canEditOwn && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId } })}
+                  className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+                >
+                  ✏️ Редактировать
+                </button>
+                <button
+                  type="button"
+                  onClick={doDelete}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
+                >
+                  🗑 Удалить
+                </button>
+              </>
+            )}
+          </div>
 
           <div className="mt-6">
             {canReoffer ? (

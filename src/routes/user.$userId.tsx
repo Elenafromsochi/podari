@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, Share2 } from "lucide-react";
+import { shareGift } from "@/lib/share";
 import { supabase } from "@/integrations/supabase/client";
 import { CityBadge } from "@/components/CityBadge";
 import { Button } from "@/components/ui/button";
@@ -245,7 +246,7 @@ function UserProfilePage() {
                         )}
                       </div>
                     </button>
-                    <div className="mt-2 pl-[92px]">
+                    <div className="mt-2 flex items-center gap-2 pl-[92px]">
                       <Button
                         size="sm"
                         className="h-8 rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
@@ -254,6 +255,14 @@ function UserProfilePage() {
                       >
                         {claiming === g.id ? "Получаем…" : "Получить подарок"}
                       </Button>
+                      <button
+                        type="button"
+                        onClick={() => shareGift(g.id, g.title)}
+                        aria-label="Поделиться подарком"
+                        className="flex h-8 items-center gap-1.5 rounded-xl border bg-background px-3 text-xs font-medium text-muted-foreground transition hover:bg-accent active:scale-[0.98]"
+                      >
+                        <Share2 className="h-3.5 w-3.5" /> Поделиться
+                      </button>
                     </div>
                   </article>
                 </li>

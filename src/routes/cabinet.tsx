@@ -3,7 +3,8 @@ import { GlobalChrome } from "@/components/GlobalChrome";
 
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2 } from "lucide-react";
+import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2, Share2 } from "lucide-react";
+import { shareGift } from "@/lib/share";
 import { toast } from "sonner";
 import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
 import { APP_BASE_URL } from "@/lib/app-url";
@@ -574,13 +575,8 @@ function PostedGiftItem({
   editable: boolean;
   onChanged: (action: "update" | "delete", id: string, patch?: Partial<Gift>) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [title, setTitle] = useState(gift.title);
-  const [category, setCategory] = useState(gift.category);
-  const [description, setDescription] = useState(gift.description ?? "");
-  const [saving, setSaving] = useState(false);
-  const updateFn = useServerFn(updateGift);
   const deleteFn = useServerFn(deleteGift);
   const reofferFn = useServerFn(reofferGift);
   const [reofferQty, setReofferQty] = useState(gift.quantity && gift.quantity > 1 ? gift.quantity : 3);
@@ -610,40 +606,6 @@ function PostedGiftItem({
       });
     } finally {
       setReoffering(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!title.trim() || !category.trim()) {
-      toast.error("Заполни название и категорию");
-      return;
-    }
-    setSaving(true);
-    try {
-      await updateFn({
-        data: {
-          id: gift.id,
-          title: title.trim(),
-          category: category.trim(),
-          description: description.trim() || null,
-        },
-      });
-      onChanged("update", gift.id, {
-        title: title.trim(),
-        category: category.trim(),
-        description: description.trim() || null,
-      });
-      toast.success("Подарок обновлён ✨");
-      setOpen(false);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("GIFT_IN_DEAL")) {
-        toast.error("Нельзя изменить: подарок уже в сделке");
-      } else {
-        toast.error("Не удалось сохранить", { description: msg });
-      }
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -683,26 +645,36 @@ function PostedGiftItem({
           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{gift.description}</p>
         )}
       </div>
-      {canModify && (
-        <div className="flex shrink-0 flex-col gap-1">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-label="Редактировать подарок"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            aria-label="Удалить подарок"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      <div className="flex shrink-0 flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => shareGift(gift.id, gift.title)}
+          aria-label="Поделиться подарком"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+        {canModify && (
+          <>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
+              aria-label="Редактировать подарок"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              aria-label="Удалить подарок"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </>
+        )}
+      </div>
       </div>
 
       {canReoffer && (
@@ -737,37 +709,6 @@ function PostedGiftItem({
           </div>
         </div>
       )}
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Редактировать подарок</DialogTitle>
-            <DialogDescription>Изменения видны сразу всем пользователям</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="g-title">Название</Label>
-              <Input id="g-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="g-cat">Категория</Label>
-              <Input id="g-cat" value={category} onChange={(e) => setCategory(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="g-desc">Описание</Label>
-              <Textarea id="g-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-              Отмена
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Сохраняем…" : "Сохранить"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

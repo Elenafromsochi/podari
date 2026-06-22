@@ -1215,6 +1215,43 @@ export const getDealsBanner = createServerFn({ method: "POST" })
   });
 
 // ---------- Update / delete gift (only owner, only if not engaged) ----------
+// Загрузка подарка для полной формы редактирования (только владелец).
+export const getGiftForEdit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const sel = (cols: string) =>
+      supabase.from("gifts").select(cols).eq("id", data.id).maybeSingle();
+    let res = await sel(
+      "id, owner_id, status, title, description, category, image_url, image_urls, cost, condition, gift_kind, price_tier, price_rub, city, is_online, quantity",
+    );
+    if (res.error)
+      res = await sel(
+        "id, owner_id, status, title, description, category, image_url, image_urls, cost, condition, gift_kind",
+      );
+    if (res.error) failOp("GIFT_LOAD_FAILED", res.error);
+    const gg = (res.data ?? null) as Record<string, unknown> | null;
+    if (!gg) throw new Error("GIFT_NOT_FOUND");
+    if (gg.owner_id !== userId) throw new Error("NOT_OWNER");
+    return {
+      id: gg.id as string,
+      owner_id: (gg.owner_id as string | null) ?? null,
+      status: (gg.status as string | null) ?? null,
+      title: (gg.title as string | null) ?? null,
+      description: (gg.description as string | null) ?? null,
+      category: (gg.category as string | null) ?? null,
+      image_url: (gg.image_url as string | null) ?? null,
+      image_urls: (gg.image_urls as string[] | null) ?? null,
+      cost: (gg.cost as number | null) ?? null,
+      condition: (gg.condition as number | null) ?? null,
+      gift_kind: (gg.gift_kind as string | null) ?? null,
+      city: (gg.city as string | null) ?? null,
+      is_online: (gg.is_online as boolean | null) ?? null,
+      quantity: (gg.quantity as number | null) ?? null,
+    };
+  });
+
 export const updateGift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -1225,26 +1262,44 @@ export const updateGift = createServerFn({ method: "POST" })
         description: z.string().max(2000).nullable().optional(),
         category: z.string().min(1).max(80),
         cost: z.number().int().min(1).max(5).optional(),
+        condition: z.number().int().min(1).max(5).nullable().optional(),
+        gift_kind: GiftKind.optional(),
+        image_url: z.string().max(15_000_000).nullable().optional(),
+        image_urls: z.array(z.string().max(15_000_000)).max(10).optional(),
+        city: z.string().max(80).nullable().optional(),
+        is_online: z.boolean().optional(),
+        quantity: z.number().int().min(1).max(99).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: existing, error: loadErr } = await supabase
+    let { data: existing, error: loadErr } = await supabase
       .from("gifts")
-      .select("id, owner_id, status")
+      .select("id, owner_id, status, quantity")
       .eq("id", data.id)
       .maybeSingle();
+    if (loadErr)
+      ({ data: existing, error: loadErr } = await supabase
+        .from("gifts")
+        .select("id, owner_id, status")
+        .eq("id", data.id)
+        .maybeSingle());
     if (loadErr) failOp("GIFT_LOAD_FAILED", loadErr);
     if (!existing) throw new Error("GIFT_NOT_FOUND");
-    if (existing.owner_id !== userId) throw new Error("NOT_OWNER");
-    if (existing.status !== "available") throw new Error("GIFT_IN_DEAL");
+    const ex = existing as { owner_id?: string; status?: string; quantity?: number };
+    if (ex.owner_id !== userId) throw new Error("NOT_OWNER");
+    if (ex.status !== "available") throw new Error("GIFT_IN_DEAL");
 
     const patch: Record<string, unknown> = {
       title: data.title,
       description: data.description ?? null,
       category: data.category,
     };
+    if (data.condition !== undefined) patch.condition = data.condition;
+    if (data.gift_kind !== undefined) patch.gift_kind = data.gift_kind;
+    if (data.image_url !== undefined) patch.image_url = data.image_url;
+    if (data.image_urls !== undefined) patch.image_urls = data.image_urls;
     // Стоимость менять можно, но не выше своего уровня (как и при публикации).
     if (typeof data.cost === "number") {
       const { data: prof } = await supabase
@@ -1257,7 +1312,28 @@ export const updateGift = createServerFn({ method: "POST" })
       patch.cost = data.cost;
     }
 
-    const { error } = await supabase.from("gifts").update(patch).eq("id", data.id);
+    // Поля города/онлайна/количества появились позже — если колонок нет
+    // (миграция не накатана), повторяем апдейт без них.
+    const isUndefinedColumn = (e: { code?: string; message?: string } | null) =>
+      e?.code === "42703" ||
+      e?.code === "PGRST204" ||
+      /column .* does not exist|could not find the .* column|schema cache/i.test(e?.message ?? "");
+    const extended: Record<string, unknown> = { ...patch };
+    if (data.city !== undefined) extended.city = data.city;
+    if (typeof data.is_online === "boolean") extended.is_online = data.is_online;
+    if (typeof data.quantity === "number") {
+      extended.quantity = data.quantity;
+      // Остаток пересобираем только если тираж реально изменился — чтобы не
+      // обнулять уже сделанные брони при правке других полей.
+      if (data.quantity !== (ex.quantity ?? 1)) {
+        extended.quantity_remaining = data.quantity;
+      }
+    }
+
+    let { error } = await supabase.from("gifts").update(extended).eq("id", data.id);
+    if (error && isUndefinedColumn(error)) {
+      ({ error } = await supabase.from("gifts").update(patch).eq("id", data.id));
+    }
     if (error) failOp("GIFT_UPDATE_FAILED", error);
     return { ok: true };
   });

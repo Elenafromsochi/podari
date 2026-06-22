@@ -22,7 +22,7 @@ import {
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
-import { shareToTelegram, thirdVariant } from "@/lib/share";
+import { shareToTelegram, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { CityBadge } from "@/components/CityBadge";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
@@ -491,53 +491,10 @@ function EditableActiveItem({
   onUpdated: (patch: Partial<Gift>) => void;
   onDeleted: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  // Ссылка ведёт на страницу самого подарка (с реферальной меткой).
-  const shareLink = `${APP_BASE_URL}/gift/${gift.id}?ref=${ownerId}`;
-  const [title, setTitle] = useState(gift.title);
-  const [category, setCategory] = useState(gift.category);
-  const [description, setDescription] = useState(gift.description ?? "");
-  const [cost, setCost] = useState<number>(gift.cost ?? 1);
-  const [saving, setSaving] = useState(false);
-  const updateFn = useServerFn(updateGift);
   const deleteFn = useServerFn(deleteGift);
   const canModify = gift.status === "available";
-
-  const handleSave = async () => {
-    if (!title.trim() || !category.trim()) {
-      toast.error("Заполни название и категорию");
-      return;
-    }
-    setSaving(true);
-    try {
-      await updateFn({
-        data: {
-          id: gift.id,
-          title: title.trim(),
-          category: category.trim(),
-          description: description.trim() || null,
-          cost,
-        },
-      });
-      onUpdated({
-        title: title.trim(),
-        category: category.trim(),
-        description: description.trim() || null,
-        cost,
-      });
-      toast.success("Подарок обновлён ✨");
-      setOpen(false);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("GIFT_IN_DEAL")) toast.error("Нельзя изменить: подарок уже в сделке");
-      else if (msg.includes("LEVEL_TOO_LOW"))
-        toast.error("Этот номинал откроется на более высоком уровне");
-      else toast.error("Не удалось сохранить", { description: msg });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDelete = async () => {
     try {
@@ -569,10 +526,7 @@ function EditableActiveItem({
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
-          onClick={() => {
-            shareToTelegram(thirdVariant(giftShareVariants(gift.title)), shareLink);
-            toast.success("Ссылка на подарок готова — зови друзей 💚");
-          }}
+          onClick={() => shareGift(gift.id, gift.title)}
           aria-label="Поделиться подарком"
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
         >
@@ -582,7 +536,7 @@ function EditableActiveItem({
           <>
             <button
               type="button"
-              onClick={() => setOpen(true)}
+              onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
               aria-label="Редактировать подарок"
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
             >
@@ -599,81 +553,6 @@ function EditableActiveItem({
           </>
         )}
       </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Редактировать подарок</DialogTitle>
-            <DialogDescription>Изменения видны сразу всем пользователям</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor={`g-title-${gift.id}`}>Название</Label>
-              <Input id={`g-title-${gift.id}`} value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`g-cat-${gift.id}`}>Категория</Label>
-              <Input id={`g-cat-${gift.id}`} value={category} onChange={(e) => setCategory(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`g-desc-${gift.id}`}>Описание</Label>
-              <Textarea
-                id={`g-desc-${gift.id}`}
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Во сколько баллов оцениваешь?</Label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {COST_TIERS.map((t) => {
-                  const active = cost === t.cost;
-                  const locked = t.cost > userLevel;
-                  return (
-                    <button
-                      key={t.cost}
-                      type="button"
-                      onClick={() => {
-                        if (locked) {
-                          toast(`🔒 ${t.label}`, {
-                            description: `Откроется на ${t.cost} уровне.`,
-                          });
-                          return;
-                        }
-                        setCost(t.cost);
-                      }}
-                      className={`flex flex-col items-center rounded-xl border py-2 text-xs font-semibold transition ${
-                        active
-                          ? "border-primary bg-primary/10"
-                          : locked
-                            ? "border-border bg-muted/40 text-muted-foreground opacity-70"
-                            : "border-border bg-card hover:bg-accent"
-                      }`}
-                    >
-                      <span>{locked ? "🔒" : t.cost}</span>
-                      <span className="text-[10px] font-normal text-muted-foreground">
-                        {locked ? `ур. ${t.cost}` : t.cost === 1 ? "балл" : t.cost < 5 ? "балла" : "баллов"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {COST_TIERS.find((t) => t.cost === cost)?.range}
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
-              Отмена
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Сохраняем…" : "Сохранить"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
