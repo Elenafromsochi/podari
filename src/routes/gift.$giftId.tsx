@@ -349,7 +349,7 @@ function GiftPage() {
                 type="button"
                 onClick={onGet}
                 disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition active:scale-[0.98] hover:bg-primary/90 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90 disabled:opacity-60"
               >
                 {busy
                   ? "Минутку…"
