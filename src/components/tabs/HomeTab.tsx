@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, Send } from "lucide-react";
+import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, Send, Pencil, Trash2, Share2 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { shareGift } from "@/lib/share";
 import { restartTour } from "@/lib/tour";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stars } from "@/components/ui/stars";
 import { WishesFeed } from "@/components/WishesFeed";
 import { LevelBadge } from "@/components/LevelBadge";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
-import { getHomeStats } from "@/lib/cozy.functions";
+import { getHomeStats, deleteGift } from "@/lib/cozy.functions";
 
 import {
   pickRandom,
@@ -330,7 +331,13 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
           ) : (
             <ul className="space-y-3">
               {filteredActive?.map((g) => (
-                <ActiveGiftCard key={g.id} gift={g} onClaim={onPickGift} isMine={g.owner_id === meId} />
+                <ActiveGiftCard
+                  key={g.id}
+                  gift={g}
+                  onClaim={onPickGift}
+                  isMine={g.owner_id === meId}
+                  onDeleted={() => setActiveGifts((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
+                />
               ))}
             </ul>
           )}
@@ -414,9 +421,33 @@ function GiftThumb({ gift, onOpen }: { gift: Gift; onOpen: () => void }) {
   );
 }
 
-function ActiveGiftCard({ gift, onClaim, isMine }: { gift: Gift; onClaim: (giftId: string) => void; isMine: boolean }) {
+function ActiveGiftCard({
+  gift,
+  onClaim,
+  isMine,
+  onDeleted,
+}: {
+  gift: Gift;
+  onClaim: (giftId: string) => void;
+  isMine: boolean;
+  onDeleted: () => void;
+}) {
   const [lightbox, setLightbox] = useState(false);
+  const navigate = useNavigate();
+  const deleteFn = useServerFn(deleteGift);
   if (!gift.owner_id) return null;
+
+  const doDelete = async () => {
+    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»?`)) return;
+    try {
+      await deleteFn({ data: { id: gift.id } });
+      haptic("success");
+      onDeleted();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg.includes("GIFT_IN_DEAL") ? "Нельзя удалить: подарок уже в сделке" : "Не удалось удалить");
+    }
+  };
   const word = gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов";
   const photos = giftPhotos(gift);
   return (
@@ -458,27 +489,58 @@ function ActiveGiftCard({ gift, onClaim, isMine }: { gift: Gift; onClaim: (giftI
       </div>
 
       {/* Прямая бронь: списываем балл и открываем чат с дарителем.
-          У своих подарков кнопку не показываем. */}
+          У своих подарков — управление (ред./удалить), у чужих — кнопка брони.
+          «Поделиться» доступно всем. */}
       {isMine ? (
-        <div className="mt-3 rounded-xl bg-muted/60 px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">
-          Это твой подарок
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
+            className="flex items-center justify-center gap-1.5 rounded-xl border bg-background px-2 py-2 text-xs font-medium transition hover:bg-accent active:scale-[0.98]"
+          >
+            <Pencil className="h-3.5 w-3.5" /> Изменить
+          </button>
+          <button
+            type="button"
+            onClick={() => shareGift(gift.id, gift.title)}
+            className="flex items-center justify-center gap-1.5 rounded-xl border bg-background px-2 py-2 text-xs font-medium transition hover:bg-accent active:scale-[0.98]"
+          >
+            <Share2 className="h-3.5 w-3.5" /> Поделиться
+          </button>
+          <button
+            type="button"
+            onClick={doDelete}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-background px-2 py-2 text-xs font-medium text-destructive transition hover:bg-destructive/10 active:scale-[0.98]"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Удалить
+          </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => {
-            haptic("medium");
-            try {
-              localStorage.setItem("cozygift_last_claim_cost", String(gift.cost ?? 1));
-            } catch {
-              /* noop */
-            }
-            onClaim(gift.id);
-          }}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
-        >
-          🎁 Получить за {gift.cost} {word}
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              haptic("medium");
+              try {
+                localStorage.setItem("cozygift_last_claim_cost", String(gift.cost ?? 1));
+              } catch {
+                /* noop */
+              }
+              onClaim(gift.id);
+            }}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
+          >
+            🎁 Получить за {gift.cost} {word}
+          </button>
+          <button
+            type="button"
+            onClick={() => shareGift(gift.id, gift.title)}
+            aria-label="Поделиться подарком"
+            className="flex h-auto shrink-0 items-center justify-center rounded-xl border bg-background px-3 text-muted-foreground transition hover:bg-accent active:scale-[0.98]"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
