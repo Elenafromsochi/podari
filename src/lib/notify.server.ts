@@ -73,6 +73,9 @@ export async function notifyUser(
     await tgApiSafe("sendMessage", {
       chat_id: Number(telegramId),
       text,
+      // Тихое уведомление: человек видит сообщение в чате с ботом, но телефон
+      // не звенит и не вибрирует — не раздражает.
+      disable_notification: true,
       disable_web_page_preview: true,
       reply_markup: {
         inline_keyboard: [[{ text: "Открыть «Подари» 💚", url }]],
