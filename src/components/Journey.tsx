@@ -212,7 +212,7 @@ export function Journey({ stats }: { stats: JourneyStats | null }) {
         aria-expanded={!collapsed}
       >
         <span className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">🌱 Твой путь</h2>
+          <h2 className="text-lg font-semibold tracking-tight">🌱 Мой путь</h2>
           <span className="shrink-0 rounded-full bg-background px-2.5 py-0.5 text-xs font-semibold text-foreground">
             {allDone ? "пройден" : `Ступень ${currentStageNum} из ${totalStages}`}
           </span>
