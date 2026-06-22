@@ -16,23 +16,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { sendChatMessage } from "@/lib/cozy.functions";
-import {
-  cancelWishClaim,
-  confirmWishReceived,
-  requestWishHandover,
-} from "@/lib/wishes.functions";
+import { cancelWishClaim, confirmWishReceived, requestWishHandover } from "@/lib/wishes.functions";
 
 type Msg = { id: string; from: "me" | "them"; text: string; ts: number };
-type Wish = { id: string; title: string; image_url: string | null; image_urls?: string[] | null; owner_id: string; cost: number };
+type Wish = {
+  id: string;
+  title: string;
+  image_url: string | null;
+  image_urls?: string[] | null;
+  owner_id: string;
+  cost: number;
+};
 
 const AUTO_MSGS_GIVER = [
   "Здравствуйте! Я могу исполнить ваше пожелание ✨",
   "Расскажите, когда и где удобно передать?",
 ];
-const AUTO_MSGS_WISHER = [
-  "Спасибо большое! 💚",
-  "Когда вам будет удобно встретиться?",
-];
+const AUTO_MSGS_WISHER = ["Спасибо большое! 💚", "Когда вам будет удобно встретиться?"];
 
 interface Props {
   wishId: string;
@@ -51,6 +51,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
   const [txStatus, setTxStatus] = useState<string>("pending");
   const [handoverAt, setHandoverAt] = useState<string | null>(null);
   const [showWisherConfirm, setShowWisherConfirm] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const sendMessageFn = useServerFn(sendChatMessage);
@@ -122,7 +123,11 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
         .eq("id", transactionId)
         .maybeSingle();
       if (!alive || !data) return;
-      const row = data as { status: string; handover_requested_at: string | null; wisher_id: string };
+      const row = data as {
+        status: string;
+        handover_requested_at: string | null;
+        wisher_id: string;
+      };
       setTxStatus((p) => (p === row.status ? p : row.status));
       setHandoverAt((p) => (p === row.handover_requested_at ? p : row.handover_requested_at));
       if (row.handover_requested_at && row.wisher_id === meId && row.status === "pending") {
@@ -137,8 +142,15 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
       .channel(`wishtx-${transactionId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "wish_transactions", filter: `id=eq.${transactionId}` },
-        () => { fetchTx(); },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "wish_transactions",
+          filter: `id=eq.${transactionId}`,
+        },
+        () => {
+          fetchTx();
+        },
       )
       .subscribe();
     const poll = setInterval(fetchTx, 4000);
@@ -176,7 +188,9 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${chatId}` },
-        () => { fetchMessages(); },
+        () => {
+          fetchMessages();
+        },
       )
       .subscribe();
     const poll = setInterval(fetchMessages, 3500);
@@ -201,17 +215,22 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
         setMessages((prev) =>
           prev.some((x) => x.id === ins.id)
             ? prev
-            : [...prev, {
-                id: ins.id as string,
-                from: "me",
-                text: ins.content as string,
-                ts: new Date(ins.created_at as string).getTime(),
-              }],
+            : [
+                ...prev,
+                {
+                  id: ins.id as string,
+                  from: "me",
+                  text: ins.content as string,
+                  ts: new Date(ins.created_at as string).getTime(),
+                },
+              ],
         );
       }
     } catch (e) {
       setText(t);
-      toast.error("Не удалось отправить", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Не удалось отправить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     }
   };
 
@@ -248,9 +267,9 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
   };
 
   const handleCancel = async () => {
-    if (!confirm("Отменить эту сделку?")) return;
     try {
       await cancelFn({ data: { transaction_id: transactionId } });
+      setConfirmCancel(false);
       toast("Сделка отменена");
       onBack();
     } catch (e) {
@@ -267,9 +286,15 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           ←
         </button>
         {wish?.image_url ? (
-          <img src={wish.image_url} alt={wish.title} className="h-10 w-10 rounded-lg object-cover" />
+          <img
+            src={wish.image_url}
+            alt={wish.title}
+            className="h-10 w-10 rounded-lg object-cover"
+          />
         ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-peach/40">✨</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-peach/40">
+            ✨
+          </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">
@@ -287,7 +312,9 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
               </>
             )}
           </div>
-          <div className="truncate text-xs text-muted-foreground">✨ {wish?.title ?? "Пожелание"}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            ✨ {wish?.title ?? "Пожелание"}
+          </div>
         </div>
         {isWisher ? (
           <Button
@@ -317,13 +344,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
       {wish?.image_urls && wish.image_urls.length > 1 && (
         <div className="-mx-1 flex gap-2 overflow-x-auto border-b px-4 pb-2 pt-2">
           {wish.image_urls.map((src, i) => (
-            <a
-              key={i}
-              href={src}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0"
-            >
+            <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="shrink-0">
               <img
                 src={src}
                 alt={`Фото ${i + 1}`}
@@ -333,7 +354,6 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           ))}
         </div>
       )}
-
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
@@ -368,7 +388,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           ))}
           {!completed && !cancelled && !handoverAt && (
             <button
-              onClick={handleCancel}
+              onClick={() => setConfirmCancel(true)}
               className="shrink-0 rounded-full border bg-card px-3 py-1.5 text-xs text-destructive hover:bg-accent"
             >
               <X className="mr-1 inline h-3 w-3" />
@@ -382,11 +402,17 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send(text); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") send(text);
+          }}
           placeholder="Напишите сообщение…"
           className="h-12 flex-1 rounded-full border-2 border-border bg-background px-5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        <Button size="icon" className="h-12 w-12 shrink-0 rounded-full shadow-md" onClick={() => send(text)}>
+        <Button
+          size="icon"
+          className="h-12 w-12 shrink-0 rounded-full shadow-md"
+          onClick={() => send(text)}
+        >
           <Send className="h-5 w-5" />
         </Button>
       </div>
@@ -396,8 +422,7 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           <AlertDialogHeader>
             <AlertDialogTitle>Пожелание исполнено?</AlertDialogTitle>
             <AlertDialogDescription>
-              Подтверди получение «{wish?.title ?? ""}». С твоего счёта спишется{" "}
-              {wish?.cost ?? 1}{" "}
+              Подтверди получение «{wish?.title ?? ""}». С твоего счёта спишется {wish?.cost ?? 1}{" "}
               {(wish?.cost ?? 1) === 1 ? "балл" : (wish?.cost ?? 1) < 5 ? "балла" : "баллов"},
               столько же придёт исполнителю (+80 XP).
             </AlertDialogDescription>
@@ -405,6 +430,21 @@ export function WishChatScreen({ wishId, transactionId, onBack, onCompleted }: P
           <AlertDialogFooter>
             <AlertDialogCancel>Ещё нет</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirm}>Да, получил(а)</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отменить эту сделку?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Бронь снимется, и пожелание снова станет доступным. Замороженный балл вернётся.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancel}>Отменить сделку</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

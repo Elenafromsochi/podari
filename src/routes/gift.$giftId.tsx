@@ -11,6 +11,16 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stars } from "@/components/ui/stars";
 import { haptic } from "@/lib/haptics";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/gift/$giftId")({
   component: GiftPage,
@@ -52,6 +62,7 @@ function GiftPage() {
   // «Подарить снова»: показываем степпер количества и сохраняем заново.
   const [reofferQty, setReofferQty] = useState(3);
   const [reoffering, setReoffering] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     // Реферал из ссылки — чтобы при входе засчитался пригласившему.
@@ -146,13 +157,9 @@ function GiftPage() {
 
   const doDelete = async () => {
     if (!gift) return;
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(`Удалить подарок «${gift.title}»? Это нельзя отменить.`)
-    )
-      return;
     try {
       await deleteFn({ data: { id: giftId } });
+      setConfirmDelete(false);
       toast.success("Подарок удалён");
       navigate({ to: "/" });
     } catch (e) {
@@ -264,10 +271,8 @@ function GiftPage() {
 
           {(gift.quantity ?? 1) > 1 && gift.status === "available" ? (
             <div className="mt-2 inline-block rounded-lg bg-amber-100 px-2.5 py-1 text-sm font-semibold text-amber-700">
-              {/* Точный остаток виден только владельцу; другим — нейтральный значок. */}
-              {isOwner && typeof gift.quantity_remaining === "number"
-                ? `🔁 осталось ${gift.quantity_remaining} из ${gift.quantity}`
-                : "🔁 можно несколько раз"}
+              {/* Число остатка — только в профиле; здесь всем нейтральный значок. */}
+              🔁 можно несколько раз
             </div>
           ) : null}
 
@@ -309,7 +314,7 @@ function GiftPage() {
                 </Link>
                 <button
                   type="button"
-                  onClick={doDelete}
+                  onClick={() => setConfirmDelete(true)}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
                 >
                   🗑 Удалить
@@ -317,6 +322,21 @@ function GiftPage() {
               </>
             )}
           </div>
+
+          <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Подарок «{gift.title}» исчезнет из ленты. Это действие нельзя отменить.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogAction onClick={doDelete}>Удалить</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <div className="mt-6">
             {canReoffer ? (

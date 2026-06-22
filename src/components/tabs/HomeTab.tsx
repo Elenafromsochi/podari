@@ -13,9 +13,20 @@ import {
   Trash2,
   Share2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import { shareGift } from "@/lib/share";
 import { restartTour } from "@/lib/tour";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stars } from "@/components/ui/stars";
 import { WishesFeed } from "@/components/WishesFeed";
@@ -306,40 +317,19 @@ export function HomeTab({
         </button>
       </div>
 
-      {/* Жизнь сервиса — компактная панель статистики */}
-      {stats && (
-        <section
-          data-tour="home-stats"
-          className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm"
-        >
-          <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Жизнь сервиса
-          </h2>
-          <div className="flex flex-wrap items-center justify-between gap-1 text-[12px] text-muted-foreground">
-            <span>
-              <b className="text-foreground tabular-nums">{stats.active_gifts}</b> 🎁 активных
-            </span>
-            <span className="opacity-40">·</span>
-            <span>
-              <b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено
-            </span>
-            <span className="opacity-40">·</span>
-            <span>
-              <b className="text-foreground tabular-nums">{stats.wishes_open}</b> ⭐ желаний
-            </span>
-          </div>
-        </section>
-      )}
-
-      {/* Feed tabs: Активные / Желания / Подаренные */}
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
+      {/* Вкладки ленты со встроенным счётчиком: цифры «жизни сервиса» теперь
+          прямо на кнопках — число в «календарной» плитке под названием. */}
+      <div
+        data-tour="home-stats"
+        className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1"
+      >
         {(
           [
-            ["active", "🎁 Активные"],
-            ["wishes", "✨ Желания"],
-            ["gifted", "💝 Подаренные"],
+            ["active", "🎁", "Активные", stats?.active_gifts],
+            ["wishes", "✨", "Желания", stats?.wishes_open],
+            ["gifted", "💝", "Подаренные", stats?.gifted_total],
           ] as const
-        ).map(([k, label]) => {
+        ).map(([k, emoji, label, count]) => {
           const active = feedTab === k;
           return (
             <button
@@ -352,11 +342,21 @@ export function HomeTab({
                   setFeedTab(k);
                 }
               }}
-              className={`rounded-xl px-2 py-1.5 text-[12.5px] font-medium transition-all duration-300 ${
+              className={`flex flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[12.5px] font-medium transition-all duration-300 ${
                 active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
-              {label}
+              <span className="flex items-center gap-1 leading-none">
+                <span>{emoji}</span>
+                <span>{label}</span>
+              </span>
+              <span
+                className={`inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1 text-base font-bold tabular-nums tracking-tight transition-colors ${
+                  active ? "bg-mint/70 text-mint-foreground" : "bg-background/70 text-foreground/60"
+                }`}
+              >
+                {typeof count === "number" ? count : "·"}
+              </span>
             </button>
           );
         })}
@@ -493,20 +493,22 @@ function ActiveGiftCard({
   onDeleted: () => void;
 }) {
   const [lightbox, setLightbox] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const navigate = useNavigate();
   const deleteFn = useServerFn(deleteGift);
   if (!gift.owner_id) return null;
 
+  // Раньше тут был window.confirm(), но в Telegram-вебвью он заблокирован и
+  // молча возвращает false — кнопка выглядела «мёртвой». Теперь — AlertDialog.
   const doDelete = async () => {
-    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»?`))
-      return;
     try {
       await deleteFn({ data: { id: gift.id } });
       haptic("success");
+      setConfirmDelete(false);
       onDeleted();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      alert(
+      toast.error(
         msg.includes("GIFT_IN_DEAL")
           ? "Нельзя удалить: подарок уже в сделке"
           : "Не удалось удалить",
@@ -530,12 +532,11 @@ function ActiveGiftCard({
         <span className="inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
           {gift.owner_name}
         </span>
+        <LevelBadge level={gift.owner_level ?? 1} />
         {(gift.quantity ?? 1) > 1 ? (
           <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
-            {/* Точный остаток виден только владельцу; другим — нейтральный значок. */}
-            {isMine && typeof gift.quantity_remaining === "number"
-              ? `🔁 осталось ${gift.quantity_remaining} из ${gift.quantity}`
-              : "🔁 можно несколько раз"}
+            {/* Число остатка — только в профиле; в ленте всем нейтральный значок. */}
+            🔁 можно несколько раз
           </span>
         ) : null}
       </div>
@@ -592,7 +593,7 @@ function ActiveGiftCard({
           </button>
           <button
             type="button"
-            onClick={doDelete}
+            onClick={() => setConfirmDelete(true)}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-background px-2 py-2 text-xs font-medium text-destructive transition hover:bg-destructive/10 active:scale-[0.98]"
           >
             <Trash2 className="h-3.5 w-3.5" /> Удалить
@@ -627,6 +628,21 @@ function ActiveGiftCard({
       )}
 
       {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Подарок «{gift.title}» исчезнет из ленты. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={doDelete}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }

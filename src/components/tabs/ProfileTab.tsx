@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send, Sparkles, Share2 } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Pencil,
+  Trash2,
+  Trophy,
+  BarChart3,
+  Send,
+  Sparkles,
+  Share2,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -31,7 +41,14 @@ import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +65,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-
 type Gift = {
   id: string;
   title: string;
@@ -59,6 +75,8 @@ type Gift = {
   cost?: number | null;
   city?: string | null;
   is_online?: boolean | null;
+  quantity?: number | null;
+  quantity_remaining?: number | null;
 };
 type TxRow = { id: string; status: string; gift: Gift | null };
 type BookedItem = {
@@ -80,7 +98,6 @@ type ActivityKey = "posted" | "gifted" | "received" | "booked";
 
 // Правила XP/уровней теперь живут в поповере на верхней плашке (AppHeader).
 
-
 interface Props {
   user: UserProfile;
   onUnreadAchievements?: (n: number) => void;
@@ -89,7 +106,6 @@ interface Props {
   onGive?: () => void;
   onReceive?: () => void;
 }
-
 
 type MyWish = {
   id: string;
@@ -101,7 +117,14 @@ type MyWish = {
   is_online?: boolean | null;
 };
 
-export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWish, onGive, onReceive }: Props) {
+export function ProfileTab({
+  user,
+  onUnreadAchievements,
+  onCreateWish,
+  onOpenWish,
+  onGive,
+  onReceive,
+}: Props) {
   const navigate = useNavigate();
   const [achOpen, setAchOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityKey>("posted");
@@ -120,7 +143,11 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   const myWishesFn = useServerFn(getMyWishes);
   const rolesFn = useServerFn(getMyRoles);
   const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
+  useEffect(() => {
+    rolesFn({})
+      .then((r: { isAdmin?: boolean } | null) => setIsAdmin(!!r?.isAdmin))
+      .catch(() => {});
+  }, [rolesFn]);
 
   const { items: achievements, stats: journeyStats } = useAchievements();
   // «Новые» = открытые, которые пользователь ещё не видел
@@ -141,14 +168,19 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   useEffect(() => {
     (async () => {
       const [p, g, r, w, c, inc] = await Promise.all([
-        postedFn(), giftedFn(), receivedFn(), myWishesFn(), chatsFn(), incomingFn(),
+        postedFn(),
+        giftedFn(),
+        receivedFn(),
+        myWishesFn(),
+        chatsFn(),
+        incomingFn(),
       ]);
       setPosted((p as unknown as Gift[]) ?? []);
       setGifted((g as TxRow[]) ?? []);
       setReceived((r as TxRow[]) ?? []);
       setMyWishes((w as unknown as MyWish[]) ?? []);
       // «Вы забронировали» = активные сделки, где я получатель (чаты с дарителями)
-      setBooked((((c as { with_givers?: BookedItem[] })?.with_givers) ?? []) as BookedItem[]);
+      setBooked(((c as { with_givers?: BookedItem[] })?.with_givers ?? []) as BookedItem[]);
       // «Забронировали у вас» = ожидающие сделки, где я даритель
       setIncoming((inc as IncomingItem[]) ?? []);
     })();
@@ -178,9 +210,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
       toast.error("Не удалось выйти", { description: e instanceof Error ? e.message : String(e) });
     }
   };
-
-
-
 
   const giftsFor = (k: ActivityKey): Gift[] => {
     if (k === "posted") return (posted ?? []).filter((g) => g.status !== "gifted");
@@ -240,197 +269,218 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         )}
       </section>
 
-
       <div data-tour="profile-zone">
-      {/* Мои желания */}
-      <section className="mb-5">
-        <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
-        {!myWishes ? (
-          <Skeleton className="h-16 w-full rounded-2xl" />
-        ) : myWishes.length === 0 ? (
-          <p className="rounded-2xl border bg-card p-4 text-center text-sm text-muted-foreground">
-            Пока нет желаний — загадай через кнопку «Загадать желание» выше ✨
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {myWishes.map((w) => (
-              <MyWishItem key={w.id} w={w} ownerId={user.user_id} onOpen={onOpenWish} />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Мои подарки */}
-      <section>
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">Мои подарки</h2>
-        <div
-          data-tour="profile-statustabs"
-          className="mb-3 grid grid-cols-4 gap-1 rounded-2xl border bg-muted/60 p-1"
-        >
-          {([
-            ["posted", "Активные"],
-            ["booked", "Брони"],
-            ["gifted", "Подаренные"],
-            ["received", "Полученные"],
-          ] as const).map(([k, label]) => {
-            const active = activity === k;
-            const count = k === "booked" ? (incoming?.length ?? 0) + (booked?.length ?? 0) : 0;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => {
-                  if (!active) {
-                    haptic("select");
-                    setActivity(k);
-                  }
-                }}
-                className={`flex items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-all duration-300 ${
-                  active
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-                {count > 0 && (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {!loaded ? (
-          <div className="space-y-2">
+        {/* Мои желания */}
+        <section className="mb-5">
+          <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
+          {!myWishes ? (
             <Skeleton className="h-16 w-full rounded-2xl" />
-            <Skeleton className="h-16 w-full rounded-2xl" />
+          ) : myWishes.length === 0 ? (
+            <p className="rounded-2xl border bg-card p-4 text-center text-sm text-muted-foreground">
+              Пока нет желаний — загадай через кнопку «Загадать желание» выше ✨
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {myWishes.map((w) => (
+                <MyWishItem key={w.id} w={w} ownerId={user.user_id} onOpen={onOpenWish} />
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Мои подарки */}
+        <section>
+          <h2 className="mb-3 text-lg font-semibold tracking-tight">Мои подарки</h2>
+          <div
+            data-tour="profile-statustabs"
+            className="mb-3 grid grid-cols-4 gap-1 rounded-2xl border bg-muted/60 p-1"
+          >
+            {(
+              [
+                ["posted", "Активные"],
+                ["booked", "Брони"],
+                ["gifted", "Подаренные"],
+                ["received", "Полученные"],
+              ] as const
+            ).map(([k, label]) => {
+              const active = activity === k;
+              const count = k === "booked" ? (incoming?.length ?? 0) + (booked?.length ?? 0) : 0;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    if (!active) {
+                      haptic("select");
+                      setActivity(k);
+                    }
+                  }}
+                  className={`flex items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-all duration-300 ${
+                    active
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                  {count > 0 && (
+                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        ) : activity === "booked" ? (
-          (incoming ?? []).length === 0 && (booked ?? []).length === 0 ? (
+
+          {!loaded ? (
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full rounded-2xl" />
+              <Skeleton className="h-16 w-full rounded-2xl" />
+            </div>
+          ) : activity === "booked" ? (
+            (incoming ?? []).length === 0 && (booked ?? []).length === 0 ? (
+              <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
+                Здесь появятся активные брони. Выбери подарок в ленте или дождись, когда кто-то
+                выберет твой 💚
+              </div>
+            ) : (
+              <div key="booked" className="space-y-4">
+                {/* Входящие: кто-то выбрал мой подарок — нужно договориться о передаче */}
+                {(incoming ?? []).length > 0 && (
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                      🔖 Забронировали у меня{" "}
+                      <span className="text-xs">({(incoming ?? []).length})</span>
+                    </h3>
+                    <ul className="achievements-list space-y-2">
+                      {(incoming ?? []).map((b) => (
+                        <li key={b.transaction_id}>
+                          <Link
+                            to="/chat/$giftId"
+                            params={{ giftId: b.gift_id }}
+                            onClick={() => haptic("select")}
+                            className="flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3 shadow-sm transition active:scale-[0.98]"
+                          >
+                            {b.gift_image ? (
+                              <img
+                                src={b.gift_image}
+                                alt={b.gift_title}
+                                className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                                🎁
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{b.gift_title}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                забронировал(а) {b.receiver_name}
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                              Открыть чат
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Исходящие: я выбрал чужой подарок */}
+                {(booked ?? []).length > 0 && (
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                      🎁 Я забронировал(а){" "}
+                      <span className="text-xs">({(booked ?? []).length})</span>
+                    </h3>
+                    <ul className="achievements-list space-y-2">
+                      {(booked ?? []).map((b) => (
+                        <li key={b.transaction_id}>
+                          <Link
+                            to="/chat/$giftId"
+                            params={{ giftId: b.gift_id }}
+                            onClick={() => haptic("select")}
+                            className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
+                          >
+                            {b.gift_image ? (
+                              <img
+                                src={b.gift_image}
+                                alt={b.gift_title}
+                                className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                                🎁
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{b.gift_title}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                от {b.other_name}
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                              Открыть чат
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )
+          ) : list.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              Здесь появятся активные брони. Выбери подарок в ленте или дождись, когда кто-то выберет твой 💚
+              {activity === "posted" && "Вы пока не публиковали подарков"}
+              {activity === "gifted" && "Пока никому не передали подарок"}
+              {activity === "received" && "Вы пока ничего не получили"}
             </div>
           ) : (
-            <div key="booked" className="space-y-4">
-              {/* Входящие: кто-то выбрал мой подарок — нужно договориться о передаче */}
-              {(incoming ?? []).length > 0 && (
-                <div>
-                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                    🔖 Забронировали у меня{" "}
-                    <span className="text-xs">({(incoming ?? []).length})</span>
-                  </h3>
-                  <ul className="achievements-list space-y-2">
-                    {(incoming ?? []).map((b) => (
-                      <li key={b.transaction_id}>
-                        <Link
-                          to="/chat/$giftId"
-                          params={{ giftId: b.gift_id }}
-                          onClick={() => haptic("select")}
-                          className="flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3 shadow-sm transition active:scale-[0.98]"
-                        >
-                          {b.gift_image ? (
-                            <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-                          ) : (
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{b.gift_title}</p>
-                            <p className="truncate text-xs text-muted-foreground">забронировал(а) {b.receiver_name}</p>
-                          </div>
-                          <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-                            Открыть чат
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Исходящие: я выбрал чужой подарок */}
-              {(booked ?? []).length > 0 && (
-                <div>
-                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                    🎁 Я забронировал(а){" "}
-                    <span className="text-xs">({(booked ?? []).length})</span>
-                  </h3>
-                  <ul className="achievements-list space-y-2">
-                    {(booked ?? []).map((b) => (
-                      <li key={b.transaction_id}>
-                        <Link
-                          to="/chat/$giftId"
-                          params={{ giftId: b.gift_id }}
-                          onClick={() => haptic("select")}
-                          className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
-                        >
-                          {b.gift_image ? (
-                            <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-                          ) : (
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{b.gift_title}</p>
-                            <p className="truncate text-xs text-muted-foreground">от {b.other_name}</p>
-                          </div>
-                          <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-                            Открыть чат
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )
-        ) : list.length === 0 ? (
-          <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-            {activity === "posted" && "Вы пока не публиковали подарков"}
-            {activity === "gifted" && "Пока никому не передали подарок"}
-            {activity === "received" && "Вы пока ничего не получили"}
-          </div>
-        ) : (
-          <ul key={activity} className="achievements-list space-y-2">
-            {list.map((g) =>
-              activity === "posted" ? (
-                <EditableActiveItem
-                  key={g.id}
-                  gift={g}
-                  ownerId={user.user_id}
-                  userLevel={user.level}
-                  onUpdated={(patch) =>
-                    setPosted((prev) => (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)))
-                  }
-                  onDeleted={() => setPosted((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
-                />
-              ) : (
-                <li
-                  key={g.id}
-                  className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
-                >
-                  {g.image_url ? (
-                    <img src={g.image_url} alt={g.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                      🎁
+            <ul key={activity} className="achievements-list space-y-2">
+              {list.map((g) =>
+                activity === "posted" ? (
+                  <EditableActiveItem
+                    key={g.id}
+                    gift={g}
+                    ownerId={user.user_id}
+                    userLevel={user.level}
+                    onUpdated={(patch) =>
+                      setPosted((prev) =>
+                        (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)),
+                      )
+                    }
+                    onDeleted={() => setPosted((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
+                  />
+                ) : (
+                  <li
+                    key={g.id}
+                    className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
+                  >
+                    {g.image_url ? (
+                      <img
+                        src={g.image_url}
+                        alt={g.title}
+                        className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                        🎁
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{g.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">{g.category}</p>
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{g.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{g.category}</p>
-                  </div>
-                </li>
-              ),
-            )}
-          </ul>
-        )}
-      </section>
+                  </li>
+                ),
+              )}
+            </ul>
+          )}
+        </section>
       </div>
-
-
-
 
       <div className="mt-8 space-y-3">
         {isAdmin && (
@@ -481,7 +531,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 // Правила опыта/уровней теперь живут в поповере на верхней плашке (AppHeader),
 // поэтому HelpPopover из профиля убран — не дублируем правила в двух местах.
 
-
 function EditableActiveItem({
   gift,
   ownerId,
@@ -516,15 +565,29 @@ function EditableActiveItem({
   return (
     <li className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
       {gift.image_url ? (
-        <img src={gift.image_url} alt={gift.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+        <img
+          src={gift.image_url}
+          alt={gift.title}
+          className="h-12 w-12 shrink-0 rounded-xl object-cover"
+        />
       ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+          🎁
+        </div>
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{gift.title}</p>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
           <CityBadge city={gift.city} isOnline={gift.is_online} />
+          {/* Точный остаток тиража виден только владельцу — здесь, в профиле. */}
+          {(gift.quantity ?? 1) > 1 &&
+          gift.status === "available" &&
+          typeof gift.quantity_remaining === "number" ? (
+            <span className="inline-block rounded-lg bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
+              🔁 осталось {gift.quantity_remaining} из {gift.quantity}
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -598,7 +661,11 @@ function MyWishItem({
         className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.98]"
       >
         {w.image_url ? (
-          <img src={w.image_url} alt={w.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+          <img
+            src={w.image_url}
+            alt={w.title}
+            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+          />
         ) : (
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
             ✨
@@ -608,7 +675,8 @@ function MyWishItem({
           <p className="truncate pr-7 text-sm font-medium">{w.title}</p>
           <div className="flex items-center gap-1.5">
             <p className="truncate text-xs text-muted-foreground">
-              {w.category} · {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
+              {w.category} ·{" "}
+              {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
             </p>
             <CityBadge city={w.city} isOnline={w.is_online} />
           </div>
@@ -666,9 +734,7 @@ function InviteRow({
         description: "Спасибо, что зовёшь друзей в «Подари» 💚",
       });
     }
-    window.dispatchEvent(
-      new CustomEvent("cozy:tour-event", { detail: "invite-shared" }),
-    );
+    window.dispatchEvent(new CustomEvent("cozy:tour-event", { detail: "invite-shared" }));
   };
 
   const wishLocked = level < 3;
@@ -704,13 +770,13 @@ function InviteRow({
         locked ? "opacity-60" : "hover:bg-accent"
       }`}
     >
-      <span className={`flex h-12 w-12 items-center justify-center rounded-full text-2xl ${accent}`}>
+      <span
+        className={`flex h-12 w-12 items-center justify-center rounded-full text-2xl ${accent}`}
+      >
         {emoji}
       </span>
       <span className="text-[11px] font-medium leading-tight">{label}</span>
-      {locked && (
-        <span className="text-[9px] text-muted-foreground">🔒 ⭐ 3</span>
-      )}
+      {locked && <span className="text-[9px] text-muted-foreground">🔒 ⭐ 3</span>}
     </button>
   );
 
@@ -792,9 +858,7 @@ function WishCtaButton({ level, onCreateWish }: { level: number; onCreateWish?: 
         onCreateWish?.();
       }}
       className={`mb-3 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left shadow-sm transition active:scale-[0.98] ${
-        locked
-          ? "border bg-card opacity-70"
-          : "bg-mint text-mint-foreground hover:bg-mint/90"
+        locked ? "border bg-card opacity-70" : "bg-mint text-mint-foreground hover:bg-mint/90"
       }`}
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/60 text-mint-foreground">
@@ -802,7 +866,9 @@ function WishCtaButton({ level, onCreateWish }: { level: number; onCreateWish?: 
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">Загадать желание</span>
-        <span className={`block truncate text-xs transition-opacity duration-300 ${locked ? "text-muted-foreground" : "text-mint-foreground/70"}`}>
+        <span
+          className={`block truncate text-xs transition-opacity duration-300 ${locked ? "text-muted-foreground" : "text-mint-foreground/70"}`}
+        >
           например: {WISH_EXAMPLES[idx]}
         </span>
       </span>
@@ -810,7 +876,3 @@ function WishCtaButton({ level, onCreateWish }: { level: number; onCreateWish?: 
     </button>
   );
 }
-
-
-
-
