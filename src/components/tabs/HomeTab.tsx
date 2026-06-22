@@ -317,40 +317,19 @@ export function HomeTab({
         </button>
       </div>
 
-      {/* Жизнь сервиса — компактная панель статистики */}
-      {stats && (
-        <section
-          data-tour="home-stats"
-          className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm"
-        >
-          <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Жизнь сервиса
-          </h2>
-          <div className="flex flex-wrap items-center justify-between gap-1 text-[12px] text-muted-foreground">
-            <span>
-              <b className="text-foreground tabular-nums">{stats.active_gifts}</b> 🎁 активных
-            </span>
-            <span className="opacity-40">·</span>
-            <span>
-              <b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено
-            </span>
-            <span className="opacity-40">·</span>
-            <span>
-              <b className="text-foreground tabular-nums">{stats.wishes_open}</b> ⭐ желаний
-            </span>
-          </div>
-        </section>
-      )}
-
-      {/* Feed tabs: Активные / Желания / Подаренные */}
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
+      {/* Вкладки ленты со встроенным счётчиком: цифры «жизни сервиса» теперь
+          прямо на кнопках — число в «календарной» плитке под названием. */}
+      <div
+        data-tour="home-stats"
+        className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1"
+      >
         {(
           [
-            ["active", "🎁 Активные"],
-            ["wishes", "✨ Желания"],
-            ["gifted", "💝 Подаренные"],
+            ["active", "🎁", "Активные", stats?.active_gifts],
+            ["wishes", "✨", "Желания", stats?.wishes_open],
+            ["gifted", "💝", "Подаренные", stats?.gifted_total],
           ] as const
-        ).map(([k, label]) => {
+        ).map(([k, emoji, label, count]) => {
           const active = feedTab === k;
           return (
             <button
@@ -363,11 +342,21 @@ export function HomeTab({
                   setFeedTab(k);
                 }
               }}
-              className={`rounded-xl px-2 py-1.5 text-[12.5px] font-medium transition-all duration-300 ${
+              className={`flex flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[12.5px] font-medium transition-all duration-300 ${
                 active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
-              {label}
+              <span className="flex items-center gap-1 leading-none">
+                <span>{emoji}</span>
+                <span>{label}</span>
+              </span>
+              <span
+                className={`inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1 text-base font-bold tabular-nums tracking-tight transition-colors ${
+                  active ? "bg-mint/70 text-mint-foreground" : "bg-background/70 text-foreground/60"
+                }`}
+              >
+                {typeof count === "number" ? count : "·"}
+              </span>
             </button>
           );
         })}
