@@ -8,6 +8,7 @@ import { getPublicGift, claimGift } from "@/lib/cozy.functions";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { LevelBadge } from "@/components/LevelBadge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Stars } from "@/components/ui/stars";
 import { haptic } from "@/lib/haptics";
 
 export const Route = createFileRoute("/gift/$giftId")({
@@ -153,9 +154,7 @@ function GiftPage() {
 
           {gift.condition ? (
             <div className="mt-1 text-base leading-none" title={`Состояние: ${gift.condition} из 5`}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n}>{n <= gift.condition! ? "❤️" : "🤍"}</span>
-              ))}
+              <Stars value={gift.condition} />
             </div>
           ) : null}
 

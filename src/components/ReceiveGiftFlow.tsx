@@ -15,6 +15,7 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { giftShareVariants } from "@/lib/random-copy";
 import { shareToTelegram, thirdVariant } from "@/lib/share";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { Stars } from "@/components/ui/stars";
 import { emitTour } from "@/lib/tour";
 
 
@@ -94,9 +95,7 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
               aria-label={`Состояние ${g.condition} из 5`}
               title={`Состояние: ${g.condition} из 5`}
             >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n}>{n <= g.condition! ? "❤️" : "🤍"}</span>
-              ))}
+              <Stars value={g.condition} />
             </div>
           ) : null}
           {g.description && (

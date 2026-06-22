@@ -114,7 +114,7 @@ export function getKindMeta(id: string | null | undefined): KindMeta | undefined
   return GIFT_KINDS.find((k) => k.id === id);
 }
 
-/** Состояние/износ (сердечки) имеет смысл только для физических вещей.
+/** Состояние/износ (звёзды) имеет смысл только для физических вещей.
  *  У услуг, времени и встреч износа нет — оценка идёт по отзывам (звёзды). */
 export function hasCondition(id: string | null | undefined): boolean {
   return id === "used_item";

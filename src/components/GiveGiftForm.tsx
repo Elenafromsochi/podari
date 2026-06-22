@@ -396,9 +396,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                     type="button"
                     onClick={() => setCondition(n)}
                     aria-label={`Оценка состояния ${n} из 5`}
-                    className="text-2xl leading-none transition-transform hover:scale-110"
+                    className={`text-2xl leading-none transition-transform hover:scale-110 ${
+                      condition && n <= condition ? "text-amber-400" : "text-muted-foreground/40"
+                    }`}
                   >
-                    {condition && n <= condition ? "❤️" : "🤍"}
+                    {condition && n <= condition ? "★" : "☆"}
                   </button>
                 ))}
                 <span className="ml-2 text-xs text-muted-foreground">
@@ -406,7 +408,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                5 сердечек — как новое, 1 — сильно использованное. ИИ ставит оценку по фото, можно поправить вручную.
+                5 звёзд — как новое, 1 — сильно использованное. ИИ ставит оценку по фото, можно поправить вручную.
               </p>
             </div>
           )}
