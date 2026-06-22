@@ -13,9 +13,20 @@ import {
   Trash2,
   Share2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import { shareGift } from "@/lib/share";
 import { restartTour } from "@/lib/tour";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stars } from "@/components/ui/stars";
 import { WishesFeed } from "@/components/WishesFeed";
@@ -493,20 +504,22 @@ function ActiveGiftCard({
   onDeleted: () => void;
 }) {
   const [lightbox, setLightbox] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const navigate = useNavigate();
   const deleteFn = useServerFn(deleteGift);
   if (!gift.owner_id) return null;
 
+  // Раньше тут был window.confirm(), но в Telegram-вебвью он заблокирован и
+  // молча возвращает false — кнопка выглядела «мёртвой». Теперь — AlertDialog.
   const doDelete = async () => {
-    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»?`))
-      return;
     try {
       await deleteFn({ data: { id: gift.id } });
       haptic("success");
+      setConfirmDelete(false);
       onDeleted();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      alert(
+      toast.error(
         msg.includes("GIFT_IN_DEAL")
           ? "Нельзя удалить: подарок уже в сделке"
           : "Не удалось удалить",
@@ -532,10 +545,8 @@ function ActiveGiftCard({
         </span>
         {(gift.quantity ?? 1) > 1 ? (
           <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
-            {/* Точный остаток виден только владельцу; другим — нейтральный значок. */}
-            {isMine && typeof gift.quantity_remaining === "number"
-              ? `🔁 осталось ${gift.quantity_remaining} из ${gift.quantity}`
-              : "🔁 можно несколько раз"}
+            {/* Число остатка — только в профиле; в ленте всем нейтральный значок. */}
+            🔁 можно несколько раз
           </span>
         ) : null}
       </div>
@@ -592,7 +603,7 @@ function ActiveGiftCard({
           </button>
           <button
             type="button"
-            onClick={doDelete}
+            onClick={() => setConfirmDelete(true)}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-background px-2 py-2 text-xs font-medium text-destructive transition hover:bg-destructive/10 active:scale-[0.98]"
           >
             <Trash2 className="h-3.5 w-3.5" /> Удалить
@@ -627,6 +638,21 @@ function ActiveGiftCard({
       )}
 
       {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Подарок «{gift.title}» исчезнет из ленты. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={doDelete}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
