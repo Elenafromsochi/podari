@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishWish } from "@/lib/wishes.functions";
-import { classifyWishCategory } from "@/lib/gift-ai.functions";
+import { classifyWishCategory, generateGiftImage } from "@/lib/gift-ai.functions";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { haptic } from "@/lib/haptics";
 import { uploadImages } from "@/lib/upload-image";
@@ -49,7 +49,7 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
   const [loading, setLoading] = useState(false);
   // Город (подставляется из прошлой публикации) + флаг «откуда угодно / онлайн».
   const [city, setCity] = useState<string>(() =>
-    typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") ?? "" : "",
+    typeof localStorage !== "undefined" ? (localStorage.getItem("cozygift_city") ?? "") : "",
   );
   const [isOnline, setIsOnline] = useState(false);
   // Когда человек ставит курсор в поле — текст-пример (placeholder) убираем,
@@ -58,8 +58,30 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
   const [descFocus, setDescFocus] = useState(false);
   const publishFn = useServerFn(publishWish);
   const classifyFn = useServerFn(classifyWishCategory);
+  const genImageFn = useServerFn(generateGiftImage);
+  const [genImg, setGenImg] = useState(false);
 
   const MAX_PHOTOS = 10;
+
+  // Нарисовать картинку-референс по тексту желания (как у подарков без фото).
+  const handleGenImage = async () => {
+    const text = `${title.trim()}. ${description.trim()}`.trim();
+    if (!title.trim()) {
+      toast.error("Сначала напиши, что хочешь получить — ИИ нарисует картинку ✨");
+      return;
+    }
+    setGenImg(true);
+    try {
+      const { imageDataUrl } = await genImageFn({
+        data: { title: title.trim(), description: text },
+      });
+      setPhotoPreviews((prev) => (prev.length >= MAX_PHOTOS ? prev : [...prev, imageDataUrl]));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось нарисовать картинку");
+    } finally {
+      setGenImg(false);
+    }
+  };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -90,8 +112,7 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
     e.target.value = "";
   };
 
-  const removePhoto = (idx: number) =>
-    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
+  const removePhoto = (idx: number) => setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
 
   const submit = async () => {
     if (!title.trim()) {
@@ -173,7 +194,9 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               onFocus={() => setDescFocus(true)}
               onBlur={() => setDescFocus(false)}
-              placeholder={descFocus ? "" : "Любое состояние, можно б/у, в районе м. Тимирязевская…"}
+              placeholder={
+                descFocus ? "" : "Любое состояние, можно б/у, в районе м. Тимирязевская…"
+              }
               maxLength={2000}
               rows={4}
             />
@@ -224,8 +247,8 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
               })}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Загадать — бесплатно. Эти баллы спишутся у тебя и достанутся тому,
-              кто исполнит желание — уже когда подтвердишь, что всё получил 💚
+              Загадать — бесплатно. Эти баллы спишутся у тебя и достанутся тому, кто исполнит
+              желание — уже когда подтвердишь, что всё получил 💚
             </p>
           </div>
 
@@ -268,7 +291,8 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
               <span className="font-medium">🌐 Можно онлайн / из любого города</span>
             </label>
             <p className="text-[11px] text-muted-foreground">
-              Укажи город — дарители рядом увидят, кому помочь. Если вещь/услугу можно получить онлайн или откуда угодно — поставь галочку.
+              Укажи город — дарители рядом увидят, кому помочь. Если вещь/услугу можно получить
+              онлайн или откуда угодно — поставь галочку.
             </p>
           </div>
 
@@ -277,18 +301,50 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
             <div className="grid grid-cols-2 gap-2">
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
                 📷 Сделать фото
-                <input type="file" accept="image/*" capture="environment" multiple onChange={onPhoto} className="hidden" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  onChange={onPhoto}
+                  className="hidden"
+                />
               </label>
               <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
                 📁 Выбрать файлы
-                <input type="file" accept="image/*" multiple onChange={onPhoto} className="hidden" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={onPhoto}
+                  className="hidden"
+                />
               </label>
             </div>
+            {photoPreviews.length === 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGenImage}
+                  disabled={genImg || !title.trim()}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 py-2.5 text-sm font-medium text-primary transition active:scale-[0.98] disabled:opacity-50"
+                >
+                  {genImg ? "🎨 ИИ рисует…" : "🎨 Нарисовать картинку по описанию"}
+                </button>
+                <p className="text-[11px] text-muted-foreground">
+                  Нет фото? Опиши, что хочешь — и ИИ нарисует картинку-референс.
+                </p>
+              </>
+            )}
             {photoPreviews.length > 0 && (
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {photoPreviews.map((src, i) => (
                   <div key={i} className="relative">
-                    <img src={src} alt={`Превью ${i + 1}`} className="h-24 w-full rounded-lg object-cover" />
+                    <img
+                      src={src}
+                      alt={`Превью ${i + 1}`}
+                      className="h-24 w-full rounded-lg object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => removePhoto(i)}
@@ -307,7 +363,6 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
               </div>
             )}
           </div>
-
 
           <Button onClick={submit} disabled={loading} className="w-full rounded-2xl">
             {loading ? "Отправляем…" : "✨ Загадать желание"}
