@@ -285,12 +285,12 @@ function CabinetPage() {
         <TabsContent value="gifts" className="mt-4 space-y-6">
           <section>
             <h2 className="mb-2 text-lg font-semibold">
-              🔖 Забронировали у вас{" "}
+              🔖 Забронировали у меня{" "}
               <span className="text-sm font-normal text-muted-foreground">({bookings.length})</span>
             </h2>
             {bookings.length === 0 ? (
               <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-                {loading ? "Загружаем..." : "Пока никто не забронировал ваши подарки"}
+                {loading ? "Загружаем..." : "Пока никто не забронировал твои подарки"}
               </p>
             ) : (
               <ul className="space-y-2">
