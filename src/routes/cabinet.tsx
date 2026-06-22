@@ -15,6 +15,7 @@ import {
   getUnreadCounts,
   updateGift,
   deleteGift,
+  reofferGift,
 } from "@/lib/cozy.functions";
 import {
   Dialog,
@@ -61,6 +62,8 @@ type Gift = {
   description: string | null;
   image_url: string | null;
   status: string;
+  quantity?: number | null;
+  quantity_remaining?: number | null;
 };
 
 type TxRow = { id: string; status: string; gift: Gift | null };
@@ -128,7 +131,7 @@ function CabinetPage() {
           giftedFn(),
           chatsFn(),
         ]);
-        setPosted((p as Gift[]) ?? []);
+        setPosted((p as unknown as Gift[]) ?? []);
         setReceived((r as TxRow[]) ?? []);
         setGifted((g as TxRow[]) ?? []);
         const chats = c as {
@@ -529,8 +532,36 @@ function PostedGiftItem({
   const [saving, setSaving] = useState(false);
   const updateFn = useServerFn(updateGift);
   const deleteFn = useServerFn(deleteGift);
+  const reofferFn = useServerFn(reofferGift);
+  const [reofferQty, setReofferQty] = useState(gift.quantity && gift.quantity > 1 ? gift.quantity : 3);
+  const [reoffering, setReoffering] = useState(false);
 
   const canModify = editable && gift.status === "available";
+  // Многоразовый подарок, который разобрали (остаток 0 → не available),
+  // можно «подарить снова».
+  const canReoffer = (gift.quantity ?? 1) > 1 && gift.status !== "available";
+  const isMulti = (gift.quantity ?? 1) > 1 && typeof gift.quantity_remaining === "number";
+
+  const handleReoffer = async () => {
+    setReoffering(true);
+    try {
+      await reofferFn({ data: { gift_id: gift.id, quantity: reofferQty } });
+      onChanged("update", gift.id, {
+        status: "available",
+        quantity: reofferQty,
+        quantity_remaining: reofferQty,
+      });
+      toast.success("Подарок снова доступен 🎁", {
+        description: `Тираж: ${reofferQty} — описание сохранено`,
+      });
+    } catch (e) {
+      toast.error("Не удалось повторить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setReoffering(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim() || !category.trim()) {
@@ -583,7 +614,8 @@ function PostedGiftItem({
   };
 
   return (
-    <li className="flex gap-3 rounded-xl border bg-card p-3 shadow-sm">
+    <li className="rounded-xl border bg-card p-3 shadow-sm">
+      <div className="flex gap-3">
       {gift.image_url ? (
         <img src={gift.image_url} alt={gift.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
       ) : (
@@ -592,6 +624,11 @@ function PostedGiftItem({
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{gift.title}</p>
         <p className="text-xs text-muted-foreground">{gift.category} • {gift.status}</p>
+        {isMulti && gift.status === "available" ? (
+          <p className="mt-0.5 text-xs font-semibold text-amber-700">
+            🔁 осталось {gift.quantity_remaining} из {gift.quantity}
+          </p>
+        ) : null}
         {gift.description && (
           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{gift.description}</p>
         )}
@@ -614,6 +651,40 @@ function PostedGiftItem({
           >
             <Trash2 className="h-4 w-4" />
           </button>
+        </div>
+      )}
+      </div>
+
+      {canReoffer && (
+        <div className="mt-3 rounded-lg bg-amber-50 p-2.5">
+          <p className="text-xs font-medium text-amber-800">Все экземпляры разобрали 🎉 Подарить снова?</p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setReofferQty((q) => Math.max(1, q - 1))}
+              aria-label="Меньше"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background text-base leading-none transition active:scale-95"
+            >
+              −
+            </button>
+            <span className="min-w-[1.5rem] text-center text-sm font-semibold">{reofferQty}</span>
+            <button
+              type="button"
+              onClick={() => setReofferQty((q) => Math.min(99, q + 1))}
+              aria-label="Больше"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background text-base leading-none transition active:scale-95"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={handleReoffer}
+              disabled={reoffering}
+              className="ml-auto rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition active:scale-95 disabled:opacity-60"
+            >
+              {reoffering ? "Минутку…" : "🔁 Подарить снова"}
+            </button>
+          </div>
         </div>
       )}
 

@@ -33,6 +33,8 @@ type Gift = {
   cost: number;
   condition: number | null;
   status: string;
+  quantity?: number | null;
+  quantity_remaining?: number | null;
   city?: string | null;
   is_online?: boolean | null;
 };
@@ -79,7 +81,7 @@ function UserProfilePage() {
           .eq("owner_id", userId)
           .in("status", ["available", "gifted"])
           .order("created_at", { ascending: false });
-      let gRes = await giftQ("id,title,description,image_url,cost,condition,status,city,is_online");
+      let gRes = await giftQ("id,title,description,image_url,cost,condition,status,city,is_online,quantity,quantity_remaining");
       if (gRes.error) gRes = await giftQ("id,title,description,image_url,cost,condition,status");
       const rows = (gRes.data as unknown as Gift[]) ?? [];
       setActive(rows.filter((g) => g.status === "available"));
@@ -223,6 +225,13 @@ function UserProfilePage() {
                           >
                             <Stars value={g.condition} />
                           </div>
+                        ) : null}
+                        {(g.quantity ?? 1) > 1 &&
+                        g.status === "available" &&
+                        typeof g.quantity_remaining === "number" ? (
+                          <span className="mt-0.5 inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            🔁 осталось {g.quantity_remaining} из {g.quantity}
+                          </span>
                         ) : null}
                         {g.description && (
                           <p className={`mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap ${isOpen ? "" : "line-clamp-2"}`}>

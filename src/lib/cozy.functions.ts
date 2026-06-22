@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { notifyUser, chatPath } from "@/lib/notify.server";
+import { notifyUser, chatPath, giftPath } from "@/lib/notify.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 
@@ -58,6 +58,7 @@ export const publishGift = createServerFn({ method: "POST" })
         price_rub: z.number().int().min(0).max(1_000_000).nullable().optional(),
         cost: z.number().int().min(1).max(5).default(1),
         condition: z.number().int().min(1).max(5).nullable().optional(),
+        quantity: z.number().int().min(1).max(99).default(1),
         city: z.string().max(80).nullable().optional(),
         is_online: z.boolean().default(false),
       })
@@ -114,9 +115,17 @@ export const publishGift = createServerFn({ method: "POST" })
         e?.message ?? "",
       );
 
+    // quantity/quantity_remaining идут в «расширенной» вставке вместе с
+    // city/is_online: если миграция ещё не накатана — повторяем без них.
     let ins = await supabase
       .from("gifts")
-      .insert({ ...baseInsert, city: giftCity, is_online: data.is_online })
+      .insert({
+        ...baseInsert,
+        city: giftCity,
+        is_online: data.is_online,
+        quantity: data.quantity,
+        quantity_remaining: data.quantity,
+      })
       .select("id")
       .single();
     if (ins.error && isUndefinedColumn(ins.error)) {
@@ -193,18 +202,53 @@ export const claimGift = createServerFn({ method: "POST" })
         content: "Привет! 🎁 Хочу получить твой подарок. Давай договоримся о встрече?",
       });
     }
-    // Уведомляем владельца подарка о брони.
-    const { data: g } = await supabase
-      .from("gifts")
-      .select("owner_id, title")
-      .eq("id", data.gift_id)
-      .maybeSingle();
+    // Уведомляем владельца подарка о брони. quantity нужен, чтобы подсказки
+    // «остался последний / разобрали все» слать только для многоразовых.
+    // Если колонки quantity ещё нет (миграция не накатана) — читаем без неё.
+    type GiftNotifyRow = { owner_id?: string | null; title?: string | null; quantity?: number | null };
+    let g: GiftNotifyRow | null = null;
+    {
+      const withQty = await supabase
+        .from("gifts")
+        .select("owner_id, title, quantity")
+        .eq("id", data.gift_id)
+        .maybeSingle();
+      if (withQty.error || !withQty.data) {
+        const noQty = await supabase
+          .from("gifts")
+          .select("owner_id, title")
+          .eq("id", data.gift_id)
+          .maybeSingle();
+        g = (noQty.data as GiftNotifyRow | null) ?? null;
+      } else {
+        g = withQty.data as GiftNotifyRow;
+      }
+    }
     if (g?.owner_id && g.owner_id !== userId) {
       await notifyUser(
         g.owner_id,
         `🎁 Кто-то забронировал твой подарок «${g.title}»! Загляни в чат — договоритесь о встрече.`,
         chatPath(data.gift_id),
       );
+      // Для многоразового подарока: подсказываем владельцу, что экземпляры
+      // заканчиваются. remaining приходит из claim_gift только после миграции.
+      const remaining = ((first as { remaining?: number } | null)?.remaining ?? null) as
+        | number
+        | null;
+      const qty = g.quantity ?? 1;
+      if (qty > 1 && remaining === 1) {
+        await notifyUser(
+          g.owner_id,
+          `🎁 У подарка «${g.title}» остался последний экземпляр.`,
+          giftPath(data.gift_id),
+        );
+      } else if (qty > 1 && remaining === 0) {
+        await notifyUser(
+          g.owner_id,
+          `🎁 Все экземпляры подарка «${g.title}» разобрали! Хочешь подарить снова? Открой подарок и нажми «Подарить снова».`,
+          giftPath(data.gift_id),
+        );
+      }
     }
     return {
       transaction_id: first?.transaction_id as string,
@@ -483,7 +527,7 @@ export const republishGift = createServerFn({ method: "POST" })
       /column .* does not exist|could not find the .* column|schema cache/i.test(e?.message ?? "");
 
     const full =
-      "owner_id, title, description, category, image_url, image_urls, cost, gift_kind, price_tier, price_rub, condition, city, is_online";
+      "owner_id, title, description, category, image_url, image_urls, cost, gift_kind, price_tier, price_rub, condition, city, is_online, quantity";
     let { data: g, error } = await supabase.from("gifts").select(full).eq("id", data.gift_id).maybeSingle();
     if (error)
       ({ data: g, error } = await supabase
@@ -511,9 +555,16 @@ export const republishGift = createServerFn({ method: "POST" })
       condition: gg.condition ?? null,
     };
 
+    const dupQty = typeof gg.quantity === "number" && gg.quantity > 0 ? gg.quantity : 1;
     let ins = await supabase
       .from("gifts")
-      .insert({ ...base, city: gg.city ?? null, is_online: gg.is_online ?? false })
+      .insert({
+        ...base,
+        city: gg.city ?? null,
+        is_online: gg.is_online ?? false,
+        quantity: dupQty,
+        quantity_remaining: dupQty,
+      })
       .select("id")
       .single();
     if (ins.error && isUndefinedColumn(ins.error)) {
@@ -523,12 +574,42 @@ export const republishGift = createServerFn({ method: "POST" })
     return { id: ins.data.id };
   });
 
+// ---------- Re-offer (подарить снова) ----------
+// Владелец заново открывает многоразовый подарок: задаёт новое количество,
+// остальное описание сохраняется как было. Доступно, только когда экземпляры
+// кончились (статус не 'available') — иначе нет смысла.
+export const reofferGift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        gift_id: z.string().uuid(),
+        quantity: z.number().int().min(1).max(99),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("gifts")
+      .update({
+        quantity: data.quantity,
+        quantity_remaining: data.quantity,
+        status: "available",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.gift_id)
+      .eq("owner_id", userId);
+    if (error) failOp("REOFFER_FAILED", error);
+    return { ok: true };
+  });
+
 // ---------- Public single gift (для страницы подарка по ссылке, без входа) ----------
 export const getPublicGift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
     const full =
-      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online";
+      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online, quantity, quantity_remaining";
     let { data: g, error } = await supabaseAdmin.from("gifts").select(full).eq("id", data.gift_id).maybeSingle();
     if (error)
       ({ data: g, error } = await supabaseAdmin
@@ -646,7 +727,7 @@ export const getMyPostedGifts = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
     // С городом/онлайн; если миграция ещё не накатана — без них.
     let { data, error } = await build(
-      "id, title, category, description, image_url, status, cost, created_at, city, is_online",
+      "id, title, category, description, image_url, status, cost, created_at, city, is_online, quantity, quantity_remaining",
     );
     if (error)
       ({ data, error } = await build(

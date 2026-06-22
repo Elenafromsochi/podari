@@ -72,3 +72,8 @@ export async function notifyUser(
 export function chatPath(giftId?: string | null): string {
   return giftId ? `/chat/${giftId}` : "/?tab=chats";
 }
+
+/** Путь к публичной странице подарка. */
+export function giftPath(giftId: string): string {
+  return `/gift/${giftId}`;
+}
