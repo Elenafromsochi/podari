@@ -114,7 +114,7 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
     return { description: d, hasImage: Boolean(input?.hasImage) };
   })
   .handler(async ({ data }) => {
-    const system = `Ты помощник в сервисе обмена подарками. По описанию подарка придумай короткое уютное название (3–6 слов, без кавычек) и подбери категорию строго из списка: ${CATEGORIES.join(", ")}. Отвечай только JSON.`;
+    const system = `Ты помощник в сервисе обмена подарками. По описанию придумай МАКСИМАЛЬНО короткое и понятное название — суть предмета или услуги, чтобы помещалось в одну строку (1–4 слова, примерно до 30 символов). Без кавычек, эмодзи, цен и лишних слов. Примеры хороших названий: «Вайбкодинг. Консультация.», «Зимняя куртка», «Книга по Python», «Детский велосипед», «Урок гитары». Подбери категорию строго из списка: ${CATEGORIES.join(", ")}. Отвечай только JSON.`;
 
     const json = await callGateway({
       model: "google/gemini-2.5-flash",
@@ -134,7 +134,7 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
             parameters: {
               type: "object",
               properties: {
-                title: { type: "string", minLength: 2, maxLength: 80 },
+                title: { type: "string", minLength: 2, maxLength: 40 },
                 category: { type: "string", enum: CATEGORIES },
               },
               required: ["title", "category"],
@@ -153,7 +153,7 @@ export const generateGiftMeta = createServerFn({ method: "POST" })
     } catch {
       parsed = {};
     }
-    let title = (parsed.title || "Подарок").toString().slice(0, 80).trim();
+    let title = (parsed.title || "Подарок").toString().slice(0, 40).trim();
     if (looksUnsafe(title)) title = "Подарок";
     const category = CATEGORIES.includes(parsed.category || "")
       ? (parsed.category as string)
