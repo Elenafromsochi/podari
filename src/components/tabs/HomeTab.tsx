@@ -528,7 +528,7 @@ function ActiveGiftCard({
               }
               onClaim(gift.id);
             }}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
           >
             🎁 Получить за {gift.cost} {word}
           </button>
