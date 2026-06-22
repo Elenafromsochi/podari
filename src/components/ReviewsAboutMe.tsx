@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getReviewsAbout } from "@/lib/cozy.functions";
+import { Stars } from "@/components/ui/stars";
 
 type ReviewItem = {
   id: string;
@@ -67,9 +68,7 @@ export function ReviewsAboutMe({ userId }: { userId: string }) {
               <span className="shrink-0 text-xs text-muted-foreground">{fmtDate(r.created_at)}</span>
             </div>
             <div className="mt-0.5 text-sm leading-none">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n}>{n <= r.rating ? "⭐" : "☆"}</span>
-              ))}
+              <Stars value={r.rating} />
             </div>
             {r.comment && (
               <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>

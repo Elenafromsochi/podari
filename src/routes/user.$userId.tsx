@@ -11,6 +11,7 @@ import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
 import { GlobalChrome } from "@/components/GlobalChrome";
+import { Stars } from "@/components/ui/stars";
 
 
 export const Route = createFileRoute("/user/$userId")({
@@ -220,9 +221,7 @@ function UserProfilePage() {
                             aria-label={`Состояние ${g.condition} из 5`}
                             title={`Состояние: ${g.condition} из 5`}
                           >
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <span key={n}>{n <= g.condition! ? "❤️" : "🤍"}</span>
-                            ))}
+                            <Stars value={g.condition} />
                           </div>
                         ) : null}
                         {g.description && (

@@ -6,6 +6,7 @@ import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, Send } from "lu
 import { haptic } from "@/lib/haptics";
 import { restartTour } from "@/lib/tour";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Stars } from "@/components/ui/stars";
 import { WishesFeed } from "@/components/WishesFeed";
 import { LevelBadge } from "@/components/LevelBadge";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -491,9 +492,7 @@ function GiftedCard({ gift }: { gift: Gift }) {
             aria-label={`Состояние ${gift.condition} из 5`}
             title={`Состояние: ${gift.condition} из 5`}
           >
-            {[1, 2, 3, 4, 5].map((n) => (
-              <span key={n}>{n <= gift.condition! ? "❤️" : "🤍"}</span>
-            ))}
+            <Stars value={gift.condition} />
           </div>
         ) : null}
         {gift.description && (
