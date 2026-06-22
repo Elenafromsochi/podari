@@ -27,7 +27,7 @@ function ruConfig(): AIConfig {
     baseUrl: process.env.AI_BASE_URL ?? "https://openrouter.ai/api/v1",
     apiKey: process.env.AI_API_KEY ?? "",
     model: process.env.AI_MODEL ?? "google/gemini-2.5-flash",
-    imageModel: process.env.AI_IMAGE_MODEL ?? "dall-e-3",
+    imageModel: process.env.AI_IMAGE_MODEL ?? "gpt-image-1",
     transcribeModel: process.env.AI_TRANSCRIBE_MODEL ?? "whisper-1",
   };
 }
@@ -42,7 +42,7 @@ function globalConfig(): AIConfig {
     baseUrl: process.env.AI_GLOBAL_BASE_URL ?? ru.baseUrl,
     apiKey: process.env.AI_GLOBAL_API_KEY ?? ru.apiKey,
     model: process.env.AI_GLOBAL_MODEL ?? "openai/gpt-4o",
-    imageModel: process.env.AI_GLOBAL_IMAGE_MODEL ?? "dall-e-3",
+    imageModel: process.env.AI_GLOBAL_IMAGE_MODEL ?? "gpt-image-1",
     transcribeModel: process.env.AI_GLOBAL_TRANSCRIBE_MODEL ?? "whisper-1",
   };
 }
