@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { updateGift } from "@/lib/cozy.functions";
+import { generateGiftImage } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
 import { COST_TIERS, GIFT_KINDS, hasCondition, type GiftKind } from "@/lib/gift-kinds";
 
@@ -62,8 +63,29 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [genImg, setGenImg] = useState(false);
+
   const showCondition = hasCondition(giftKind);
   const updateFn = useServerFn(updateGift);
+  const genImageFn = useServerFn(generateGiftImage);
+
+  const handleGenImage = async () => {
+    if (!description.trim() && !title.trim()) return;
+    setGenImg(true);
+    setError(null);
+    try {
+      const { imageDataUrl } = await genImageFn({
+        data: { description: description.trim(), title: title.trim() },
+      });
+      setPhotoPreviews((prev) => (prev.length >= MAX_PHOTOS ? prev : [...prev, imageDataUrl]));
+      toast.success("Картинка готова 🎨", { description: "Можно оставить или удалить" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Не получилось нарисовать";
+      setError(msg);
+    } finally {
+      setGenImg(false);
+    }
+  };
 
   const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -189,9 +211,18 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
                 ))}
               </div>
             )}
+            {photoPreviews.length === 0 && (
+              <button
+                type="button"
+                onClick={handleGenImage}
+                disabled={genImg || (!description.trim() && !title.trim())}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 py-2.5 text-sm font-medium text-primary transition active:scale-[0.98] disabled:opacity-50"
+              >
+                {genImg ? "🎨 ИИ рисует…" : "🎨 Нарисовать картинку по описанию"}
+              </button>
+            )}
           </div>
 
-          {/* Тип подарка */}
           <div className="space-y-2">
             <Label>Тип подарка</Label>
             <div className="grid grid-cols-2 gap-1.5">

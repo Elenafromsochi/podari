@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
-import { generateGiftMeta, describeGiftImage, enhanceGiftDescription } from "@/lib/gift-ai.functions";
+import { generateGiftMeta, describeGiftImage, enhanceGiftDescription, generateGiftImage } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
 
@@ -53,7 +53,27 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const generateMeta = useServerFn(generateGiftMeta);
   const describeImage = useServerFn(describeGiftImage);
   const enhanceFn = useServerFn(enhanceGiftDescription);
+  const genImageFn = useServerFn(generateGiftImage);
   const [enhancing, setEnhancing] = useState(false);
+  const [genImg, setGenImg] = useState(false);
+
+  const handleGenImage = async () => {
+    const text = description.trim();
+    if (!text) {
+      setError("Сначала опиши подарок — по описанию ИИ нарисует картинку ✨");
+      return;
+    }
+    setGenImg(true);
+    setError(null);
+    try {
+      const { imageDataUrl } = await genImageFn({ data: { description: text } });
+      setPhotoPreviews((prev) => (prev.length >= MAX_PHOTOS ? prev : [...prev, imageDataUrl]));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось нарисовать картинку");
+    } finally {
+      setGenImg(false);
+    }
+  };
 
   const enhanceDescription = async () => {
     const text = description.trim();
@@ -289,6 +309,21 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
             <p className="text-xs text-muted-foreground">
               🤖 ИИ опишет подарок по первой фотографии. Можно добавить до 10 кадров.
             </p>
+            {photoPreviews.length === 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGenImage}
+                  disabled={genImg || !description.trim()}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 py-2.5 text-sm font-medium text-primary transition active:scale-[0.98] disabled:opacity-50"
+                >
+                  {genImg ? "🎨 ИИ рисует…" : "🎨 Нарисовать картинку по описанию"}
+                </button>
+                <p className="text-[11px] text-muted-foreground">
+                  Нет фото? Опиши подарок словами — и ИИ нарисует картинку. Подходит для услуг и встреч.
+                </p>
+              </>
+            )}
             {showCondition && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
                 💛 Будь честным: добавь и фото <b>самой изношенной части</b> (потёртости, царапины) — так получатель доверяет тебе больше, а оценка состояния честнее.
