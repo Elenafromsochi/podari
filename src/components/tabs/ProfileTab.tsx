@@ -314,7 +314,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
               {(incoming ?? []).length > 0 && (
                 <div>
                   <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                    🔖 Забронировали у вас{" "}
+                    🔖 Забронировали у меня{" "}
                     <span className="text-xs">({(incoming ?? []).length})</span>
                   </h3>
                   <ul className="achievements-list space-y-2">
@@ -349,7 +349,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
               {(booked ?? []).length > 0 && (
                 <div>
                   <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                    🎁 Вы забронировали{" "}
+                    🎁 Я забронировал(а){" "}
                     <span className="text-xs">({(booked ?? []).length})</span>
                   </h3>
                   <ul className="achievements-list space-y-2">

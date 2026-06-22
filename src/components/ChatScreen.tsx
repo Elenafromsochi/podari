@@ -396,6 +396,10 @@ export function ChatScreen({
   };
 
   const hints = isOwner ? OWNER_HINTS : RECEIVER_HINTS;
+  // Шаблоны нужны только в самом начале. Как только обе стороны написали
+  // хотя бы по одному сообщению — диалог пошёл, прячем подсказки.
+  const bothSpoke =
+    messages.some((m) => m.from === "me") && messages.some((m) => m.from === "them");
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-background">
@@ -556,7 +560,7 @@ export function ChatScreen({
 
       {/* Нижняя панель: шаблоны (видны сразу, без прокрутки) + поле ввода */}
       <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-30 border-t-2 border-emerald-600/30 bg-card px-3 pb-3 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
-        {!handedOver && !cancelled && (
+        {!handedOver && !cancelled && !bothSpoke && (
           <div className="mb-2 grid grid-cols-2 gap-2" data-tour="chat-templates">
             {hints.map((s) => (
               <button
