@@ -769,6 +769,44 @@ export const getMyGiftedGifts = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+// ---------- Incoming bookings (кто забронировал мой подарок, ждём передачи) ----------
+export const getMyIncomingBookings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(
+        "id, status, created_at, gift_id, receiver_id, gift:gifts(id, title, image_url, status)",
+      )
+      .eq("sender_id", userId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) failOp("BOOKINGS_LOAD_FAILED", error);
+    const rows = data ?? [];
+    const ids = Array.from(
+      new Set(rows.map((r) => r.receiver_id).filter((v): v is string => !!v)),
+    );
+    const nameMap = new Map<string, string>();
+    if (ids.length) {
+      const { data: profs } = await supabase.rpc("get_public_profiles", { _user_ids: ids });
+      for (const p of (profs ?? []) as Array<{ user_id: string; display_name: string }>) {
+        nameMap.set(p.user_id, p.display_name || "Гость");
+      }
+    }
+    return rows.map((r) => {
+      const g = (r as { gift: { id: string; title: string; image_url: string | null; status: string } | null }).gift;
+      return {
+        transaction_id: r.id as string,
+        created_at: r.created_at as string,
+        gift_id: r.gift_id as string,
+        receiver_name: (r.receiver_id && nameMap.get(r.receiver_id)) || "Гость",
+        gift_title: g?.title ?? "Подарок",
+        gift_image: g?.image_url ?? null,
+      };
+    });
+  });
+
 // ---------- Unread counters for cabinet badges ----------
 export const getUnreadCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
