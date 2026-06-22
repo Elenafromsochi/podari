@@ -596,36 +596,6 @@ export const getReviewsAbout = createServerFn({ method: "POST" })
     };
   });
 
-// ---------- Notifications preference ----------
-export const getNotificationsEnabled = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ enabled: boolean }> => {
-    const { supabase, userId } = context;
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("notifications_enabled")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (error) return { enabled: true }; // колонки ещё нет — по умолчанию включено
-    return {
-      enabled:
-        (data as { notifications_enabled?: boolean } | null)?.notifications_enabled !== false,
-    };
-  });
-
-export const setNotificationsEnabled = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ enabled: z.boolean() }).parse(input))
-  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
-    const { supabase, userId } = context;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ notifications_enabled: data.enabled })
-      .eq("user_id", userId);
-    if (error) console.error("[notifications] set failed", error);
-    return { ok: true };
-  });
-
 // ---------- Public deals feed ----------
 export const getDealsFeed = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
