@@ -530,9 +530,12 @@ function ActiveGiftCard({
         <span className="inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
           {gift.owner_name}
         </span>
-        {(gift.quantity ?? 1) > 1 && typeof gift.quantity_remaining === "number" ? (
+        {(gift.quantity ?? 1) > 1 ? (
           <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
-            🔁 осталось {gift.quantity_remaining} из {gift.quantity}
+            {/* Точный остаток виден только владельцу; другим — нейтральный значок. */}
+            {isMine && typeof gift.quantity_remaining === "number"
+              ? `🔁 осталось ${gift.quantity_remaining} из ${gift.quantity}`
+              : "🔁 можно несколько раз"}
           </span>
         ) : null}
       </div>
