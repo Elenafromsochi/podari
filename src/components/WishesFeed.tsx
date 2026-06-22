@@ -36,7 +36,15 @@ interface Props {
   searchQuery?: string;
 }
 
-function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (id: string) => void }) {
+function WishCard({
+  w,
+  meId,
+  onOpen,
+}: {
+  w: Wish;
+  meId: string | null;
+  onOpen: (id: string) => void;
+}) {
   const [lightbox, setLightbox] = useState(false);
   // Канонический адрес — чтобы ссылка всегда вела на 23podari.ru, даже если
   // приложение открыто по старому длинному адресу.
@@ -56,7 +64,12 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
             aria-label="Посмотреть фото"
             className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"
           >
-            <img src={w.image_url} alt={w.title} loading="lazy" className="h-full w-full object-cover" />
+            <img
+              src={w.image_url}
+              alt={w.title}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
           </button>
         ) : (
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-3xl">
@@ -71,7 +84,14 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
           }}
           className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
         >
-          <div className="truncate pr-7 text-[15px] font-semibold leading-tight">{w.title}</div>
+          {/* Единый стиль карточки: цена — бейджем справа у заголовка, как у
+              подарков (pr-8 оставляет место под плавающую кнопку «Поделиться»). */}
+          <div className="flex items-start justify-between gap-2 pr-8">
+            <div className="truncate text-[15px] font-semibold leading-tight">{w.title}</div>
+            <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
+              {w.cost} {w.cost === 1 ? "балл" : w.cost < 5 ? "балла" : "баллов"}
+            </span>
+          </div>
           {w.description && (
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{w.description}</p>
           )}
@@ -80,10 +100,6 @@ function WishCard({ w, meId, onOpen }: { w: Wish; meId: string | null; onOpen: (
               {w.owner_name}
             </span>
             <LevelBadge level={w.owner_level} />
-
-            <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-              {w.cost} {w.cost === 1 ? "балл" : w.cost < 5 ? "балла" : "баллов"}
-            </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
               {w.category}
             </span>
@@ -124,7 +140,9 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
   const listFn = useServerFn(listWishes);
 
   useEffect(() => {
-    listFn({ data: {} }).then((data) => setWishes(data as Wish[])).catch(() => setWishes([]));
+    listFn({ data: {} })
+      .then((data) => setWishes(data as Wish[]))
+      .catch(() => setWishes([]));
     supabase.auth.getSession().then(({ data }) => setMeId(data.session?.user?.id ?? null));
   }, [listFn]);
 
@@ -163,7 +181,9 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
         </span>
         <span>
           <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
-          <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">{WISH_EXAMPLES[wishIdx]}</span>
+          <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">
+            {WISH_EXAMPLES[wishIdx]}
+          </span>
         </span>
       </button>
 
