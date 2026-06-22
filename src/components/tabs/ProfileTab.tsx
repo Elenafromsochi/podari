@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send, Sparkles, Share2, Bell } from "lucide-react";
+import { ChevronDown, LogOut, Pencil, Trash2, Trophy, BarChart3, Send, Sparkles, Share2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -17,10 +17,7 @@ import {
   getMyChats,
   updateGift,
   deleteGift,
-  getNotificationsEnabled,
-  setNotificationsEnabled,
 } from "@/lib/cozy.functions";
-import { Switch } from "@/components/ui/switch";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
@@ -112,23 +109,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   const rolesFn = useServerFn(getMyRoles);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => { rolesFn({}).then((r: any) => setIsAdmin(!!r?.isAdmin)).catch(() => {}); }, [rolesFn]);
-
-  // Уведомления в Telegram (вкл/выкл).
-  const notifGetFn = useServerFn(getNotificationsEnabled);
-  const notifSetFn = useServerFn(setNotificationsEnabled);
-  const [notifEnabled, setNotifEnabled] = useState(true);
-  useEffect(() => {
-    notifGetFn({}).then((r: { enabled: boolean }) => setNotifEnabled(r.enabled)).catch(() => {});
-  }, [notifGetFn]);
-  const toggleNotif = async (v: boolean) => {
-    setNotifEnabled(v);
-    haptic("select");
-    try {
-      await notifSetFn({ data: { enabled: v } });
-    } catch {
-      /* откатывать не нужно: повторное переключение поправит */
-    }
-  };
 
   const { items: achievements, stats: journeyStats } = useAchievements();
   // «Новые» = открытые, которые пользователь ещё не видел
@@ -398,18 +378,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
             <BarChart3 className="h-4 w-4" /> Insights (админ)
           </Link>
         )}
-        <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3">
-          <div className="flex items-start gap-2.5">
-            <Bell className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">Уведомления в Telegram</span>
-              <span className="text-xs text-muted-foreground">
-                Сообщения, брони, отзывы — бот напишет тебе со ссылкой
-              </span>
-            </div>
-          </div>
-          <Switch checked={notifEnabled} onCheckedChange={toggleNotif} aria-label="Уведомления в Telegram" />
-        </div>
         <Link
           to="/set-password"
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/5 py-3 text-sm font-medium text-primary transition active:scale-[0.98]"

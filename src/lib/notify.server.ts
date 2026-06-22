@@ -33,35 +33,17 @@ export async function notifyUser(
     if (!userId) return;
 
     let telegramId: number | string | null = null;
-    let enabled = true;
     let lastSeenAt: string | null = null;
 
-    // Пытаемся прочитать настройку уведомлений; если колонки ещё нет
-    // (миграция не применена) — считаем, что уведомления включены.
-    const withPref = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from("profiles")
-      .select("telegram_id, notifications_enabled, last_seen_at")
+      .select("telegram_id, last_seen_at")
       .eq("user_id", userId)
       .maybeSingle();
+    telegramId = (data?.telegram_id as number | null) ?? null;
+    lastSeenAt = (data as { last_seen_at?: string | null } | null)?.last_seen_at ?? null;
 
-    if (withPref.error) {
-      const only = await supabaseAdmin
-        .from("profiles")
-        .select("telegram_id, last_seen_at")
-        .eq("user_id", userId)
-        .maybeSingle();
-      telegramId = (only.data?.telegram_id as number | null) ?? null;
-      lastSeenAt = (only.data as { last_seen_at?: string | null } | null)?.last_seen_at ?? null;
-    } else {
-      const row = withPref.data as
-        | { telegram_id?: number | null; notifications_enabled?: boolean; last_seen_at?: string | null }
-        | null;
-      telegramId = row?.telegram_id ?? null;
-      enabled = row?.notifications_enabled !== false;
-      lastSeenAt = row?.last_seen_at ?? null;
-    }
-
-    if (!telegramId || !enabled) return;
+    if (!telegramId) return;
 
     // Онлайн-проверка: если человек только что был в приложении — не дублируем.
     if (opts.skipIfActiveWithinSec && lastSeenAt) {
