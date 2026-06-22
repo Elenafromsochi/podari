@@ -26,6 +26,7 @@ import { shareToTelegram, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { CityBadge } from "@/components/CityBadge";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
+import { GlobalPremiumCard } from "@/components/GlobalPremiumCard";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -205,6 +206,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         onReceive={onReceive}
         onCreateWish={onCreateWish}
       />
+
+      {/* Подписка Global (топовые модели по подписке, оплата Telegram Stars) */}
+      <GlobalPremiumCard />
 
       {/* Achievements accordion */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">

@@ -22,6 +22,43 @@ async function sendLoginConfirmed(chatId: number) {
   });
 }
 
+// Оплата звёздами (Telegram Stars): начисляем/продлеваем Global-подписку.
+// payload формата "global:<user_id>:<days>" приходит из createGlobalInvoice.
+async function handleSuccessfulPayment(
+  chatId: number,
+  payload: string,
+): Promise<void> {
+  const parts = payload.split(":");
+  if (parts[0] !== "global") return;
+  const userId = parts[1];
+  const days = Number(parts[2] || "30") || 30;
+  if (!userId) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = supabaseAdmin as any;
+  const { data } = await admin
+    .from("profiles")
+    .select("premium_until")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  // Продлеваем от текущего срока, если он ещё активен, иначе от сегодня.
+  const current = data?.premium_until ? new Date(data.premium_until) : null;
+  const base = current && current.getTime() > Date.now() ? current : new Date();
+  base.setDate(base.getDate() + days);
+
+  await admin
+    .from("profiles")
+    .update({ premium_until: base.toISOString() })
+    .eq("user_id", userId);
+
+  const until = base.toLocaleDateString("ru-RU");
+  await sendTgMessage(
+    chatId,
+    `✅ Global активирован до ${until}. Спасибо за поддержку! 💚`,
+  );
+}
+
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   server: {
@@ -45,6 +82,27 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             callback_query_id: update.callback_query.id,
           });
           return Response.json({ ok: true });
+        }
+
+        // ── Платежи звёздами (Telegram Stars) ──
+        // Шаг 1: подтверждаем pre-checkout (нужно ответить за ~10 секунд).
+        if (update.pre_checkout_query) {
+          await tgApiSafe("answerPreCheckoutQuery", {
+            pre_checkout_query_id: update.pre_checkout_query.id,
+            ok: true,
+          });
+          return Response.json({ ok: true });
+        }
+        // Шаг 2: успешный платёж приходит как сообщение с successful_payment.
+        {
+          const pmsg = update.message;
+          if (pmsg?.successful_payment && pmsg.chat?.id) {
+            await handleSuccessfulPayment(
+              pmsg.chat.id,
+              String(pmsg.successful_payment.invoice_payload ?? ""),
+            );
+            return Response.json({ ok: true });
+          }
         }
 
 
