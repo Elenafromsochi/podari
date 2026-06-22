@@ -191,6 +191,9 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
+      {/* Отзывы обо мне — сразу под плашкой с уровнем, в самом верху */}
+      <ReviewsAboutMe userId={user.user_id} />
+
       {/* Единое окно прогресса: ступени пути (первые шаги → активный даритель → …) */}
       <Journey stats={journeyStats} />
 
@@ -202,9 +205,6 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
         onReceive={onReceive}
         onCreateWish={onCreateWish}
       />
-
-      {/* Отзывы обо мне — перед достижениями */}
-      <ReviewsAboutMe userId={user.user_id} />
 
       {/* Achievements accordion */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
