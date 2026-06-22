@@ -6,6 +6,7 @@
   "assets": { "directory": "dist/client", "binding": "ASSETS" },
   "vars": {
     "AI_BASE_URL": "https://api.proxyapi.ru/openai/v1",
-    "AI_MODEL": "gpt-4o-mini"
-  }
+    "AI_MODEL": "gpt-4o-mini",
+    "AI_IMAGE_MODEL": "gpt-image-1",
+  },
 }
