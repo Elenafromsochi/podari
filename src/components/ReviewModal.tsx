@@ -123,7 +123,7 @@ export function ReviewModal({
 
         {showCondition && (
           <div className="mt-2 space-y-2 rounded-2xl border border-amber-300/50 bg-amber-50/50 p-3 dark:bg-amber-950/20">
-            <div className="text-sm font-medium">Проверь состояние подарка ❤️</div>
+            <div className="text-sm font-medium">Проверь состояние подарка ⭐</div>
             <div className="text-xs text-muted-foreground">
               Даритель оценил на <b>{claimedCondition} из 5</b>. Подтверди честно или
               поправь, как есть на самом деле.
@@ -135,9 +135,13 @@ export function ReviewModal({
                   type="button"
                   onClick={() => setConfirmedCondition(n)}
                   aria-label={`Состояние ${n} из 5`}
-                  className="text-2xl leading-none transition-transform hover:scale-110"
+                  className={`text-2xl leading-none transition-transform hover:scale-110 ${
+                    confirmedCondition && n <= confirmedCondition
+                      ? "text-amber-400"
+                      : "text-muted-foreground/40"
+                  }`}
                 >
-                  {confirmedCondition && n <= confirmedCondition ? "❤️" : "🤍"}
+                  {confirmedCondition && n <= confirmedCondition ? "★" : "☆"}
                 </button>
               ))}
               <span className="ml-2 text-xs text-muted-foreground">
