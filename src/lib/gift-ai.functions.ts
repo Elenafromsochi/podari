@@ -51,6 +51,11 @@ async function callGateway(body: Record<string, unknown>) {
 // в отличие от браузерной диктовки (Web Speech), которой нет на многих телефонах.
 const AI_TRANSCRIBE_MODEL = process.env.AI_TRANSCRIBE_MODEL ?? "whisper-1";
 
+// Генерация картинки по описанию — через тот же OpenAI-совместимый шлюз
+// (на проде это российский ProxyAPI.ru), эндпоинт /images/generations.
+// DALL·E 3 умеет отдавать картинку сразу в base64 (response_format=b64_json).
+const AI_IMAGE_MODEL = process.env.AI_IMAGE_MODEL ?? "dall-e-3";
+
 function base64ToBytes(b64: string): Uint8Array {
   const clean = b64.includes(",") ? b64.slice(b64.indexOf(",") + 1) : b64;
   const bin = atob(clean);
@@ -319,4 +324,65 @@ export const classifyWishCategory = createServerFn({ method: "POST" })
       // ИИ недоступен — не блокируем загадывание желания.
       return { category: "разное" };
     }
+  });
+
+// Сгенерировать картинку для подарка/услуги без фото — по названию и описанию.
+// Идёт через тот же шлюз AI_BASE_URL (на проде — российский ProxyAPI.ru),
+// возвращает data:URL картинки, который потом заливается в Storage как обычное фото.
+export const generateGiftImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { description?: string; title?: string }) => {
+    const description = String(input?.description ?? "").trim().slice(0, 2000);
+    const title = String(input?.title ?? "").trim().slice(0, 200);
+    if (!description && !title) throw new Error("Нужно описание подарка");
+    return { description, title };
+  })
+  .handler(async ({ data }): Promise<{ imageDataUrl: string }> => {
+    const apiKey = process.env.AI_API_KEY;
+    if (!apiKey) throw new Error("ИИ не подключён: добавь AI_API_KEY");
+
+    const subject = [data.title, data.description].filter(Boolean).join(". ");
+    const prompt =
+      "Тёплая, аккуратная иллюстрация для карточки подарка или услуги в каталоге добрых подарков. " +
+      "Стиль: современная мягкая иллюстрация, пастельные тёплые тона, предмет/сцена по центру на простом фоне, " +
+      "дружелюбно и уютно. БЕЗ текста, букв, цифр, надписей, логотипов и водяных знаков. " +
+      `Что изобразить: ${sanitizeUserText(subject, 1000)}.`;
+
+    const res = await fetch(`${AI_BASE_URL}/images/generations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: AI_IMAGE_MODEL,
+        prompt,
+        n: 1,
+        size: "1024x1024",
+        response_format: "b64_json",
+      }),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Не удалось нарисовать картинку (${res.status}): ${txt.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as {
+      data?: Array<{ b64_json?: string; url?: string }>;
+    };
+    const item = json?.data?.[0];
+    if (item?.b64_json) {
+      return { imageDataUrl: `data:image/png;base64,${item.b64_json}` };
+    }
+    // Некоторые модели/прокси отдают только ссылку — подтягиваем и кодируем в data:URL.
+    if (item?.url) {
+      const img = await fetch(item.url);
+      if (img.ok) {
+        const buf = new Uint8Array(await img.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        const mime = img.headers.get("content-type") || "image/png";
+        return { imageDataUrl: `data:${mime};base64,${btoa(bin)}` };
+      }
+    }
+    throw new Error("ИИ не вернул изображение");
   });
