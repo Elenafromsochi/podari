@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Gift as GiftIcon, HandHeart, Search, Compass, Send, Pencil, Trash2, Share2 } from "lucide-react";
+import {
+  Sparkles,
+  Gift as GiftIcon,
+  HandHeart,
+  Search,
+  Compass,
+  Send,
+  Pencil,
+  Trash2,
+  Share2,
+} from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { shareGift } from "@/lib/share";
 import { restartTour } from "@/lib/tour";
@@ -13,12 +23,7 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { getHomeStats, deleteGift } from "@/lib/cozy.functions";
 
-import {
-  pickRandom,
-  HOME_TAGLINES,
-  GIVE_EXAMPLES,
-  RECEIVE_EXAMPLES,
-} from "@/lib/random-copy";
+import { pickRandom, HOME_TAGLINES, GIVE_EXAMPLES, RECEIVE_EXAMPLES } from "@/lib/random-copy";
 import { useTourState } from "@/lib/tour";
 
 type Gift = {
@@ -47,12 +52,22 @@ interface Props {
   onPickGift: (giftId: string) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;
+  onOpenProfile?: () => void;
   initialFeedTab?: FeedTab;
 }
 
 type Stats = { active_gifts: number; gifted_total: number; wishes_open: number };
 
-export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish, onOpenWish, initialFeedTab = "active" }: Props) {
+export function HomeTab({
+  userName,
+  onGive,
+  onReceive,
+  onPickGift,
+  onCreateWish,
+  onOpenWish,
+  onOpenProfile,
+  initialFeedTab = "active",
+}: Props) {
   const [gifted, setGifted] = useState<Gift[] | null>(null);
   const [activeGifts, setActiveGifts] = useState<Gift[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
@@ -63,7 +78,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
   const [giveIdx, setGiveIdx] = useState(() => Math.floor(Math.random() * GIVE_EXAMPLES.length));
-  const [receiveIdx, setReceiveIdx] = useState(() => Math.floor(Math.random() * RECEIVE_EXAMPLES.length));
+  const [receiveIdx, setReceiveIdx] = useState(() =>
+    Math.floor(Math.random() * RECEIVE_EXAMPLES.length),
+  );
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -86,7 +103,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
     (async () => {
       const { data } = await supabase
         .from("gifts")
-        .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at")
+        .select(
+          "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at",
+        )
         .eq("status", "gifted")
         .not("owner_id", "is", null)
         .order("updated_at", { ascending: false })
@@ -97,7 +116,11 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       const levelMap = new Map<string, number>();
       if (ids.length) {
         const { data: profs } = await supabase.rpc("get_public_profiles", { _user_ids: ids });
-        for (const p of ((profs ?? []) as Array<{ user_id: string; display_name: string; level: number }>)) {
+        for (const p of (profs ?? []) as Array<{
+          user_id: string;
+          display_name: string;
+          level: number;
+        }>) {
           nameMap.set(p.user_id, p.display_name || "Гость");
           levelMap.set(p.user_id, p.level ?? 1);
         }
@@ -105,8 +128,8 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       setGifted(
         rows.map((g) => ({
           ...g,
-          owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
-          owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
+          owner_name: g.owner_id ? (nameMap.get(g.owner_id) ?? "Гость") : "Гость",
+          owner_level: g.owner_id ? (levelMap.get(g.owner_id) ?? 1) : 1,
         })),
       );
     })();
@@ -137,7 +160,11 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       const levelMap = new Map<string, number>();
       if (ids.length) {
         const { data: profs } = await supabase.rpc("get_public_profiles", { _user_ids: ids });
-        for (const p of ((profs ?? []) as Array<{ user_id: string; display_name: string; level: number }>)) {
+        for (const p of (profs ?? []) as Array<{
+          user_id: string;
+          display_name: string;
+          level: number;
+        }>) {
           nameMap.set(p.user_id, p.display_name || "Гость");
           levelMap.set(p.user_id, p.level ?? 1);
         }
@@ -145,8 +172,8 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
       setActiveGifts(
         rows.map((g) => ({
           ...g,
-          owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
-          owner_level: g.owner_id ? levelMap.get(g.owner_id) ?? 1 : 1,
+          owner_name: g.owner_id ? (nameMap.get(g.owner_id) ?? "Гость") : "Гость",
+          owner_level: g.owner_id ? (levelMap.get(g.owner_id) ?? 1) : 1,
         })),
       );
     })();
@@ -157,7 +184,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
   }, []);
 
   useEffect(() => {
-    statsFn().then((s) => setStats(s as Stats)).catch(() => setStats(null));
+    statsFn()
+      .then((s) => setStats(s as Stats))
+      .catch(() => setStats(null));
   }, [statsFn]);
 
   const q = query.trim().toLowerCase();
@@ -189,7 +218,10 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
         </div>
         <button
           type="button"
-          onClick={() => { haptic("medium"); restartTour(); }}
+          onClick={() => {
+            haptic("medium");
+            restartTour();
+          }}
           className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl bg-primary/10 px-3 py-2 text-primary shadow-sm transition hover:bg-primary/20 active:scale-95"
           aria-label="Открыть гид по сервису"
         >
@@ -203,7 +235,10 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
         <button
           type="button"
           data-tour="give-btn"
-          onClick={() => { haptic("medium"); onGive(); }}
+          onClick={() => {
+            haptic("medium");
+            onGive();
+          }}
           className="group relative flex flex-col overflow-hidden rounded-2xl bg-lavender p-3 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
           <div className="flex items-center gap-2">
@@ -212,12 +247,17 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
             </div>
             <div className="text-sm font-semibold leading-tight">Подарить</div>
           </div>
-          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">{GIVE_EXAMPLES[giveIdx]}</div>
+          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">
+            {GIVE_EXAMPLES[giveIdx]}
+          </div>
         </button>
         <button
           type="button"
           data-tour="receive-btn"
-          onClick={() => { haptic("medium"); onReceive(); }}
+          onClick={() => {
+            haptic("medium");
+            onReceive();
+          }}
           className="group relative flex flex-col overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
         >
           <div className="flex items-center gap-2">
@@ -226,7 +266,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
             </div>
             <div className="text-sm font-semibold leading-tight">Получить</div>
           </div>
-          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">{RECEIVE_EXAMPLES[receiveIdx]}</div>
+          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">
+            {RECEIVE_EXAMPLES[receiveIdx]}
+          </div>
         </button>
       </div>
 
@@ -266,27 +308,38 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
 
       {/* Жизнь сервиса — компактная панель статистики */}
       {stats && (
-        <section data-tour="home-stats" className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm">
+        <section
+          data-tour="home-stats"
+          className="mb-5 rounded-2xl border bg-card/60 p-3 shadow-sm"
+        >
           <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Жизнь сервиса
           </h2>
           <div className="flex flex-wrap items-center justify-between gap-1 text-[12px] text-muted-foreground">
-            <span><b className="text-foreground tabular-nums">{stats.active_gifts}</b> 🎁 активных</span>
+            <span>
+              <b className="text-foreground tabular-nums">{stats.active_gifts}</b> 🎁 активных
+            </span>
             <span className="opacity-40">·</span>
-            <span><b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено</span>
+            <span>
+              <b className="text-foreground tabular-nums">{stats.gifted_total}</b> 💝 подарено
+            </span>
             <span className="opacity-40">·</span>
-            <span><b className="text-foreground tabular-nums">{stats.wishes_open}</b> ⭐ желаний</span>
+            <span>
+              <b className="text-foreground tabular-nums">{stats.wishes_open}</b> ⭐ желаний
+            </span>
           </div>
         </section>
       )}
 
       {/* Feed tabs: Активные / Желания / Подаренные */}
       <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1">
-        {([
-          ["active", "🎁 Активные"],
-          ["wishes", "✨ Желания"],
-          ["gifted", "💝 Подаренные"],
-        ] as const).map(([k, label]) => {
+        {(
+          [
+            ["active", "🎁 Активные"],
+            ["wishes", "✨ Желания"],
+            ["gifted", "💝 Подаренные"],
+          ] as const
+        ).map(([k, label]) => {
           const active = feedTab === k;
           return (
             <button
@@ -326,7 +379,9 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
             </div>
           ) : filteredActive && filteredActive.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              {q ? "Ничего не нашлось 🌿" : "Пока нет активных подарков — будь первым, подари что-нибудь 🎁"}
+              {q
+                ? "Ничего не нашлось 🌿"
+                : "Пока нет активных подарков — будь первым, подари что-нибудь 🎁"}
             </div>
           ) : (
             <ul className="space-y-3">
@@ -336,7 +391,10 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
                   gift={g}
                   onClaim={onPickGift}
                   isMine={g.owner_id === meId}
-                  onDeleted={() => setActiveGifts((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
+                  onOpenProfile={onOpenProfile}
+                  onDeleted={() =>
+                    setActiveGifts((prev) => (prev ?? []).filter((x) => x.id !== g.id))
+                  }
                 />
               ))}
             </ul>
@@ -425,11 +483,13 @@ function ActiveGiftCard({
   gift,
   onClaim,
   isMine,
+  onOpenProfile,
   onDeleted,
 }: {
   gift: Gift;
   onClaim: (giftId: string) => void;
   isMine: boolean;
+  onOpenProfile?: () => void;
   onDeleted: () => void;
 }) {
   const [lightbox, setLightbox] = useState(false);
@@ -438,54 +498,77 @@ function ActiveGiftCard({
   if (!gift.owner_id) return null;
 
   const doDelete = async () => {
-    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»?`)) return;
+    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»?`))
+      return;
     try {
       await deleteFn({ data: { id: gift.id } });
       haptic("success");
       onDeleted();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      alert(msg.includes("GIFT_IN_DEAL") ? "Нельзя удалить: подарок уже в сделке" : "Не удалось удалить");
+      alert(
+        msg.includes("GIFT_IN_DEAL")
+          ? "Нельзя удалить: подарок уже в сделке"
+          : "Не удалось удалить",
+      );
     }
   };
   const word = gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов";
   const photos = giftPhotos(gift);
+  const cardBody = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div className="truncate text-[15px] font-semibold leading-tight">{gift.title}</div>
+        <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
+          {gift.cost} {word}
+        </span>
+      </div>
+      {gift.description && (
+        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{gift.description}</p>
+      )}
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <span className="inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+          {gift.owner_name}
+        </span>
+        {(gift.quantity ?? 1) > 1 ? (
+          <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
+            {/* Точный остаток виден только владельцу; другим — нейтральный значок. */}
+            {isMine && typeof gift.quantity_remaining === "number"
+              ? `🔁 осталось ${gift.quantity_remaining} из ${gift.quantity}`
+              : "🔁 можно несколько раз"}
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
   return (
     <li className="rounded-2xl border bg-card p-3 shadow-sm">
       <div className="flex gap-3">
         {/* Фото — открывает полноэкранную карусель */}
         <GiftThumb gift={gift} onOpen={() => setLightbox(true)} />
-        {/* Контент ведёт на профиль дарителя (детали, другие подарки) */}
-        <Link
-          to="/user/$userId"
-          params={{ userId: gift.owner_id }}
-          onClick={() => haptic("light")}
-          className="min-w-0 flex-1 transition active:scale-[0.99]"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="truncate text-[15px] font-semibold leading-tight">
-              {gift.title}
-            </div>
-            <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
-              {gift.cost} {word}
-            </span>
-          </div>
-          {gift.description && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-              {gift.description}
-            </p>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
-              {gift.owner_name}
-            </span>
-            {(gift.quantity ?? 1) > 1 && typeof gift.quantity_remaining === "number" ? (
-              <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
-                🔁 осталось {gift.quantity_remaining} из {gift.quantity}
-              </span>
-            ) : null}
-          </div>
-        </Link>
+        {/* Свой подарок ведёт в мой профиль (вкладка «Профиль»), чужой — на
+            страницу дарителя. */}
+        {isMine ? (
+          <button
+            type="button"
+            onClick={() => {
+              haptic("light");
+              onOpenProfile?.();
+            }}
+            className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
+          >
+            {cardBody}
+          </button>
+        ) : (
+          <Link
+            to="/user/$userId"
+            params={{ userId: gift.owner_id }}
+            onClick={() => haptic("light")}
+            className="min-w-0 flex-1 transition active:scale-[0.99]"
+          >
+            {cardBody}
+          </Link>
+        )}
       </div>
 
       {/* Прямая бронь: списываем балл и открываем чат с дарителем.
@@ -563,9 +646,7 @@ function GiftedCard({ gift }: { gift: Gift }) {
         onClick={() => haptic("light")}
         className="min-w-0 flex-1 transition active:scale-[0.99]"
       >
-        <div className="truncate text-[15px] font-semibold leading-tight">
-          {gift.title}
-        </div>
+        <div className="truncate text-[15px] font-semibold leading-tight">{gift.title}</div>
         {gift.condition ? (
           <div
             className="mt-0.5 text-sm leading-none"
@@ -576,9 +657,7 @@ function GiftedCard({ gift }: { gift: Gift }) {
           </div>
         ) : null}
         {gift.description && (
-          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-            {gift.description}
-          </p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{gift.description}</p>
         )}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">

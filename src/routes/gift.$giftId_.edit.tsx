@@ -7,7 +7,7 @@ import { loadUser, type UserProfile } from "@/lib/auth-state";
 import { GlobalChrome } from "@/components/GlobalChrome";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const Route = createFileRoute("/gift/$giftId/edit")({
+export const Route = createFileRoute("/gift/$giftId_/edit")({
   component: EditGiftPage,
 });
 

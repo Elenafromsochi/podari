@@ -113,7 +113,9 @@ function GiftPage() {
       if (msg.includes("INSUFFICIENT_BALANCE"))
         toast.error("Недостаточно баллов", { description: "Подари что-нибудь, чтобы заработать" });
       else if (msg.includes("ALREADY_TAKEN"))
-        toast.error("Подарок уже забрали", { description: "Загляни в ленту — там много других 💚" });
+        toast.error("Подарок уже забрали", {
+          description: "Загляни в ленту — там много других 💚",
+        });
       else if (msg.includes("OWN_GIFT"))
         toast.error("Это твой подарок", { description: "Своё забрать нельзя 🙂" });
       else toast.error("Не получилось забрать подарок", { description: msg });
@@ -144,7 +146,11 @@ function GiftPage() {
 
   const doDelete = async () => {
     if (!gift) return;
-    if (typeof window !== "undefined" && !window.confirm(`Удалить подарок «${gift.title}»? Это нельзя отменить.`)) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Удалить подарок «${gift.title}»? Это нельзя отменить.`)
+    )
+      return;
     try {
       await deleteFn({ data: { id: giftId } });
       toast.success("Подарок удалён");
@@ -152,7 +158,9 @@ function GiftPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(
-        msg.includes("GIFT_IN_DEAL") ? "Нельзя удалить: подарок уже в сделке" : "Не удалось удалить",
+        msg.includes("GIFT_IN_DEAL")
+          ? "Нельзя удалить: подарок уже в сделке"
+          : "Не удалось удалить",
         { description: msg.includes("GIFT_IN_DEAL") ? undefined : msg },
       );
     }
@@ -246,21 +254,27 @@ function GiftPage() {
           </div>
 
           {gift.condition ? (
-            <div className="mt-1 text-base leading-none" title={`Состояние: ${gift.condition} из 5`}>
+            <div
+              className="mt-1 text-base leading-none"
+              title={`Состояние: ${gift.condition} из 5`}
+            >
               <Stars value={gift.condition} />
             </div>
           ) : null}
 
-          {(gift.quantity ?? 1) > 1 &&
-          gift.status === "available" &&
-          typeof gift.quantity_remaining === "number" ? (
+          {(gift.quantity ?? 1) > 1 && gift.status === "available" ? (
             <div className="mt-2 inline-block rounded-lg bg-amber-100 px-2.5 py-1 text-sm font-semibold text-amber-700">
-              🔁 осталось {gift.quantity_remaining} из {gift.quantity}
+              {/* Точный остаток виден только владельцу; другим — нейтральный значок. */}
+              {isOwner && typeof gift.quantity_remaining === "number"
+                ? `🔁 осталось ${gift.quantity_remaining} из ${gift.quantity}`
+                : "🔁 можно несколько раз"}
             </div>
           ) : null}
 
           {gift.description && (
-            <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{gift.description}</p>
+            <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
+              {gift.description}
+            </p>
           )}
 
           {gift.owner_id && (
@@ -321,7 +335,9 @@ function GiftPage() {
                   >
                     −
                   </button>
-                  <span className="min-w-[2rem] text-center text-base font-semibold">{reofferQty}</span>
+                  <span className="min-w-[2rem] text-center text-base font-semibold">
+                    {reofferQty}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setReofferQty((q) => Math.min(99, q + 1))}
