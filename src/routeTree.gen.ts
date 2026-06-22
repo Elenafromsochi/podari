@@ -16,7 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as UserUserIdRouteImport } from './routes/user.$userId'
 import { Route as GiftGiftIdRouteImport } from './routes/gift.$giftId'
 import { Route as ChatGiftIdRouteImport } from './routes/chat.$giftId'
-import { Route as GiftGiftIdEditRouteImport } from './routes/gift.$giftId.edit'
+import { Route as GiftGiftIdEditRouteImport } from './routes/gift.$giftId_.edit'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicTelegramSetupRouteImport } from './routes/api/public/telegram/setup'
 
@@ -56,9 +56,9 @@ const ChatGiftIdRoute = ChatGiftIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const GiftGiftIdEditRoute = GiftGiftIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => GiftGiftIdRoute,
+  id: '/gift/$giftId_/edit',
+  path: '/gift/$giftId/edit',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
@@ -78,7 +78,7 @@ export interface FileRoutesByFullPath {
   '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
-  '/gift/$giftId': typeof GiftGiftIdRouteWithChildren
+  '/gift/$giftId': typeof GiftGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
   '/gift/$giftId/edit': typeof GiftGiftIdEditRoute
   '/api/public/telegram/setup': typeof ApiPublicTelegramSetupRoute
@@ -90,7 +90,7 @@ export interface FileRoutesByTo {
   '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
-  '/gift/$giftId': typeof GiftGiftIdRouteWithChildren
+  '/gift/$giftId': typeof GiftGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
   '/gift/$giftId/edit': typeof GiftGiftIdEditRoute
   '/api/public/telegram/setup': typeof ApiPublicTelegramSetupRoute
@@ -103,9 +103,9 @@ export interface FileRoutesById {
   '/insights': typeof InsightsRoute
   '/set-password': typeof SetPasswordRoute
   '/chat/$giftId': typeof ChatGiftIdRoute
-  '/gift/$giftId': typeof GiftGiftIdRouteWithChildren
+  '/gift/$giftId': typeof GiftGiftIdRoute
   '/user/$userId': typeof UserUserIdRoute
-  '/gift/$giftId/edit': typeof GiftGiftIdEditRoute
+  '/gift/$giftId_/edit': typeof GiftGiftIdEditRoute
   '/api/public/telegram/setup': typeof ApiPublicTelegramSetupRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -143,7 +143,7 @@ export interface FileRouteTypes {
     | '/chat/$giftId'
     | '/gift/$giftId'
     | '/user/$userId'
-    | '/gift/$giftId/edit'
+    | '/gift/$giftId_/edit'
     | '/api/public/telegram/setup'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
@@ -154,8 +154,9 @@ export interface RootRouteChildren {
   InsightsRoute: typeof InsightsRoute
   SetPasswordRoute: typeof SetPasswordRoute
   ChatGiftIdRoute: typeof ChatGiftIdRoute
-  GiftGiftIdRoute: typeof GiftGiftIdRouteWithChildren
+  GiftGiftIdRoute: typeof GiftGiftIdRoute
   UserUserIdRoute: typeof UserUserIdRoute
+  GiftGiftIdEditRoute: typeof GiftGiftIdEditRoute
   ApiPublicTelegramSetupRoute: typeof ApiPublicTelegramSetupRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -211,12 +212,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatGiftIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/gift/$giftId/edit': {
-      id: '/gift/$giftId/edit'
-      path: '/edit'
+    '/gift/$giftId_/edit': {
+      id: '/gift/$giftId_/edit'
+      path: '/gift/$giftId/edit'
       fullPath: '/gift/$giftId/edit'
       preLoaderRoute: typeof GiftGiftIdEditRouteImport
-      parentRoute: typeof GiftGiftIdRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/telegram/webhook': {
       id: '/api/public/telegram/webhook'
@@ -235,26 +236,15 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface GiftGiftIdRouteChildren {
-  GiftGiftIdEditRoute: typeof GiftGiftIdEditRoute
-}
-
-const GiftGiftIdRouteChildren: GiftGiftIdRouteChildren = {
-  GiftGiftIdEditRoute: GiftGiftIdEditRoute,
-}
-
-const GiftGiftIdRouteWithChildren = GiftGiftIdRoute._addFileChildren(
-  GiftGiftIdRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CabinetRoute: CabinetRoute,
   InsightsRoute: InsightsRoute,
   SetPasswordRoute: SetPasswordRoute,
   ChatGiftIdRoute: ChatGiftIdRoute,
-  GiftGiftIdRoute: GiftGiftIdRouteWithChildren,
+  GiftGiftIdRoute: GiftGiftIdRoute,
   UserUserIdRoute: UserUserIdRoute,
+  GiftGiftIdEditRoute: GiftGiftIdEditRoute,
   ApiPublicTelegramSetupRoute: ApiPublicTelegramSetupRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
