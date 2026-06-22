@@ -29,6 +29,8 @@ type Gift = {
   image_urls?: string[] | null;
   cost: number;
   condition?: number | null;
+  quantity?: number | null;
+  quantity_remaining?: number | null;
   owner_id: string | null;
   created_at?: string;
   owner_name?: string;
@@ -112,14 +114,23 @@ export function HomeTab({ userName, onGive, onReceive, onPickGift, onCreateWish,
   // Лента активных (доступных) подарков — свежие сверху.
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("gifts")
-        .select("id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at")
-        .eq("status", "available")
-        .not("owner_id", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(60);
-      const rows = (data as Gift[]) ?? [];
+      // Сначала пробуем с полями тиража; если миграция ещё не накатана — без них.
+      const giftQ = (cols: string) =>
+        supabase
+          .from("gifts")
+          .select(cols)
+          .eq("status", "available")
+          .not("owner_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(60);
+      let res = await giftQ(
+        "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at,quantity,quantity_remaining",
+      );
+      if (res.error)
+        res = await giftQ(
+          "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at",
+        );
+      const rows = (res.data as unknown as Gift[]) ?? [];
       const ids = Array.from(new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)));
       const nameMap = new Map<string, string>();
       const levelMap = new Map<string, number>();
@@ -433,9 +444,16 @@ function ActiveGiftCard({ gift, onClaim, isMine }: { gift: Gift; onClaim: (giftI
               {gift.description}
             </p>
           )}
-          <span className="mt-1.5 inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
-            {gift.owner_name}
-          </span>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+              {gift.owner_name}
+            </span>
+            {(gift.quantity ?? 1) > 1 && typeof gift.quantity_remaining === "number" ? (
+              <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
+                🔁 осталось {gift.quantity_remaining} из {gift.quantity}
+              </span>
+            ) : null}
+          </div>
         </Link>
       </div>
 

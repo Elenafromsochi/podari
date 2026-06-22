@@ -31,6 +31,9 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [condition, setCondition] = useState<number | null>(null);
+  // Многоразовый подарок: можно подарить несколько раз (особенно услугу).
+  const [multi, setMulti] = useState(false);
+  const [quantity, setQuantity] = useState(3);
   // Город запоминаем локально из прошлой публикации (подставляем по умолчанию).
   const [city, setCity] = useState<string>(() =>
     typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") ?? "" : "",
@@ -218,6 +221,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           gift_kind: giftKind,
           cost,
           condition: showCondition ? condition : null,
+          quantity: multi ? quantity : 1,
           city: isOnline ? null : city.trim() || null,
           is_online: isOnline,
         },
@@ -506,6 +510,45 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
             </label>
             <p className="text-[11px] text-muted-foreground">
               Для вещей и встреч укажи город. Для онлайн-услуг (консультация, медитация и т.п.) поставь галочку — город не нужен.
+            </p>
+          </div>
+
+          <div className="space-y-2 rounded-2xl border border-input bg-background p-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={multi}
+                onChange={(e) => setMulti(e.target.checked)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span className="font-medium">🔁 Подарить несколько раз</span>
+            </label>
+            {multi ? (
+              <div className="flex items-center gap-2 pl-6">
+                <span className="text-sm text-muted-foreground">Сколько раз готов подарить:</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(2, q - 1))}
+                  aria-label="Меньше"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border text-base leading-none transition active:scale-95"
+                >
+                  −
+                </button>
+                <span className="min-w-[1.5rem] text-center text-sm font-semibold">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(99, q + 1))}
+                  aria-label="Больше"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border text-base leading-none transition active:scale-95"
+                >
+                  +
+                </button>
+              </div>
+            ) : null}
+            <p className="pl-6 text-[11px] text-muted-foreground">
+              {multi
+                ? "Будет одна карточка с остатком: когда кто-то забронирует — счётчик уменьшится (например, осталось 2 из 3). Удобно для услуг."
+                : "Например, услугу или мастер-класс можно подарить нескольким людям. Останется одна карточка с остатком."}
             </p>
           </div>
 
