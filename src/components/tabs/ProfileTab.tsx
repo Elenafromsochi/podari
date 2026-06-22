@@ -14,6 +14,7 @@ import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
+  getMyIncomingBookings,
   getMyChats,
   updateGift,
   deleteGift,
@@ -66,6 +67,14 @@ type BookedItem = {
   gift_image: string | null;
   other_name: string;
 };
+// Входящая бронь: кто-то выбрал МОЙ подарок, ждём передачи.
+type IncomingItem = {
+  transaction_id: string;
+  gift_id: string;
+  gift_title: string;
+  gift_image: string | null;
+  receiver_name: string;
+};
 type ActivityKey = "posted" | "gifted" | "received" | "booked";
 
 // Правила XP/уровней теперь живут в поповере на верхней плашке (AppHeader).
@@ -99,11 +108,13 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
   const [gifted, setGifted] = useState<TxRow[] | null>(null);
   const [received, setReceived] = useState<TxRow[] | null>(null);
   const [booked, setBooked] = useState<BookedItem[] | null>(null);
+  const [incoming, setIncoming] = useState<IncomingItem[] | null>(null);
   const [myWishes, setMyWishes] = useState<MyWish[] | null>(null);
 
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
+  const incomingFn = useServerFn(getMyIncomingBookings);
   const chatsFn = useServerFn(getMyChats);
   const myWishesFn = useServerFn(getMyWishes);
   const rolesFn = useServerFn(getMyRoles);
@@ -128,17 +139,19 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
 
   useEffect(() => {
     (async () => {
-      const [p, g, r, w, c] = await Promise.all([
-        postedFn(), giftedFn(), receivedFn(), myWishesFn(), chatsFn(),
+      const [p, g, r, w, c, inc] = await Promise.all([
+        postedFn(), giftedFn(), receivedFn(), myWishesFn(), chatsFn(), incomingFn(),
       ]);
-      setPosted((p as Gift[]) ?? []);
+      setPosted((p as unknown as Gift[]) ?? []);
       setGifted((g as TxRow[]) ?? []);
       setReceived((r as TxRow[]) ?? []);
-      setMyWishes((w as MyWish[]) ?? []);
-      // Забронированные = активные сделки, где я получатель (чаты с дарителями)
+      setMyWishes((w as unknown as MyWish[]) ?? []);
+      // «Вы забронировали» = активные сделки, где я получатель (чаты с дарителями)
       setBooked((((c as { with_givers?: BookedItem[] })?.with_givers) ?? []) as BookedItem[]);
+      // «Забронировали у вас» = ожидающие сделки, где я даритель
+      setIncoming((inc as IncomingItem[]) ?? []);
     })();
-  }, [postedFn, giftedFn, receivedFn, myWishesFn, chatsFn]);
+  }, [postedFn, giftedFn, receivedFn, myWishesFn, chatsFn, incomingFn]);
 
   const toggleAch = () => {
     haptic("select");
@@ -173,7 +186,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
     if (k === "gifted") return (gifted ?? []).map((t) => t.gift).filter((g): g is Gift => !!g);
     return (received ?? []).map((t) => t.gift).filter((g): g is Gift => !!g);
   };
-  const loaded = posted && gifted && received && booked;
+  const loaded = posted && gifted && received && booked && incoming;
   const list = giftsFor(activity);
 
   return (
@@ -257,7 +270,7 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
             ["received", "Полученные"],
           ] as const).map(([k, label]) => {
             const active = activity === k;
-            const count = k === "booked" ? (booked?.length ?? 0) : 0;
+            const count = k === "booked" ? (incoming?.length ?? 0) + (booked?.length ?? 0) : 0;
             return (
               <button
                 key={k}
@@ -291,36 +304,82 @@ export function ProfileTab({ user, onUnreadAchievements, onCreateWish, onOpenWis
             <Skeleton className="h-16 w-full rounded-2xl" />
           </div>
         ) : activity === "booked" ? (
-          (booked ?? []).length === 0 ? (
+          (incoming ?? []).length === 0 && (booked ?? []).length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              Нет забронированных подарков. Выбери подарок в ленте — и он появится здесь, пока вы договариваетесь 💚
+              Здесь появятся активные брони. Выбери подарок в ленте или дождись, когда кто-то выберет твой 💚
             </div>
           ) : (
-            <ul key="booked" className="achievements-list space-y-2">
-              {(booked ?? []).map((b) => (
-                <li key={b.transaction_id}>
-                  <Link
-                    to="/chat/$giftId"
-                    params={{ giftId: b.gift_id }}
-                    onClick={() => haptic("select")}
-                    className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
-                  >
-                    {b.gift_image ? (
-                      <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-                    ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{b.gift_title}</p>
-                      <p className="truncate text-xs text-muted-foreground">от {b.other_name}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-                      Открыть чат
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div key="booked" className="space-y-4">
+              {/* Входящие: кто-то выбрал мой подарок — нужно договориться о передаче */}
+              {(incoming ?? []).length > 0 && (
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                    🔖 Забронировали у вас{" "}
+                    <span className="text-xs">({(incoming ?? []).length})</span>
+                  </h3>
+                  <ul className="achievements-list space-y-2">
+                    {(incoming ?? []).map((b) => (
+                      <li key={b.transaction_id}>
+                        <Link
+                          to="/chat/$giftId"
+                          params={{ giftId: b.gift_id }}
+                          onClick={() => haptic("select")}
+                          className="flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3 shadow-sm transition active:scale-[0.98]"
+                        >
+                          {b.gift_image ? (
+                            <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{b.gift_title}</p>
+                            <p className="truncate text-xs text-muted-foreground">забронировал(а) {b.receiver_name}</p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                            Открыть чат
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Исходящие: я выбрал чужой подарок */}
+              {(booked ?? []).length > 0 && (
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                    🎁 Вы забронировали{" "}
+                    <span className="text-xs">({(booked ?? []).length})</span>
+                  </h3>
+                  <ul className="achievements-list space-y-2">
+                    {(booked ?? []).map((b) => (
+                      <li key={b.transaction_id}>
+                        <Link
+                          to="/chat/$giftId"
+                          params={{ giftId: b.gift_id }}
+                          onClick={() => haptic("select")}
+                          className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
+                        >
+                          {b.gift_image ? (
+                            <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">🎁</div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{b.gift_title}</p>
+                            <p className="truncate text-xs text-muted-foreground">от {b.other_name}</p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                            Открыть чат
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )
         ) : list.length === 0 ? (
           <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">

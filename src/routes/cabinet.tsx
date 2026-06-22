@@ -11,6 +11,7 @@ import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
+  getMyIncomingBookings,
   getMyChats,
   getUnreadCounts,
   updateGift,
@@ -68,6 +69,15 @@ type Gift = {
 
 type TxRow = { id: string; status: string; gift: Gift | null };
 
+type Booking = {
+  transaction_id: string;
+  created_at: string;
+  gift_id: string;
+  receiver_name: string;
+  gift_title: string;
+  gift_image: string | null;
+};
+
 type ChatItem = {
   transaction_id: string;
   status: string;
@@ -84,6 +94,7 @@ function CabinetPage() {
   const [posted, setPosted] = useState<Gift[]>([]);
   const [received, setReceived] = useState<TxRow[]>([]);
   const [gifted, setGifted] = useState<TxRow[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [chatsWithGivers, setChatsWithGivers] = useState<ChatItem[]>([]);
   const [chatsWithReceivers, setChatsWithReceivers] = useState<ChatItem[]>([]);
   const [archiveGivers, setArchiveGivers] = useState<ChatItem[]>([]);
@@ -96,6 +107,7 @@ function CabinetPage() {
   const postedFn = useServerFn(getMyPostedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
+  const bookingsFn = useServerFn(getMyIncomingBookings);
   const chatsFn = useServerFn(getMyChats);
   const unreadFn = useServerFn(getUnreadCounts);
   const navigate = useNavigate();
@@ -125,15 +137,17 @@ function CabinetPage() {
         return;
       }
       try {
-        const [p, r, g, c] = await Promise.all([
+        const [p, r, g, b, c] = await Promise.all([
           postedFn(),
           receivedFn(),
           giftedFn(),
+          bookingsFn(),
           chatsFn(),
         ]);
         setPosted((p as unknown as Gift[]) ?? []);
         setReceived((r as TxRow[]) ?? []);
         setGifted((g as TxRow[]) ?? []);
+        setBookings((b as Booking[]) ?? []);
         const chats = c as {
           with_givers: ChatItem[];
           with_receivers: ChatItem[];
@@ -269,6 +283,42 @@ function CabinetPage() {
 
 
         <TabsContent value="gifts" className="mt-4 space-y-6">
+          <section>
+            <h2 className="mb-2 text-lg font-semibold">
+              🔖 Забронировали у вас{" "}
+              <span className="text-sm font-normal text-muted-foreground">({bookings.length})</span>
+            </h2>
+            {bookings.length === 0 ? (
+              <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+                {loading ? "Загружаем..." : "Пока никто не забронировал ваши подарки"}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {bookings.map((b) => (
+                  <li key={b.transaction_id}>
+                    <Link
+                      to="/chat/$giftId"
+                      params={{ giftId: b.gift_id }}
+                      className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm transition hover:bg-accent"
+                    >
+                      {b.gift_image ? (
+                        <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xl">🎁</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{b.gift_title}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          Забронировал(а): {b.receiver_name} • договоритесь о передаче
+                        </p>
+                      </div>
+                      <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
           {sections.map((sec) => (
             <section key={sec.title}>
               <h2 className="mb-2 text-lg font-semibold">
