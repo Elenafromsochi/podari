@@ -269,13 +269,6 @@ function GiftPage() {
             </div>
           ) : null}
 
-          {(gift.quantity ?? 1) > 1 && gift.status === "available" ? (
-            <div className="mt-2 inline-block rounded-lg bg-amber-100 px-2.5 py-1 text-sm font-semibold text-amber-700">
-              {/* Число остатка — только в профиле; здесь всем нейтральный значок. */}
-              🔁 можно несколько раз
-            </div>
-          ) : null}
-
           {gift.description && (
             <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
               {gift.description}
