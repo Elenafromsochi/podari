@@ -3,7 +3,17 @@ import { GlobalChrome } from "@/components/GlobalChrome";
 
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { HelpCircle, MessageCircle, LogOut, Gift as GiftIcon, Copy, Check, Pencil, Trash2, Share2 } from "lucide-react";
+import {
+  HelpCircle,
+  MessageCircle,
+  LogOut,
+  Gift as GiftIcon,
+  Copy,
+  Check,
+  Pencil,
+  Trash2,
+  Share2,
+} from "lucide-react";
 import { shareGift } from "@/lib/share";
 import { toast } from "sonner";
 import { loadUser, signOut, type UserProfile } from "@/lib/auth-state";
@@ -114,7 +124,6 @@ function CabinetPage() {
   const navigate = useNavigate();
   const router = useRouter();
 
-
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -168,8 +177,10 @@ function CabinetPage() {
   // Подсчёт непрочитанных: основан на отметках «последнее посещение» в localStorage
   const refreshUnread = async () => {
     try {
-      const lastChats = typeof window !== "undefined" ? localStorage.getItem("cozy_last_seen_chats") : null;
-      const lastGifts = typeof window !== "undefined" ? localStorage.getItem("cozy_last_seen_gifts") : null;
+      const lastChats =
+        typeof window !== "undefined" ? localStorage.getItem("cozy_last_seen_chats") : null;
+      const lastGifts =
+        typeof window !== "undefined" ? localStorage.getItem("cozy_last_seen_gifts") : null;
       const res = (await unreadFn({
         data: { last_seen_chats_at: lastChats, last_seen_gifts_at: lastGifts },
       })) as { chats_unread: number; gifts_unread: number };
@@ -209,8 +220,6 @@ function CabinetPage() {
     }
   };
 
-
-
   if (!authChecked) {
     return (
       <GlobalChrome>
@@ -226,204 +235,228 @@ function CabinetPage() {
       <GlobalChrome>
         <div className="mx-auto max-w-md p-8 text-center text-muted-foreground">
           Войдите, чтобы открыть личный кабинет.{" "}
-          <Link to="/" className="text-primary underline-offset-4 hover:underline">На главную</Link>
+          <Link to="/" className="text-primary underline-offset-4 hover:underline">
+            На главную
+          </Link>
         </div>
       </GlobalChrome>
     );
   }
 
   const sections: { title: string; emoji: string; gifts: Gift[]; empty: string }[] = [
-    { title: "Активные", emoji: "📤", gifts: posted.filter((g) => g.status !== "gifted"), empty: "Вы пока не публиковали подарков" },
-    { title: "Подаренные", emoji: "💝", gifts: gifted.map((t) => t.gift).filter((g): g is Gift => !!g), empty: "Пока никому не передали подарок" },
-    { title: "Полученные", emoji: "🎁", gifts: received.map((t) => t.gift).filter((g): g is Gift => !!g), empty: "Вы пока ничего не получили" },
+    {
+      title: "Активные",
+      emoji: "📤",
+      gifts: posted.filter((g) => g.status !== "gifted"),
+      empty: "Вы пока не публиковали подарков",
+    },
+    {
+      title: "Подаренные",
+      emoji: "💝",
+      gifts: gifted.map((t) => t.gift).filter((g): g is Gift => !!g),
+      empty: "Пока никому не передали подарок",
+    },
+    {
+      title: "Полученные",
+      emoji: "🎁",
+      gifts: received.map((t) => t.gift).filter((g): g is Gift => !!g),
+      empty: "Вы пока ничего не получили",
+    },
   ];
 
   return (
     <GlobalChrome>
-    <div className="mx-auto w-full max-w-md px-5 py-8">
-      <button
-        type="button"
-        onClick={() => {
-          if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
-          else navigate({ to: "/" });
-        }}
-        className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Назад
-      </button>
+      <div className="mx-auto w-full max-w-md px-5 py-8">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
+            else navigate({ to: "/" });
+          }}
+          className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Назад
+        </button>
 
+        <FirstSteps />
 
-      <FirstSteps />
+        <InviteCard userId={user.user_id} />
 
-      <InviteCard userId={user.user_id} />
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="gifts" className="relative">
+              🎁
+              {giftsUnread > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  {giftsUnread > 99 ? "99+" : giftsUnread}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="chats" className="relative">
+              💬
+              {chatsUnread > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  {chatsUnread > 99 ? "99+" : chatsUnread}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="archive">🗂</TabsTrigger>
+          </TabsList>
 
-
-
-
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="gifts" className="relative">
-            🎁
-            {giftsUnread > 0 && (
-              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                {giftsUnread > 99 ? "99+" : giftsUnread}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="chats" className="relative">
-            💬
-            {chatsUnread > 0 && (
-              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                {chatsUnread > 99 ? "99+" : chatsUnread}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="archive">🗂</TabsTrigger>
-        </TabsList>
-
-
-        <TabsContent value="gifts" className="mt-4 space-y-6">
-          <section>
-            <h2 className="mb-2 text-lg font-semibold">
-              🔖 Забронировали у меня{" "}
-              <span className="text-sm font-normal text-muted-foreground">({bookings.length})</span>
-            </h2>
-            {bookings.length === 0 ? (
-              <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-                {loading ? "Загружаем..." : "Пока никто не забронировал твои подарки"}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {bookings.map((b) => (
-                  <li key={b.transaction_id}>
-                    <Link
-                      to="/chat/$giftId"
-                      params={{ giftId: b.gift_id }}
-                      className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm transition hover:bg-accent"
-                    >
-                      {b.gift_image ? (
-                        <img src={b.gift_image} alt={b.gift_title} className="h-12 w-12 shrink-0 rounded-md object-cover" />
-                      ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xl">🎁</div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{b.gift_title}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          Забронировал(а): {b.receiver_name} • договоритесь о передаче
-                        </p>
-                      </div>
-                      <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          {sections.map((sec) => (
-            <section key={sec.title}>
+          <TabsContent value="gifts" className="mt-4 space-y-6">
+            <section>
               <h2 className="mb-2 text-lg font-semibold">
-                {sec.emoji} {sec.title}{" "}
-                <span className="text-sm font-normal text-muted-foreground">({sec.gifts.length})</span>
+                🔖 Забронировали у меня{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({bookings.length})
+                </span>
               </h2>
-              {sec.gifts.length === 0 ? (
+              {bookings.length === 0 ? (
                 <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
-                  {loading ? "Загружаем..." : sec.empty}
+                  {loading ? "Загружаем..." : "Пока никто не забронировал твои подарки"}
                 </p>
               ) : (
                 <ul className="space-y-2">
-                  {sec.gifts.map((g) => (
-                    <PostedGiftItem
-                      key={g.id}
-                      gift={g}
-                      editable={sec.title === "Активные"}
-                      onChanged={(action, id, patch) => {
-                        if (action === "delete") {
-                          setPosted((prev) => prev.filter((x) => x.id !== id));
-                        } else if (action === "update" && patch) {
-                          setPosted((prev) =>
-                            prev.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-                          );
-                        }
-                      }}
-                    />
+                  {bookings.map((b) => (
+                    <li key={b.transaction_id}>
+                      <Link
+                        to="/chat/$giftId"
+                        params={{ giftId: b.gift_id }}
+                        className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm transition hover:bg-accent"
+                      >
+                        {b.gift_image ? (
+                          <img
+                            src={b.gift_image}
+                            alt={b.gift_title}
+                            className="h-12 w-12 shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xl">
+                            🎁
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{b.gift_title}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            Забронировал(а): {b.receiver_name} • договоритесь о передаче
+                          </p>
+                        </div>
+                        <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    </li>
                   ))}
                 </ul>
               )}
             </section>
-          ))}
-          <div className="rounded-2xl border bg-card p-4 shadow-sm">
-            <Achievements variant="preview" />
-          </div>
-        </TabsContent>
+            {sections.map((sec) => (
+              <section key={sec.title}>
+                <h2 className="mb-2 text-lg font-semibold">
+                  {sec.emoji} {sec.title}{" "}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    ({sec.gifts.length})
+                  </span>
+                </h2>
+                {sec.gifts.length === 0 ? (
+                  <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
+                    {loading ? "Загружаем..." : sec.empty}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {sec.gifts.map((g) => (
+                      <PostedGiftItem
+                        key={g.id}
+                        gift={g}
+                        editable={sec.title === "Активные"}
+                        onChanged={(action, id, patch) => {
+                          if (action === "delete") {
+                            setPosted((prev) => prev.filter((x) => x.id !== id));
+                          } else if (action === "update" && patch) {
+                            setPosted((prev) =>
+                              prev.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+                            );
+                          }
+                        }}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            ))}
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <Achievements variant="preview" />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="chats" className="mt-4 space-y-4">
-          <ChatGroup
-            title="С дарителями"
-            emoji="🎁"
-            empty="Здесь появятся активные чаты по подаркам, которые вы выбрали"
-            items={chatsWithGivers}
-            loading={loading}
-          />
-          <ChatGroup
-            title="С получателями"
-            emoji="💝"
-            empty="Здесь появятся активные чаты с теми, кто выбрал ваш подарок"
-            items={chatsWithReceivers}
-            loading={loading}
-          />
-          <div className="rounded-2xl border bg-card p-4 shadow-sm">
-            <Achievements variant="preview" />
-          </div>
-        </TabsContent>
+          <TabsContent value="chats" className="mt-4 space-y-4">
+            <ChatGroup
+              title="С дарителями"
+              emoji="🎁"
+              empty="Здесь появятся активные чаты по подаркам, которые вы выбрали"
+              items={chatsWithGivers}
+              loading={loading}
+            />
+            <ChatGroup
+              title="С получателями"
+              emoji="💝"
+              empty="Здесь появятся активные чаты с теми, кто выбрал ваш подарок"
+              items={chatsWithReceivers}
+              loading={loading}
+            />
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <Achievements variant="preview" />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="archive" className="mt-4 space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Сюда попадают чаты после завершения или отказа от подарка
-          </p>
-          <ChatGroup
-            title="С дарителями"
-            emoji="🎁"
-            empty="Здесь пока нет завершённых чатов"
-            items={archiveGivers}
-            loading={loading}
-          />
-          <ChatGroup
-            title="С получателями"
-            emoji="💝"
-            empty="Здесь пока нет завершённых чатов"
-            items={archiveReceivers}
-            loading={loading}
-          />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="archive" className="mt-4 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Сюда попадают чаты после завершения или отказа от подарка
+            </p>
+            <ChatGroup
+              title="С дарителями"
+              emoji="🎁"
+              empty="Здесь пока нет завершённых чатов"
+              items={archiveGivers}
+              loading={loading}
+            />
+            <ChatGroup
+              title="С получателями"
+              emoji="💝"
+              empty="Здесь пока нет завершённых чатов"
+              items={archiveReceivers}
+              loading={loading}
+            />
+          </TabsContent>
+        </Tabs>
 
-      <div className="mt-8 border-t pt-6">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" className="w-full gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive">
-              <LogOut className="h-4 w-4" /> Выйти из аккаунта
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Выйти из аккаунта?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Сессия будет сброшена. Чтобы вернуться, потребуется снова войти по @username и паролю.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Отмена</AlertDialogCancel>
-              <AlertDialogAction onClick={handleSignOut}>Выйти</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="mt-8 border-t pt-6">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4" /> Выйти из аккаунта
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Выйти из аккаунта?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Сессия будет сброшена. Чтобы вернуться, потребуется снова войти по @username и
+                  паролю.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSignOut}>Выйти</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
-    </div>
     </GlobalChrome>
   );
 }
-
 
 function ChatGroup({
   title,
@@ -441,8 +474,7 @@ function ChatGroup({
   return (
     <div>
       <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-        {emoji} {title}{" "}
-        <span className="text-xs">({items.length})</span>
+        {emoji} {title} <span className="text-xs">({items.length})</span>
       </h3>
       {items.length === 0 ? (
         <p className="rounded-md bg-muted/40 px-3 py-3 text-sm text-muted-foreground">
@@ -471,8 +503,7 @@ function ChatGroup({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{it.gift_title}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {it.other_name} •{" "}
-                    {it.status === "completed" ? "завершено" : "в процессе"}
+                    {it.other_name} • {it.status === "completed" ? "завершено" : "в процессе"}
                   </p>
                 </div>
                 <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -509,7 +540,8 @@ function InviteCard({ userId }: { userId: string }) {
   };
 
   const share = () => {
-    const text = "Привет! Приглашаю тебя в «Подари» — сервис, где дарят и получают подарки 🎁 По ссылке тебе сразу 1 балл на первый подарок 👉";
+    const text =
+      "Привет! Приглашаю тебя в «Подари» — сервис, где дарят и получают подарки 🎁 По ссылке тебе сразу 1 балл на первый подарок 👉";
     const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
     if (typeof window !== "undefined") window.open(url, "_blank");
   };
@@ -537,14 +569,16 @@ function InviteCard({ userId }: { userId: string }) {
             {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
-        <Button onClick={share} className="w-full gap-2 bg-lavender text-lavender-foreground hover:bg-lavender/90">
+        <Button
+          onClick={share}
+          className="w-full gap-2 bg-lavender text-lavender-foreground hover:bg-lavender/90"
+        >
           📤 Поделиться в Telegram
         </Button>
       </CardContent>
     </Card>
   );
 }
-
 
 function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
@@ -557,7 +591,12 @@ function Stat({ label, value, hint }: { label: string; value: number; hint?: str
           >
             <HelpCircle className="h-3.5 w-3.5" />
           </PopoverTrigger>
-          <PopoverContent side="bottom" className="w-64 whitespace-pre-line text-xs leading-relaxed">{hint}</PopoverContent>
+          <PopoverContent
+            side="bottom"
+            className="w-64 whitespace-pre-line text-xs leading-relaxed"
+          >
+            {hint}
+          </PopoverContent>
         </Popover>
       )}
       <div className="text-xl font-semibold">{value}</div>
@@ -579,14 +618,15 @@ function PostedGiftItem({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const deleteFn = useServerFn(deleteGift);
   const reofferFn = useServerFn(reofferGift);
-  const [reofferQty, setReofferQty] = useState(gift.quantity && gift.quantity > 1 ? gift.quantity : 3);
+  const [reofferQty, setReofferQty] = useState(
+    gift.quantity && gift.quantity > 1 ? gift.quantity : 3,
+  );
   const [reoffering, setReoffering] = useState(false);
 
   const canModify = editable && gift.status === "available";
   // Многоразовый подарок, который разобрали (остаток 0 → не available),
   // можно «подарить снова».
   const canReoffer = (gift.quantity ?? 1) > 1 && gift.status !== "available";
-  const isMulti = (gift.quantity ?? 1) > 1 && typeof gift.quantity_remaining === "number";
 
   const handleReoffer = async () => {
     setReoffering(true);
@@ -628,58 +668,63 @@ function PostedGiftItem({
   return (
     <li className="rounded-xl border bg-card p-3 shadow-sm">
       <div className="flex gap-3">
-      {gift.image_url ? (
-        <img src={gift.image_url} alt={gift.title} className="h-16 w-16 shrink-0 rounded-md object-cover" />
-      ) : (
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">🎁</div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{gift.title}</p>
-        <p className="text-xs text-muted-foreground">{gift.category} • {gift.status}</p>
-        {isMulti && gift.status === "available" ? (
-          <p className="mt-0.5 text-xs font-semibold text-amber-700">
-            🔁 осталось {gift.quantity_remaining} из {gift.quantity}
+        {gift.image_url ? (
+          <img
+            src={gift.image_url}
+            alt={gift.title}
+            className="h-16 w-16 shrink-0 rounded-md object-cover"
+          />
+        ) : (
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-2xl">
+            🎁
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{gift.title}</p>
+          <p className="text-xs text-muted-foreground">
+            {gift.category} • {gift.status}
           </p>
-        ) : null}
-        {gift.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{gift.description}</p>
-        )}
-      </div>
-      <div className="flex shrink-0 flex-col gap-1">
-        <button
-          type="button"
-          onClick={() => shareGift(gift.id, gift.title)}
-          aria-label="Поделиться подарком"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
-        {canModify && (
-          <>
-            <button
-              type="button"
-              onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
-              aria-label="Редактировать подарок"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              aria-label="Удалить подарок"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
+          {gift.description && (
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{gift.description}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => shareGift(gift.id, gift.title)}
+            aria-label="Поделиться подарком"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+          {canModify && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
+                aria-label="Редактировать подарок"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                aria-label="Удалить подарок"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {canReoffer && (
         <div className="mt-3 rounded-lg bg-amber-50 p-2.5">
-          <p className="text-xs font-medium text-amber-800">Все экземпляры разобрали 🎉 Подарить снова?</p>
+          <p className="text-xs font-medium text-amber-800">
+            Все экземпляры разобрали 🎉 Подарить снова?
+          </p>
           <div className="mt-2 flex items-center gap-2">
             <button
               type="button"

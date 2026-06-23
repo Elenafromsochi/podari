@@ -232,12 +232,6 @@ function UserProfilePage() {
                               <Stars value={g.condition} />
                             </div>
                           ) : null}
-                          {(g.quantity ?? 1) > 1 && g.status === "available" ? (
-                            <span className="mt-0.5 inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                              {/* Чужим остаток не показываем — только что подарок многоразовый. */}
-                              🔁 можно несколько раз
-                            </span>
-                          ) : null}
                           {g.description && (
                             <p
                               className={`mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap ${isOpen ? "" : "line-clamp-2"}`}

@@ -533,12 +533,6 @@ function ActiveGiftCard({
           {gift.owner_name}
         </span>
         <LevelBadge level={gift.owner_level ?? 1} />
-        {(gift.quantity ?? 1) > 1 ? (
-          <span className="inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-[12px] font-semibold leading-tight text-amber-700">
-            {/* Число остатка — только в профиле; в ленте всем нейтральный значок. */}
-            🔁 можно несколько раз
-          </span>
-        ) : null}
       </div>
     </>
   );

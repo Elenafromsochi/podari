@@ -580,14 +580,6 @@ function EditableActiveItem({
         <div className="flex flex-wrap items-center gap-1.5">
           <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
           <CityBadge city={gift.city} isOnline={gift.is_online} />
-          {/* Точный остаток тиража виден только владельцу — здесь, в профиле. */}
-          {(gift.quantity ?? 1) > 1 &&
-          gift.status === "available" &&
-          typeof gift.quantity_remaining === "number" ? (
-            <span className="inline-block rounded-lg bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
-              🔁 осталось {gift.quantity_remaining} из {gift.quantity}
-            </span>
-          ) : null}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
