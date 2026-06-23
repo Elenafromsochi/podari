@@ -12,6 +12,7 @@ import { claimGift } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
 import { GlobalChrome } from "@/components/GlobalChrome";
+import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
 import { Stars } from "@/components/ui/stars";
 
 export const Route = createFileRoute("/user/$userId")({
@@ -151,35 +152,24 @@ function UserProfilePage() {
           <ArrowLeft className="h-4 w-4" /> Назад
         </button>
         <div className="flex items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-peach text-2xl">
-            🎁
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-peach text-xl font-semibold text-peach-foreground shadow-sm">
+            {(name || "?").trim().charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 className="text-2xl font-semibold">{name}</h1>
             <div className="mt-1">
               <LevelBadge level={level} size="md" />
             </div>
-            {rating &&
-              (rating.count > 0 ? (
-                <div className="mt-1 text-sm font-medium text-amber-600 dark:text-amber-400">
-                  ⭐ {rating.avg.toFixed(1)} ·{" "}
-                  <span className="text-muted-foreground">
-                    {rating.count}{" "}
-                    {rating.count % 10 === 1 && rating.count % 100 !== 11
-                      ? "отзыв"
-                      : [2, 3, 4].includes(rating.count % 10) &&
-                          ![12, 13, 14].includes(rating.count % 100)
-                        ? "отзыва"
-                        : "отзывов"}
-                  </span>
-                </div>
-              ) : (
-                <div className="mt-1 text-sm text-muted-foreground">
-                  🐣 Новичок — отзывов пока нет
-                </div>
-              ))}
+            {rating && rating.count === 0 && (
+              <div className="mt-1 text-sm text-muted-foreground">
+                🐣 Новичок — отзывов пока нет
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Отзывы — тот же блок, что и в своём профиле (свёрнутый список с оценкой). */}
+        <ReviewsAboutMe userId={userId} title="Отзывы" />
 
         <section className="space-y-3">
           <h2 className="pt-2 text-lg font-semibold tracking-tight">Активные подарки</h2>

@@ -21,9 +21,17 @@ function fmtDate(s: string): string {
 }
 
 /** Отзывы о пользователе — список с оценками и текстами. */
-export function ReviewsAboutMe({ userId }: { userId: string }) {
+export function ReviewsAboutMe({
+  userId,
+  title = "Отзывы обо мне",
+}: {
+  userId: string;
+  title?: string;
+}) {
   const fn = useServerFn(getReviewsAbout);
-  const [data, setData] = useState<{ count: number; avg: number; items: ReviewItem[] } | null>(null);
+  const [data, setData] = useState<{ count: number; avg: number; items: ReviewItem[] } | null>(
+    null,
+  );
   // По умолчанию список свёрнут — виден только заголовок с оценкой.
   const [open, setOpen] = useState(false);
 
@@ -50,7 +58,7 @@ export function ReviewsAboutMe({ userId }: { userId: string }) {
         className="mb-2 flex w-full items-center justify-between gap-2 text-left"
       >
         <span className="flex items-center gap-1.5">
-          <h2 className="text-[15px] font-semibold tracking-tight">Отзывы обо мне</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
           <ChevronDown
             className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
           />
@@ -60,22 +68,22 @@ export function ReviewsAboutMe({ userId }: { userId: string }) {
         </span>
       </button>
       {open && (
-      <ul className="space-y-2">
-        {data.items.map((r) => (
-          <li key={r.id} className="rounded-2xl border bg-card p-3 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-medium">{r.author_name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{fmtDate(r.created_at)}</span>
-            </div>
-            <div className="mt-0.5 text-sm leading-none">
-              <Stars value={r.rating} />
-            </div>
-            {r.comment && (
-              <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>
-            )}
-          </li>
-        ))}
-      </ul>
+        <ul className="space-y-2">
+          {data.items.map((r) => (
+            <li key={r.id} className="rounded-2xl border bg-card p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-sm font-medium">{r.author_name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {fmtDate(r.created_at)}
+                </span>
+              </div>
+              <div className="mt-0.5 text-sm leading-none">
+                <Stars value={r.rating} />
+              </div>
+              {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
