@@ -21,10 +21,16 @@ export function giftShareUrl(giftId: string): string {
 export async function shareLink(text: string, url: string): Promise<void> {
   haptic("medium");
 
+  // ВАЖНО: многие мессенджеры (Telegram на iOS и др.) при системном
+  // «Поделиться» берут ТОЛЬКО поле url и выбрасывают отдельное поле text —
+  // получатель видит голую ссылку. Поэтому кладём подпись и ссылку ВМЕСТЕ в
+  // одно текстовое поле, без отдельного url — тогда текст точно уходит с ней.
+  const message = `${text}\n${url}`;
+
   // Системное «Поделиться» (мобильные браузеры и часть десктопных).
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
-      await navigator.share({ title: text, text, url });
+      await navigator.share({ text: message });
       return;
     } catch (e) {
       // Пользователь закрыл меню — это не ошибка, тихо выходим.
@@ -35,7 +41,7 @@ export async function shareLink(text: string, url: string): Promise<void> {
 
   // Фолбэк — копируем текст вместе со ссылкой, чтобы получатель видел подпись.
   try {
-    await navigator.clipboard.writeText(`${text}\n${url}`);
+    await navigator.clipboard.writeText(message);
     toast.success("Скопировано 💚", {
       description: "Вставь и отправь в любом мессенджере",
     });
