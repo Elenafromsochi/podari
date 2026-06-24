@@ -12,7 +12,11 @@ const VK_SDK_SRC = "https://unpkg.com/@vkid/sdk@2.6.0/dist-sdk/umd/index.js";
 // SDK грузится с CDN (npm-пакет не ставим), поэтому типизируем по месту —
 // только то, что реально используем из window.VKIDSDK.
 type VkOneTap = {
-  render: (opts: { container: HTMLElement; showAlternativeLogin?: boolean }) => VkOneTap;
+  render: (opts: {
+    container: HTMLElement;
+    showAlternativeLogin?: boolean;
+    styles?: { borderRadius?: number; height?: number };
+  }) => VkOneTap;
   on: (event: unknown, cb: (data: never) => void) => VkOneTap;
   close?: () => void;
 };
@@ -103,6 +107,8 @@ export function VkLoginButton({ onToken }: Props) {
           .render({
             container: containerRef.current,
             showAlternativeLogin: false,
+            // Скругление 12px — как у кнопки «Войти через Telegram» (rounded-xl).
+            styles: { borderRadius: 12 },
           })
           .on(VKID.WidgetEvents.ERROR, (e: unknown) => {
             console.error("[vk-auth] WIDGET_ERROR", e);

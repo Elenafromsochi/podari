@@ -558,8 +558,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                 <Button
                   asChild
                   size="lg"
-                  variant={pwMode === "form" ? "outline" : "default"}
-                  className="w-full"
+                  className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
                 >
                   <a
                     href={deepLink}
@@ -577,8 +576,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
               ) : (
                 <Button
                   size="lg"
-                  variant={pwMode === "form" ? "outline" : "default"}
-                  className="w-full"
+                  className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
                   onClick={startLogin}
                 >
                   {pwMode === "form"
