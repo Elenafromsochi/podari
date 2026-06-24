@@ -93,6 +93,9 @@ export function ChatScreen({
   const [handoverRequestedAt, setHandoverRequestedAt] = useState<string | null>(null);
   const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  // Уже оставил отзыв по этой сделке? Тогда не показываем окно снова.
+  // ref — чтобы свежее значение читалось из polling-замыкания.
+  const alreadyReviewedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -190,6 +193,25 @@ export function ChatScreen({
   }, [meId, gift, transactionId]);
 
 
+  // Узнаём, оставлял ли я уже отзыв по этой сделке — чтобы не показывать
+  // окно отзыва повторно при каждом открытии завершённого чата.
+  useEffect(() => {
+    if (!transactionId || !meId) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("reviews")
+        .select("id")
+        .eq("transaction_id", transactionId)
+        .eq("author_id", meId)
+        .maybeSingle();
+      if (alive && data) alreadyReviewedRef.current = true;
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [transactionId, meId]);
+
   // загрузка / отслеживание транзакции (realtime + polling fallback)
   useEffect(() => {
     if (!transactionId || !meId) return;
@@ -207,7 +229,7 @@ export function ChatScreen({
       if (row.handover_requested_at && row.receiver_id === meId && row.status === "pending") {
         setShowReceiverConfirm(true);
       }
-      if (row.status === "completed") {
+      if (row.status === "completed" && !alreadyReviewedRef.current) {
         setShowReview(true);
       }
     };
@@ -666,6 +688,8 @@ export function ChatScreen({
                     proof_image_url: proofUrl,
                   },
                 });
+                // Отзыв сохранён — больше не показываем окно для этой сделки.
+                alreadyReviewedRef.current = true;
               }
             } catch (e) {
               toast.error("Отзыв не сохранён", {

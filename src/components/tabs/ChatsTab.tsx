@@ -17,6 +17,7 @@ type ChatItem = {
   created_at: string;
   last_message_at: string | null;
   last_incoming: boolean;
+  needs_review?: boolean;
 };
 
 type Filter = "givers" | "receivers" | "archive";
@@ -143,10 +144,16 @@ export function ChatsTab() {
   const giversUnread = countUnread(givers ?? []);
   const receiversUnread = countUnread(receivers ?? []);
   const archiveUnread = countUnread([...archiveG, ...archiveR]);
+  // Сколько завершённых сделок ждут отзыв — чтобы «висящее» уведомление
+  // в архиве было заметно, а не молча терялось.
+  const countNeedsReview = (arr: ChatItem[]) =>
+    arr.reduce((n, c) => n + (c.needs_review ? 1 : 0), 0);
+  const archiveNeedsReview = countNeedsReview([...archiveG, ...archiveR]);
   const unreadByTab: Record<Filter, number> = {
     givers: giversUnread,
     receivers: receiversUnread,
-    archive: archiveUnread,
+    // В архиве подсвечиваем и непрочитанные, и неоставленные отзывы.
+    archive: archiveUnread + archiveNeedsReview,
   };
 
   const base: ChatItem[] = useMemo(() => {
@@ -233,7 +240,11 @@ export function ChatsTab() {
                     markSeen(c);
                   }}
                   className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm transition active:scale-[0.98] ${
-                    unread ? "border-primary/40 bg-primary/5" : "bg-card"
+                    unread
+                      ? "border-primary/40 bg-primary/5"
+                      : c.needs_review
+                        ? "border-amber-400/50 bg-amber-400/5"
+                        : "bg-card"
                   }`}
                 >
                   {c.gift_image ? (
@@ -267,6 +278,11 @@ export function ChatsTab() {
                       </p>
                       <StatusTag status={c.status} />
                     </div>
+                    {c.needs_review && (
+                      <p className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">
+                        ✍️ Оставьте отзыв о сделке
+                      </p>
+                    )}
                   </div>
                 </Link>
               </li>

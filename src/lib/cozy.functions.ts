@@ -927,6 +927,24 @@ export const getMyChats = createServerFn({ method: "GET" })
       }
     }
 
+    // По каким завершённым сделкам я ещё НЕ оставил отзыв — чтобы показать
+    // в списке чатов плашку «Оставьте отзыв». Отзыв = строка в reviews с моим
+    // author_id по этой транзакции.
+    const completedTxIds = rows
+      .filter((r) => r.status === "completed")
+      .map((r) => r.id as string);
+    const reviewedTxIds = new Set<string>();
+    if (completedTxIds.length) {
+      const { data: myReviews } = await supabase
+        .from("reviews")
+        .select("transaction_id")
+        .eq("author_id", userId)
+        .in("transaction_id", completedTxIds);
+      for (const rv of (myReviews ?? []) as Array<{ transaction_id: string }>) {
+        reviewedTxIds.add(rv.transaction_id);
+      }
+    }
+
     type Item = {
       transaction_id: string;
       status: string;
@@ -937,6 +955,7 @@ export const getMyChats = createServerFn({ method: "GET" })
       created_at: string;
       last_message_at: string | null;
       last_incoming: boolean;
+      needs_review: boolean;
     };
     const activeGivers: Item[] = [];
     const activeReceivers: Item[] = [];
@@ -957,6 +976,9 @@ export const getMyChats = createServerFn({ method: "GET" })
         created_at: r.created_at as string,
         last_message_at: lm?.at ?? null,
         last_incoming: lm ? !lm.fromMe : false,
+        needs_review:
+          (r.status as string) === "completed" &&
+          !reviewedTxIds.has(r.id as string),
       };
       const isArchived = r.status === "completed" || r.status === "cancelled";
       if (r.receiver_id === userId) {
