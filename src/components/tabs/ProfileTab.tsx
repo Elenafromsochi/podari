@@ -28,6 +28,7 @@ import {
   getMyChats,
   updateGift,
   deleteGift,
+  markInvited,
 } from "@/lib/cozy.functions";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes } from "@/lib/wishes.functions";
@@ -703,9 +704,15 @@ function InviteRow({
 }) {
   const origin = APP_BASE_URL;
   const inviteLink = `${origin}/?ref=${userId}`;
+  const markInvitedFn = useServerFn(markInvited);
 
   // Засчитываем приглашение ТОЛЬКО после фактической отправки (из окна выбора).
   const onInviteShared = () => {
+    // Запоминаем факт отправки на сервере — чтобы шаг «Пригласить друга»
+    // отмечался на всех устройствах, а не только в этом браузере.
+    markInvitedFn({}).catch(() => {
+      /* офлайн — останется локальная отметка, синхронизируется позже */
+    });
     let firstInvite = false;
     try {
       firstInvite = localStorage.getItem("cozygift_invited") !== "1";

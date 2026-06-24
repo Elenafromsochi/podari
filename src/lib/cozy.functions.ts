@@ -1016,15 +1016,52 @@ export const getOnboardingSteps = createServerFn({ method: "GET" })
         cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("sender_id", userId).eq("status", "completed")),
       ]);
 
+    // «Пригласить друга» засчитываем, если друг реально зарегистрировался по
+    // ссылке (referred_by) ИЛИ пользователь хоть раз отправил приглашение —
+    // факт отправки храним в user_metadata.invited_at (см. markInvited), чтобы
+    // галочка не зависела от localStorage конкретного устройства/домена.
+    const invitedShared = await invitedFromMeta(userId);
+
     return {
       chosen: chosen > 0,
       messaged: messaged > 0,
       posted: posted > 0,
-      invited: invited > 0,
+      invited: invited > 0 || invitedShared,
       received: received > 0,
       reviewed: reviewed > 0,
       gifted: gifted > 0,
     };
+  });
+
+/** Читает из auth-метаданных, отправлял ли пользователь приглашение. */
+async function invitedFromMeta(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const meta = (data?.user?.user_metadata ?? {}) as { invited_at?: string };
+    return !!meta.invited_at;
+  } catch (e) {
+    console.error("[cozy] INVITED_META_READ_FAILED", e);
+    return false;
+  }
+}
+
+/** Отмечает, что пользователь отправил приглашение (для шага «Пригласить друга»). */
+export const markInvited = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    try {
+      const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const meta = (data?.user?.user_metadata ?? {}) as Record<string, unknown>;
+      if (!meta.invited_at) {
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: { ...meta, invited_at: new Date().toISOString() },
+        });
+      }
+    } catch (e) {
+      console.error("[cozy] MARK_INVITED_FAILED", e);
+    }
+    return { ok: true };
   });
 
 // ---------- Public journey (для профиля любого пользователя, только чтение) ----------
