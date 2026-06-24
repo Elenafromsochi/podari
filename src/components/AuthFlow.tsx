@@ -13,6 +13,8 @@ import {
   loginWithPassword,
   confirmDeviceCode,
 } from "@/lib/password-auth.functions";
+import { loginWithVk } from "@/lib/vk-auth.functions";
+import { VkLoginButton } from "@/components/VkLoginButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,6 +131,41 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     rememberUsername(profile.telegram_username);
     confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
     onAuthed(profile, false);
+  };
+
+  // --- Вход через VK ID (без VPN) ---
+  const vkLoginFn = useServerFn(loginWithVk);
+  const handleVkToken = async (accessToken: string) => {
+    setPhase("signing_in");
+    setStatusText("Входим через VK…");
+    try {
+      const referrer_id =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cozygift_pending_ref")
+          : null;
+      const res = await vkLoginFn({
+        data: { access_token: accessToken, referrer_id },
+      });
+      await setTelegramSession(res.access_token, res.refresh_token);
+      const profile = await loadUser();
+      if (!profile) throw new Error("Профиль не загружен");
+      confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
+      toast.success(
+        res.is_new
+          ? `Добро пожаловать, ${profile.display_name} 💚`
+          : `С возвращением, ${profile.display_name} 💚`,
+      );
+      onAuthed(profile, res.is_new);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось войти через VK";
+      if (msg.includes("VK_TOKEN_INVALID")) text = "VK не подтвердил вход — попробуй ещё раз";
+      else if (msg.includes("VK_API_UNREACHABLE")) text = "VK временно недоступен";
+      console.error("[AuthFlow] handleVkToken failed:", msg);
+      toast.error(text, { description: msg, duration: 12000 });
+      setPhase("idle");
+      setStatusText("");
+    }
   };
 
   const submitPassword = async (e: React.FormEvent) => {
@@ -555,6 +592,18 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Подтверди вход в боте (Start → ✅ Это я) и вернись сюда 💚
                 </p>
+              )}
+
+              {/* Вход через VK ID — работает без VPN, рядом с Telegram. */}
+              {phase === "idle" && (
+                <>
+                  <div className="flex w-full items-center gap-3 py-1 text-[11px] text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    или
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                  <VkLoginButton onToken={handleVkToken} />
+                </>
               )}
             </>
           )}
