@@ -8,14 +8,17 @@ export function giftShareUrl(giftId: string): string {
 }
 
 /**
- * «Поделиться подарком»: на телефоне открывает системное меню (отправить
- * другу в любой мессенджер), на десктопе — копирует ссылку в буфер обмена.
- * Вызывать прямо в обработчике клика (жест пользователя).
+ * Универсальное «Поделиться» — единый формат для всего приложения
+ * (приглашения, подарки, желания). На телефоне открывает системное меню,
+ * откуда ссылку можно отправить КУДА УГОДНО: Telegram, ВКонтакте, WhatsApp,
+ * почта и т.д. На десктопе / без поддержки — копирует текст со ссылкой в
+ * буфер обмена.
+ *
+ * ВАЖНО: вызывать прямо в обработчике клика (в рамках жеста пользователя),
+ * иначе iOS/Safari заблокирует открытие меню.
  */
-export async function shareGift(giftId: string, title?: string): Promise<void> {
+export async function shareLink(text: string, url: string): Promise<void> {
   haptic("medium");
-  const url = giftShareUrl(giftId);
-  const text = title ? `Подарок «${title}» на Подари 🎁` : "Подарок на Подари 🎁";
 
   // Системное «Поделиться» (мобильные браузеры и часть десктопных).
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
@@ -29,25 +32,25 @@ export async function shareGift(giftId: string, title?: string): Promise<void> {
     }
   }
 
-  // Фолбэк — копируем ссылку в буфер обмена.
+  // Фолбэк — копируем текст вместе со ссылкой, чтобы получатель видел подпись.
   try {
-    await navigator.clipboard.writeText(url);
-    toast.success("Ссылка скопирована 💚", { description: "Отправь её другу" });
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast.success("Скопировано 💚", {
+      description: "Вставь и отправь в любом мессенджере",
+    });
   } catch {
     toast.error("Не удалось поделиться", { description: url });
   }
 }
 
-// Прямой шеринг в Telegram: открывает окно «Поделиться» Telegram с выбором
-// контакта и готовым текстом + ссылкой. Без промежуточных окон в приложении.
-//
-// ВАЖНО: вызывать прямо в обработчике клика (в рамках жеста пользователя),
-// иначе Safari/iOS заблокирует открытие новой вкладки.
-export function shareToTelegram(text: string, link: string) {
-  if (typeof window === "undefined") return;
-  haptic("medium");
-  const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+/**
+ * «Поделиться подарком» — обёртка над shareLink с готовой подписью.
+ * Вызывать прямо в обработчике клика (жест пользователя).
+ */
+export async function shareGift(giftId: string, title?: string): Promise<void> {
+  const url = giftShareUrl(giftId);
+  const text = title ? `Подарок «${title}» на Подари 🎁` : "Подарок на Подари 🎁";
+  await shareLink(text, url);
 }
 
 // Берём «третий формат» (последний из набора) — он самый короткий и ясный.

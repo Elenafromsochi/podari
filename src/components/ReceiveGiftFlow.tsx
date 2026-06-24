@@ -13,7 +13,7 @@ import { getCategoryMeta } from "@/lib/gift-categories";
 import { APP_BASE_URL } from "@/lib/app-url";
 import { LevelBadge } from "@/components/LevelBadge";
 import { giftShareVariants } from "@/lib/random-copy";
-import { shareToTelegram, thirdVariant } from "@/lib/share";
+import { shareLink, thirdVariant } from "@/lib/share";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { Stars } from "@/components/ui/stars";
 import { emitTour } from "@/lib/tour";
@@ -42,7 +42,7 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
   const [expanded, setExpanded] = useState(false);
   const [lightbox, setLightbox] = useState(false);
   // Ссылка ведёт на страницу самого подарка (и засчитывает реферал).
-  const shareLink = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
+  const shareUrl = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
   const longDesc = !!g.description && g.description.length > 38;
   const photos =
     g.image_urls && g.image_urls.length > 0
@@ -80,7 +80,7 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
             <button
               type="button"
               onClick={() => {
-                shareToTelegram(thirdVariant(giftShareVariants(g.title)), shareLink);
+                shareLink(thirdVariant(giftShareVariants(g.title)), shareUrl);
                 toast.success("Спасибо, что зовёшь друзей 💚");
               }}
               aria-label="Поделиться подарком"

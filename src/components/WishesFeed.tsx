@@ -9,7 +9,7 @@ import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles, Share2 } from "lucide-react";
 import { WISH_EXAMPLES, wishShareVariants } from "@/lib/random-copy";
-import { shareToTelegram, thirdVariant } from "@/lib/share";
+import { shareLink, thirdVariant } from "@/lib/share";
 import { CityChips } from "@/components/CityChips";
 import { applyCityFilter } from "@/lib/city-filter";
 import { APP_BASE_URL } from "@/lib/app-url";
@@ -50,7 +50,7 @@ function WishCard({
   // приложение открыто по старому длинному адресу.
   const origin = APP_BASE_URL;
   // Ссылка ведёт на главную и засчитывает реферал. Никуда не уводим.
-  const shareLink = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
+  const shareUrl = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   return (
     <li className="relative">
       <div className="flex w-full gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm">
@@ -118,7 +118,7 @@ function WishCard({
 
       <button
         type="button"
-        onClick={() => shareToTelegram(thirdVariant(wishShareVariants(w.title)), shareLink)}
+        onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
         aria-label="Поделиться желанием"
         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
       >

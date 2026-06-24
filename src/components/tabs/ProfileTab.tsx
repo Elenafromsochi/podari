@@ -33,7 +33,7 @@ import {
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
-import { shareToTelegram, thirdVariant, shareGift } from "@/lib/share";
+import { shareLink, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { CityBadge } from "@/components/CityBadge";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
@@ -643,7 +643,7 @@ function MyWishItem({
   onOpen?: (wishId: string) => void;
 }) {
   const origin = APP_BASE_URL;
-  const shareLink = `${origin}/?ref=${ownerId}`;
+  const shareUrl = `${origin}/?ref=${ownerId}`;
   return (
     <li className="relative">
       <button
@@ -679,7 +679,7 @@ function MyWishItem({
 
       <button
         type="button"
-        onClick={() => shareToTelegram(thirdVariant(wishShareVariants(w.title)), shareLink)}
+        onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
         aria-label="Поделиться желанием"
         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
       >
@@ -802,7 +802,7 @@ function InviteRow({
           type="button"
           data-tour="invite-btn"
           onClick={() => {
-            shareToTelegram(thirdVariant([...INVITE_VARIANTS]), inviteLink);
+            shareLink(thirdVariant([...INVITE_VARIANTS]), inviteLink);
             onInviteShared();
           }}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"

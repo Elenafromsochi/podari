@@ -17,7 +17,7 @@ import {
 import { fulfillWish, deleteWish } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Share2 } from "lucide-react";
-import { shareToTelegram, thirdVariant } from "@/lib/share";
+import { shareLink, thirdVariant } from "@/lib/share";
 import { wishShareVariants } from "@/lib/random-copy";
 import { CityBadge } from "@/components/CityBadge";
 import { APP_BASE_URL } from "@/lib/app-url";
@@ -241,7 +241,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
             <button
               type="button"
               onClick={() =>
-                shareToTelegram(
+                shareLink(
                   thirdVariant(wishShareVariants(wish.title)),
                   `${APP_BASE_URL}/${meId ? `?ref=${meId}` : ""}`,
                 )
