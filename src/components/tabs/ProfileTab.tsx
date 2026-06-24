@@ -28,15 +28,17 @@ import {
   getMyChats,
   updateGift,
   deleteGift,
+  markInvited,
 } from "@/lib/cozy.functions";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
-import { shareToTelegram, thirdVariant, shareGift } from "@/lib/share";
+import { shareLink, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { CityBadge } from "@/components/CityBadge";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
-import { GlobalPremiumCard } from "@/components/GlobalPremiumCard";
+// Премиум пока не настроен — плашка «Подари Global» временно скрыта.
+// import { GlobalPremiumCard } from "@/components/GlobalPremiumCard";
 import { APP_VERSION } from "@/lib/version";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -236,8 +238,8 @@ export function ProfileTab({
         onCreateWish={onCreateWish}
       />
 
-      {/* Подписка Global (топовые модели по подписке, оплата Telegram Stars) */}
-      <GlobalPremiumCard />
+      {/* Подписка Global временно скрыта — премиум пока не настроен. */}
+      {/* <GlobalPremiumCard /> */}
 
       {/* Achievements accordion */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
@@ -641,7 +643,7 @@ function MyWishItem({
   onOpen?: (wishId: string) => void;
 }) {
   const origin = APP_BASE_URL;
-  const shareLink = `${origin}/?ref=${ownerId}`;
+  const shareUrl = `${origin}/?ref=${ownerId}`;
   return (
     <li className="relative">
       <button
@@ -677,7 +679,7 @@ function MyWishItem({
 
       <button
         type="button"
-        onClick={() => shareToTelegram(thirdVariant(wishShareVariants(w.title)), shareLink)}
+        onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
         aria-label="Поделиться желанием"
         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
       >
@@ -702,9 +704,15 @@ function InviteRow({
 }) {
   const origin = APP_BASE_URL;
   const inviteLink = `${origin}/?ref=${userId}`;
+  const markInvitedFn = useServerFn(markInvited);
 
   // Засчитываем приглашение ТОЛЬКО после фактической отправки (из окна выбора).
   const onInviteShared = () => {
+    // Запоминаем факт отправки на сервере — чтобы шаг «Пригласить друга»
+    // отмечался на всех устройствах, а не только в этом браузере.
+    markInvitedFn({}).catch(() => {
+      /* офлайн — останется локальная отметка, синхронизируется позже */
+    });
     let firstInvite = false;
     try {
       firstInvite = localStorage.getItem("cozygift_invited") !== "1";
@@ -794,7 +802,7 @@ function InviteRow({
           type="button"
           data-tour="invite-btn"
           onClick={() => {
-            shareToTelegram(thirdVariant([...INVITE_VARIANTS]), inviteLink);
+            shareLink(thirdVariant([...INVITE_VARIANTS]), inviteLink);
             onInviteShared();
           }}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"

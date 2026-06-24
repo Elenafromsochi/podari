@@ -927,6 +927,24 @@ export const getMyChats = createServerFn({ method: "GET" })
       }
     }
 
+    // По каким завершённым сделкам я ещё НЕ оставил отзыв — чтобы показать
+    // в списке чатов плашку «Оставьте отзыв». Отзыв = строка в reviews с моим
+    // author_id по этой транзакции.
+    const completedTxIds = rows
+      .filter((r) => r.status === "completed")
+      .map((r) => r.id as string);
+    const reviewedTxIds = new Set<string>();
+    if (completedTxIds.length) {
+      const { data: myReviews } = await supabase
+        .from("reviews")
+        .select("transaction_id")
+        .eq("author_id", userId)
+        .in("transaction_id", completedTxIds);
+      for (const rv of (myReviews ?? []) as Array<{ transaction_id: string }>) {
+        reviewedTxIds.add(rv.transaction_id);
+      }
+    }
+
     type Item = {
       transaction_id: string;
       status: string;
@@ -937,6 +955,7 @@ export const getMyChats = createServerFn({ method: "GET" })
       created_at: string;
       last_message_at: string | null;
       last_incoming: boolean;
+      needs_review: boolean;
     };
     const activeGivers: Item[] = [];
     const activeReceivers: Item[] = [];
@@ -957,6 +976,9 @@ export const getMyChats = createServerFn({ method: "GET" })
         created_at: r.created_at as string,
         last_message_at: lm?.at ?? null,
         last_incoming: lm ? !lm.fromMe : false,
+        needs_review:
+          (r.status as string) === "completed" &&
+          !reviewedTxIds.has(r.id as string),
       };
       const isArchived = r.status === "completed" || r.status === "cancelled";
       if (r.receiver_id === userId) {
@@ -994,15 +1016,52 @@ export const getOnboardingSteps = createServerFn({ method: "GET" })
         cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("sender_id", userId).eq("status", "completed")),
       ]);
 
+    // «Пригласить друга» засчитываем, если друг реально зарегистрировался по
+    // ссылке (referred_by) ИЛИ пользователь хоть раз отправил приглашение —
+    // факт отправки храним в user_metadata.invited_at (см. markInvited), чтобы
+    // галочка не зависела от localStorage конкретного устройства/домена.
+    const invitedShared = await invitedFromMeta(userId);
+
     return {
       chosen: chosen > 0,
       messaged: messaged > 0,
       posted: posted > 0,
-      invited: invited > 0,
+      invited: invited > 0 || invitedShared,
       received: received > 0,
       reviewed: reviewed > 0,
       gifted: gifted > 0,
     };
+  });
+
+/** Читает из auth-метаданных, отправлял ли пользователь приглашение. */
+async function invitedFromMeta(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const meta = (data?.user?.user_metadata ?? {}) as { invited_at?: string };
+    return !!meta.invited_at;
+  } catch (e) {
+    console.error("[cozy] INVITED_META_READ_FAILED", e);
+    return false;
+  }
+}
+
+/** Отмечает, что пользователь отправил приглашение (для шага «Пригласить друга»). */
+export const markInvited = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    try {
+      const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const meta = (data?.user?.user_metadata ?? {}) as Record<string, unknown>;
+      if (!meta.invited_at) {
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: { ...meta, invited_at: new Date().toISOString() },
+        });
+      }
+    } catch (e) {
+      console.error("[cozy] MARK_INVITED_FAILED", e);
+    }
+    return { ok: true };
   });
 
 // ---------- Public journey (для профиля любого пользователя, только чтение) ----------
