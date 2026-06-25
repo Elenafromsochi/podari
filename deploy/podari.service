@@ -1,0 +1,26 @@
+# systemd-юнит: держит приложение запущенным и поднимает после перезагрузки.
+# Установка:
+#   sudo cp /opt/podari/deploy/podari.service /etc/systemd/system/podari.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now podari
+#
+# Логи:        journalctl -u podari -f
+# Перезапуск:  sudo systemctl restart podari
+
+[Unit]
+Description=Podari (TanStack Start, Node server)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/podari
+EnvironmentFile=/opt/podari/.env
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+ExecStart=/usr/bin/node /opt/podari/dist/server/index.mjs
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

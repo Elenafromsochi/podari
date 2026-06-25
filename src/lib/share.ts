@@ -9,11 +9,39 @@ export function giftShareUrl(giftId: string): string {
 }
 
 /**
+ * Старый способ копирования через скрытую textarea + execCommand. Работает
+ * там, где современный navigator.clipboard заблокирован (например, когда
+ * страница открыта внутри Google-переводчика translate.goog).
+ */
+function legacyCopy(text: string): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Универсальное «Поделиться» — единый формат для всего приложения
  * (приглашения, подарки, желания). На телефоне открывает системное меню,
  * откуда ссылку можно отправить КУДА УГОДНО: Telegram, ВКонтакте, WhatsApp,
- * почта и т.д. На десктопе / без поддержки — копирует текст со ссылкой в
- * буфер обмена.
+ * почта и т.д. Если системное меню/буфер недоступны (десктоп, режим перевода
+ * страницы и т.п.) — мягко переходим к копированию, а в самом крайнем случае
+ * показываем ссылку для ручного копирования. Ссылку всегда можно получить —
+ * «Не удалось поделиться» больше не тупик.
  *
  * ВАЖНО: вызывать прямо в обработчике клика (в рамках жеста пользователя),
  * иначе iOS/Safari заблокирует открытие меню.
@@ -27,7 +55,7 @@ export async function shareLink(text: string, url: string): Promise<void> {
   // одно текстовое поле, без отдельного url — тогда текст точно уходит с ней.
   const message = `${text}\n${url}`;
 
-  // Системное «Поделиться» (мобильные браузеры и часть десктопных).
+  // 1) Системное «Поделиться» (мобильные браузеры и часть десктопных).
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
       await navigator.share({ text: message });
@@ -35,19 +63,37 @@ export async function shareLink(text: string, url: string): Promise<void> {
     } catch (e) {
       // Пользователь закрыл меню — это не ошибка, тихо выходим.
       if (e instanceof DOMException && e.name === "AbortError") return;
-      // Иначе падаем на копирование ниже.
+      // Иначе пробуем копирование ниже.
     }
   }
 
-  // Фолбэк — копируем текст вместе со ссылкой, чтобы получатель видел подпись.
-  try {
-    await navigator.clipboard.writeText(message);
+  // 2) Современный буфер обмена.
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("Скопировано 💚", {
+        description: "Вставь и отправь в любом мессенджере",
+      });
+      return;
+    } catch {
+      /* буфер заблокирован — пробуем старый способ ниже */
+    }
+  }
+
+  // 3) Старый способ копирования (работает там, где clipboard API закрыт).
+  if (legacyCopy(message)) {
     toast.success("Скопировано 💚", {
       description: "Вставь и отправь в любом мессенджере",
     });
-  } catch {
-    toast.error("Не удалось поделиться", { description: url });
+    return;
   }
+
+  // 4) Последний фолбэк — показываем ссылку, чтобы скопировать вручную.
+  if (typeof window !== "undefined" && typeof window.prompt === "function") {
+    window.prompt("Скопируй ссылку и отправь другу:", message);
+    return;
+  }
+  toast("Ссылка для друга 💚", { description: message, duration: 15000 });
 }
 
 /**

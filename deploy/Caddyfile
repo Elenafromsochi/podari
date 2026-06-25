@@ -1,0 +1,28 @@
+# Caddy для сервера Timeweb (5.42.111.169).
+# Отдаёт сайт 23podari.ru напрямую с этого сервера (без Cloudflare) и
+# проксирует API self-hosted Supabase на api.23podari.ru.
+# Caddy сам выпускает и продлевает SSL-сертификаты Let's Encrypt.
+#
+# Установка:
+#   sudo cp /opt/podari/deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl restart caddy
+#
+# ВАЖНО: чтобы сертификаты выпустились, домены 23podari.ru / www / api
+# должны указывать (A-записью) на этот сервер — то есть в Cloudflare
+# переключить «облако» на серое (DNS only) или вынести DNS сюда.
+
+{
+    email visokihelenasochi@gmail.com
+}
+
+# Сайт-приложение (Node-сервер слушает на 127.0.0.1:3000)
+23podari.ru, www.23podari.ru {
+    encode gzip
+    reverse_proxy 127.0.0.1:3000
+}
+
+# API self-hosted Supabase (Docker слушает на 127.0.0.1:8000)
+api.23podari.ru {
+    encode gzip
+    reverse_proxy 127.0.0.1:8000
+}
