@@ -62,7 +62,7 @@ function WishCard({
               setLightbox(true);
             }}
             aria-label="Посмотреть фото"
-            className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"
+            className="h-12 w-12 shrink-0 overflow-hidden rounded-xl"
           >
             <img
               src={w.image_url}
@@ -72,7 +72,7 @@ function WishCard({
             />
           </button>
         ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-3xl">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
             ✨
           </div>
         )}
@@ -87,7 +87,7 @@ function WishCard({
           {/* Единый стиль карточки: цена — бейджем справа у заголовка, как у
               подарков (pr-8 оставляет место под плавающую кнопку «Поделиться»). */}
           <div className="flex items-start justify-between gap-2 pr-8">
-            <div className="line-clamp-2 text-[15px] font-semibold leading-tight">{w.title}</div>
+            <div className="line-clamp-2 text-sm font-medium leading-tight">{w.title}</div>
             <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
               {w.cost} {w.cost === 1 ? "балл" : w.cost < 5 ? "балла" : "баллов"}
             </span>

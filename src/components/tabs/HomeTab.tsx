@@ -452,7 +452,7 @@ function GiftThumb({ gift, onOpen }: { gift: Gift; onOpen: () => void }) {
   const photos = giftPhotos(gift);
   if (!photos.length) {
     return (
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
         🎁
       </div>
     );
@@ -467,12 +467,12 @@ function GiftThumb({ gift, onOpen }: { gift: Gift; onOpen: () => void }) {
         onOpen();
       }}
       aria-label="Посмотреть фото"
-      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl"
+      className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl"
     >
       <img src={photos[0]} alt="" className="h-full w-full object-cover" loading="lazy" />
       {photos.length > 1 && (
-        <span className="absolute bottom-1 right-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-          📷 {photos.length}
+        <span className="absolute bottom-0.5 right-0.5 rounded bg-black/55 px-1 text-[9px] font-semibold text-white">
+          {photos.length}
         </span>
       )}
     </button>
@@ -565,7 +565,7 @@ function ActiveGiftCard({
           >
             <div className="flex items-start justify-between gap-2">
               <div
-                className={`text-[15px] font-semibold leading-tight ${
+                className={`text-sm font-medium leading-tight ${
                   expanded ? "" : "line-clamp-2"
                 }`}
               >
@@ -682,7 +682,7 @@ function GiftedCard({ gift }: { gift: Gift }) {
         onClick={() => haptic("light")}
         className="min-w-0 flex-1 transition active:scale-[0.99]"
       >
-        <div className="line-clamp-2 text-[15px] font-semibold leading-tight">{gift.title}</div>
+        <div className="line-clamp-2 text-sm font-medium leading-tight">{gift.title}</div>
         {gift.condition ? (
           <div
             className="mt-0.5 text-sm leading-none"
