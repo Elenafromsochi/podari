@@ -473,7 +473,7 @@ export function ProfileTab({
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{g.title}</p>
+                      <p className="line-clamp-2 text-sm font-medium">{g.title}</p>
                       <p className="truncate text-xs text-muted-foreground">{g.category}</p>
                     </div>
                   </li>
@@ -578,7 +578,7 @@ function EditableActiveItem({
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{gift.title}</p>
+        <p className="line-clamp-2 text-sm font-medium">{gift.title}</p>
         <div className="flex flex-wrap items-center gap-1.5">
           <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
           <CityBadge city={gift.city} isOnline={gift.is_online} />
@@ -666,7 +666,7 @@ function MyWishItem({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate pr-7 text-sm font-medium">{w.title}</p>
+          <p className="line-clamp-2 pr-7 text-sm font-medium">{w.title}</p>
           <div className="flex items-center gap-1.5">
             <p className="truncate text-xs text-muted-foreground">
               {w.category} ·{" "}

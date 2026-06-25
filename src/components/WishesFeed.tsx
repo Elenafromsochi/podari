@@ -87,7 +87,7 @@ function WishCard({
           {/* Единый стиль карточки: цена — бейджем справа у заголовка, как у
               подарков (pr-8 оставляет место под плавающую кнопку «Поделиться»). */}
           <div className="flex items-start justify-between gap-2 pr-8">
-            <div className="truncate text-[15px] font-semibold leading-tight">{w.title}</div>
+            <div className="line-clamp-2 text-[15px] font-semibold leading-tight">{w.title}</div>
             <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
               {w.cost} {w.cost === 1 ? "балл" : w.cost < 5 ? "балла" : "баллов"}
             </span>

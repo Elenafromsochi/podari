@@ -494,6 +494,8 @@ function ActiveGiftCard({
 }) {
   const [lightbox, setLightbox] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Карточка разворачивается по тапу: полностью показываем заголовок и описание.
+  const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
   const deleteFn = useServerFn(deleteGift);
   if (!gift.owner_id) return null;
@@ -517,53 +519,77 @@ function ActiveGiftCard({
   };
   const word = gift.cost === 1 ? "балл" : gift.cost < 5 ? "балла" : "баллов";
   const photos = giftPhotos(gift);
-  const cardBody = (
-    <>
-      <div className="flex items-start justify-between gap-2">
-        <div className="truncate text-[15px] font-semibold leading-tight">{gift.title}</div>
-        <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
-          {gift.cost} {word}
-        </span>
-      </div>
-      {gift.description && (
-        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{gift.description}</p>
-      )}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <span className="inline-block rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
-          {gift.owner_name}
-        </span>
-        <LevelBadge level={gift.owner_level ?? 1} />
-      </div>
-    </>
+
+  // Имя владельца — ЕДИНСТВЕННАЯ ссылка на профиль. Свой подарок ведёт в мой
+  // профиль (вкладка «Профиль»), чужой — на страницу дарителя.
+  const ownerBadgeClass =
+    "inline-block max-w-full truncate rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground transition active:scale-[0.96] hover:bg-lavender";
+  const ownerLink = isMine ? (
+    <button
+      type="button"
+      onClick={() => {
+        haptic("light");
+        onOpenProfile?.();
+      }}
+      className={ownerBadgeClass}
+    >
+      {gift.owner_name}
+    </button>
+  ) : (
+    <Link
+      to="/user/$userId"
+      params={{ userId: gift.owner_id }}
+      onClick={() => haptic("light")}
+      className={ownerBadgeClass}
+    >
+      {gift.owner_name}
+    </Link>
   );
+
   return (
     <li className="rounded-2xl border bg-card p-3 shadow-sm">
       <div className="flex gap-3">
         {/* Фото — открывает полноэкранную карусель */}
         <GiftThumb gift={gift} onOpen={() => setLightbox(true)} />
-        {/* Свой подарок ведёт в мой профиль (вкладка «Профиль»), чужой — на
-            страницу дарителя. */}
-        {isMine ? (
+        <div className="min-w-0 flex-1">
+          {/* Тап по тексту РАЗВОРАЧИВАЕТ карточку (полные заголовок и описание),
+              а НЕ ведёт на профиль. На профиль — только по имени ниже. */}
           <button
             type="button"
             onClick={() => {
               haptic("light");
-              onOpenProfile?.();
+              setExpanded((v) => !v);
             }}
-            className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
+            aria-expanded={expanded}
+            className="w-full text-left transition active:scale-[0.99]"
           >
-            {cardBody}
+            <div className="flex items-start justify-between gap-2">
+              <div
+                className={`text-[15px] font-semibold leading-tight ${
+                  expanded ? "" : "line-clamp-2"
+                }`}
+              >
+                {gift.title}
+              </div>
+              <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
+                {gift.cost} {word}
+              </span>
+            </div>
+            {gift.description && (
+              <p
+                className={`mt-0.5 text-xs text-muted-foreground ${
+                  expanded ? "whitespace-pre-line" : "line-clamp-2"
+                }`}
+              >
+                {gift.description}
+              </p>
+            )}
           </button>
-        ) : (
-          <Link
-            to="/user/$userId"
-            params={{ userId: gift.owner_id }}
-            onClick={() => haptic("light")}
-            className="min-w-0 flex-1 transition active:scale-[0.99]"
-          >
-            {cardBody}
-          </Link>
-        )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {ownerLink}
+            <LevelBadge level={gift.owner_level ?? 1} />
+          </div>
+        </div>
       </div>
 
       {/* Прямая бронь: списываем балл и открываем чат с дарителем.
@@ -656,7 +682,7 @@ function GiftedCard({ gift }: { gift: Gift }) {
         onClick={() => haptic("light")}
         className="min-w-0 flex-1 transition active:scale-[0.99]"
       >
-        <div className="truncate text-[15px] font-semibold leading-tight">{gift.title}</div>
+        <div className="line-clamp-2 text-[15px] font-semibold leading-tight">{gift.title}</div>
         {gift.condition ? (
           <div
             className="mt-0.5 text-sm leading-none"
