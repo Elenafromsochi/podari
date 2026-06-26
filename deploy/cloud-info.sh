@@ -11,10 +11,19 @@ HOST="aws-0-eu-west-1.pooler.supabase.com"
 PORT="5432"
 USER="postgres.pvankvojplctgthlvtto"
 DB="postgres"
+PWFILE="/root/dbpass"
 
-echo "Вставь пароль БД из Supabase (его не будет видно), затем Enter:"
-read -rs PW
-echo
+# Пароль НЕ спрашиваем интерактивно (в консоли айпада ввод ломается).
+# Берём его из файла /root/dbpass, который ты создашь руками один раз:
+#   printf 'ТВОЙ_ПАРОЛЬ' > /root/dbpass
+if [ ! -s "$PWFILE" ]; then
+  echo "!! Нет файла с паролем ($PWFILE)."
+  echo "   Создай его, напечатав РУКАМИ (подставь свой пароль БД):"
+  echo "     printf 'Podari2026migrate' > /root/dbpass"
+  echo "   потом запусти этот скрипт снова."
+  exit 1
+fi
+PW="$(cat "$PWFILE")"
 
 echo "Готовлю клиент postgres:17 (скачается один раз, ~30 сек)..."
 docker pull postgres:17-alpine >/dev/null 2>&1 || docker pull postgres:17 >/dev/null 2>&1 || true
@@ -34,3 +43,4 @@ docker run --rm --network host -e PGPASSWORD="$PW" -e PGSSLMODE=require "$IMG" \
    select 'storage_objects=' || count(*) from storage.objects;" \
   && echo "OK: данные прочитаны" \
   || echo "!! не удалось прочитать (пароль/сеть)"
+
