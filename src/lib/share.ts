@@ -49,28 +49,29 @@ function legacyCopy(text: string): boolean {
 export async function shareLink(text: string, url: string): Promise<void> {
   haptic("medium");
 
-  // ВАЖНО: многие мессенджеры (Telegram на iOS и др.) при системном
-  // «Поделиться» берут ТОЛЬКО поле url и выбрасывают отдельное поле text —
-  // получатель видит голую ссылку. Поэтому кладём подпись и ссылку ВМЕСТЕ в
-  // одно текстовое поле, без отдельного url — тогда текст точно уходит с ней.
   const message = `${text}\n${url}`;
 
-  // 1) Системное «Поделиться» — окно выбора приложения (Telegram, ВК, и т.д.).
-  // Передаём title+text+url раздельно: именно такой формат надёжно открывает
-  // системное меню на iOS/Android (формат «только текст» на части Safari меню
-  // не открывал и уходил в копирование).
+  // Открываем окно «Поделиться» Telegram с готовым текстом И ссылкой — так
+  // работало раньше и надёжно работает везде, в т.ч. во встроенных браузерах,
+  // где системное navigator.share недоступно. Текст и ссылка уходят вместе.
+  // Открываем СИНХРОННО (в рамках жеста по кнопке), иначе iOS заблокирует окно.
+  if (typeof window !== "undefined") {
+    const tg = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+    const win = window.open(tg, "_blank", "noopener,noreferrer");
+    if (win) return;
+  }
+
+  // Если окно заблокировано (редко) — пробуем системное меню.
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
       await navigator.share({ title: text, text, url });
       return;
     } catch (e) {
-      // Пользователь закрыл меню — это не ошибка, тихо выходим.
       if (e instanceof DOMException && e.name === "AbortError") return;
-      // Иначе пробуем копирование ниже.
     }
   }
 
-  // 2) Современный буфер обмена.
+  // Самый крайний случай — копируем текст со ссылкой.
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(message);
@@ -79,19 +80,15 @@ export async function shareLink(text: string, url: string): Promise<void> {
       });
       return;
     } catch {
-      /* буфер заблокирован — пробуем старый способ ниже */
+      /* пробуем старый способ ниже */
     }
   }
-
-  // 3) Старый способ копирования (работает там, где clipboard API закрыт).
   if (legacyCopy(message)) {
     toast.success("Скопировано 💚", {
       description: "Вставь и отправь в любом мессенджере",
     });
     return;
   }
-
-  // 4) Последний фолбэк — показываем ссылку, чтобы скопировать вручную.
   if (typeof window !== "undefined" && typeof window.prompt === "function") {
     window.prompt("Скопируй ссылку и отправь другу:", message);
     return;
