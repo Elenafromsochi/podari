@@ -2,6 +2,27 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { supabase } from './client'
 
+// Запасной путь: если getSession()/refresh не отдали токен (бывает при
+// нестабильной связи с облачным auth-сервером), читаем сохранённую сессию
+// прямо из localStorage — токен почти всегда там лежит.
+function tokenFromStorage(): string | undefined {
+  if (typeof localStorage === 'undefined') return undefined
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (!k || !/^sb-.*-auth-token$/.test(k)) continue
+      const raw = localStorage.getItem(k)
+      if (!raw) continue
+      const v = JSON.parse(raw)
+      const tok = v?.access_token ?? v?.currentSession?.access_token
+      if (typeof tok === 'string' && tok) return tok
+    }
+  } catch {
+    /* noop */
+  }
+  return undefined
+}
+
 // Must be registered as a global `functionMiddleware` in `src/start.ts`; otherwise
 // the browser never attaches the bearer token to serverFn RPCs.
 export const attachSupabaseAuth = createMiddleware({ type: 'function' }).client(
@@ -18,10 +39,14 @@ export const attachSupabaseAuth = createMiddleware({ type: 'function' }).client(
         token = r.data.session?.access_token
       }
     } catch {
-      /* оставляем token пустым — ниже уйдёт без заголовка */
+      /* оставляем token пустым — попробуем достать из хранилища ниже */
     }
+    // Последний шанс: взять токен из localStorage (связь с облаком могла
+    // подвести, но валидный токен уже лежит локально).
+    if (!token) token = tokenFromStorage()
     return next({
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
   },
 )
+
