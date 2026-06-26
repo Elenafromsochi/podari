@@ -55,10 +55,13 @@ export async function shareLink(text: string, url: string): Promise<void> {
   // одно текстовое поле, без отдельного url — тогда текст точно уходит с ней.
   const message = `${text}\n${url}`;
 
-  // 1) Системное «Поделиться» (мобильные браузеры и часть десктопных).
+  // 1) Системное «Поделиться» — окно выбора приложения (Telegram, ВК, и т.д.).
+  // Передаём title+text+url раздельно: именно такой формат надёжно открывает
+  // системное меню на iOS/Android (формат «только текст» на части Safari меню
+  // не открывал и уходил в копирование).
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
-      await navigator.share({ text: message });
+      await navigator.share({ title: text, text, url });
       return;
     } catch (e) {
       // Пользователь закрыл меню — это не ошибка, тихо выходим.
