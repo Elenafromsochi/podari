@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 #
-# Догрузка данных схемы public (профили, подарки, сделки, сообщения, отзывы),
-# которые не попали в первый дамп. auth и storage уже загружены — их не трогаем.
-# Качаем из облака ТОЛЬКО public, грузим под supabase_admin с отключёнными
-# триггерами/FK. Запуск:
+# Перенос схемы public ЦЕЛИКОМ (структура таблиц + данные) из облака на
+# локальный self-hosted Supabase. Нужен именно так, потому что схема на сервере
+# устарела: в облаке у таблиц есть новые колонки (gifts.condition, profiles.city,
+# wishes.cost и т.п.), которых на сервере нет — поэтому data-only дамп не лёг.
+#
+# Берём pg_dump --schema=public --clean --if-exists: он сам ДРОПнет старые
+# таблицы и пересоздаст их по облачной структуре, затем зальёт данные. auth и
+# storage уже загружены отдельно — их НЕ трогаем.
+# Запуск:
 #   cd /opt/podari && git pull && bash deploy/migrate-public.sh
 #
 set -uo pipefail
@@ -19,25 +24,33 @@ SUPADIR="/opt/supabase"
 PW="$(cat "$PWFILE")"
 SUPER_PW="$(grep -m1 '^POSTGRES_PASSWORD=' "$SUPADIR/.env" | cut -d= -f2-)"
 IMG="postgres:17-alpine"; docker image inspect "$IMG" >/dev/null 2>&1 || IMG="postgres:17"
-DUMP="/root/dump_public.sql"
+RAW="/root/dump_public_full.sql"
+DUMP="/root/dump_public_clean.sql"
 
 cloud_dump() {
-  timeout 150 docker run --rm --network host \
+  timeout 180 docker run --rm --network host \
     -e PGPASSWORD="$PW" -e PGSSLMODE=require -e PGCONNECT_TIMEOUT=20 \
-    -e PGOPTIONS="-c statement_timeout=90000 -c lock_timeout=15000" "$IMG" \
+    -e PGOPTIONS="-c statement_timeout=120000 -c lock_timeout=15000" "$IMG" \
     pg_dump -h "$HOST" -p "$PORT" -U "$USER" -d "$DB" "$@"
 }
 
-echo "===== 1/3  Выгружаю public из облака (с повторами) ====="
+echo "===== 1/3  Выгружаю public (структура + данные) из облака ====="
 n=1; ok=0
 while [ "$n" -le 10 ]; do
   echo "  ...попытка $n"
-  if cloud_dump --data-only --no-owner --schema=public > "$DUMP" 2>/tmp/derr && [ -s "$DUMP" ]; then
-    echo "  OK: дамп public $(wc -c < "$DUMP") байт"; ok=1; break
+  if cloud_dump --no-owner --no-privileges --schema=public --clean --if-exists \
+       > "$RAW" 2>/tmp/derr && [ -s "$RAW" ]; then
+    echo "  OK: дамп $(wc -c < "$RAW") байт"; ok=1; break
   fi
   echo "  обрыв/таймаут, повтор через 4с..."; sleep 4; n=$((n + 1))
 done
 [ "$ok" = 1 ] || { echo "!! не удалось выгрузить за 10 попыток:"; tail -3 /tmp/derr; exit 1; }
+
+# Убираем параметры, которых нет в PostgreSQL 15 (база в облаке — PG17).
+# Это просто настройки сессии в шапке дампа, на данные не влияют.
+sed -e '/^SET transaction_timeout/d' \
+    -e '/^SET idle_session_timeout/d' \
+    "$RAW" > "$DUMP"
 
 cd "$SUPADIR" || { echo "Нет $SUPADIR"; exit 1; }
 psql_su() {
@@ -45,20 +58,13 @@ psql_su() {
     psql -U supabase_admin -d postgres -v ON_ERROR_STOP=0 "$@"
 }
 
-echo "===== 2/3  Чищу public и заливаю заново ====="
-psql_su >/root/cleanpub.log 2>&1 <<'SQL'
-SET session_replication_role = replica;
-DO $$
-DECLARE r record;
-BEGIN
-  FOR r IN SELECT format('%I.%I', schemaname, tablename) AS t
-           FROM pg_tables WHERE schemaname = 'public' LOOP
-    EXECUTE 'TRUNCATE TABLE ' || r.t || ' CASCADE';
-  END LOOP;
-END $$;
-SQL
-{ echo "SET session_replication_role = replica;"; cat "$DUMP"; } | psql_su >/root/loadpub.log 2>&1
-echo "  ошибок при заливке: $(grep -ci error /root/loadpub.log)"; grep -i error /root/loadpub.log | head -10
+echo "===== 2/3  Заливаю: пересоздаю таблицы public и наполняю данными ====="
+# session_replication_role=replica отключает триггеры и проверки FK на время
+# заливки — иначе handle_new_user наплодит мусор, а FK к auth.users помешают.
+{ echo "SET session_replication_role = replica;"; cat "$DUMP"; } \
+  | psql_su >/root/loadpub.log 2>&1
+echo "  ошибок при заливке: $(grep -ci 'ERROR' /root/loadpub.log)"
+grep -i 'ERROR' /root/loadpub.log | head -10
 
 echo
 echo "===== 3/3  ИТОГ ====="
