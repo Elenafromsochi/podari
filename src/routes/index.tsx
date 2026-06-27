@@ -346,9 +346,11 @@ function Index() {
         <ReceiveGiftFlow
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
+          userXp={Number(user.xp) || 0}
           initialQuery={flow.query}
           onPick={handlePickGift}
           onCreateWish={() => setFlow({ kind: "wish_form" })}
+          onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_choice" }); }}
         />
         </GlobalChrome>
       )}

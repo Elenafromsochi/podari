@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Mic, MicOff, Search, Lock, Send, ChevronDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
@@ -12,8 +13,11 @@ import { applyCityFilter } from "@/lib/city-filter";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { APP_BASE_URL } from "@/lib/app-url";
 import { LevelBadge } from "@/components/LevelBadge";
-import { giftShareVariants } from "@/lib/random-copy";
+import { giftShareVariants, INVITE_VARIANTS, pickRandom } from "@/lib/random-copy";
 import { shareLink, thirdVariant } from "@/lib/share";
+import { giftRequiredLevel } from "@/lib/levels";
+import { LevelGateModal } from "@/components/LevelGateModal";
+import { markInvited } from "@/lib/cozy.functions";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { Stars } from "@/components/ui/stars";
 import { emitTour } from "@/lib/tour";
@@ -38,9 +42,24 @@ function timeAgo(iso?: string | null): string {
 
 /** Карточка подарка в ленте: со стрелкой для раскрытия полного описания
  *  и кликабельным дарителем (ведёт на его профиль). */
-function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; meId: string | null }) {
+function GiftCard({
+  g,
+  onPick,
+  meId,
+  userLevel,
+  onLocked,
+}: {
+  g: Gift;
+  onPick: (id: string) => void;
+  meId: string | null;
+  userLevel: number;
+  onLocked: (g: Gift, requiredLevel: number) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [lightbox, setLightbox] = useState(false);
+  // Подарок «по карману уровню»? И стоимость, и категория задают порог.
+  const reqLevel = giftRequiredLevel(getKindMeta(g.gift_kind)?.minLevel, g.cost);
+  const lockedByLevel = userLevel < reqLevel;
   // Ссылка ведёт на страницу самого подарка (и засчитывает реферал).
   const shareUrl = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
   const longDesc = !!g.description && g.description.length > 38;
@@ -161,20 +180,31 @@ function GiftCard({ g, onPick, meId }: { g: Gift; onPick: (id: string) => void; 
         </div>
       )}
 
-      <Button
-        onClick={() => {
-          try {
-            localStorage.setItem("cozygift_last_claim_cost", String(g.cost ?? 1));
-          } catch {
-            /* noop */
-          }
-          onPick(g.id);
-        }}
-        className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-        size="sm"
-      >
-        🎁 Получить за {g.cost ?? 1} балл
-      </Button>
+      {lockedByLevel ? (
+        <Button
+          onClick={() => onLocked(g, reqLevel)}
+          variant="outline"
+          className="mt-3 w-full rounded-xl border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+          size="sm"
+        >
+          🔒 Откроется на {reqLevel} уровне
+        </Button>
+      ) : (
+        <Button
+          onClick={() => {
+            try {
+              localStorage.setItem("cozygift_last_claim_cost", String(g.cost ?? 1));
+            } catch {
+              /* noop */
+            }
+            onPick(g.id);
+          }}
+          className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+          size="sm"
+        >
+          🎁 Получить за {g.cost ?? 1} балл
+        </Button>
+      )}
 
       {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </Card>
@@ -216,13 +246,17 @@ export function ReceiveGiftFlow({
   onBack,
   onPick,
   onCreateWish,
+  onGive,
   userLevel,
+  userXp,
   initialQuery,
 }: {
   onBack: () => void;
   onPick: (giftId: string) => void;
   onCreateWish?: () => void;
+  onGive?: () => void;
   userLevel: number;
+  userXp: number;
   initialQuery?: string;
 }) {
   // Если пришли из поиска на главной — сразу открываем экран поиска с введённым словом.
@@ -256,6 +290,9 @@ export function ReceiveGiftFlow({
   const [query, setQuery] = useState(seeded);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SR | null>(null);
+  // Подарок, недоступный по уровню, по которому тапнули — показываем подсказку.
+  const [gate, setGate] = useState<{ g: Gift; reqLevel: number } | null>(null);
+  const markInvitedFn = useServerFn(markInvited);
 
   useEffect(() => {
     emitTour("receive-opened");
@@ -295,9 +332,8 @@ export function ReceiveGiftFlow({
 
       setGifts(
         rows
-          // Показываем только подарки по карману уровню: дороже своего уровня
-          // пользователь их даже не видит — они «открываются» при росте уровня.
-          .filter((g) => (Number(g.cost) || 1) <= userLevel)
+          // Показываем ВСЕ подарки, в т.ч. недоступные по уровню — они видны в
+          // ленте, а при попытке получить подсказываем, как поднять уровень.
           .map((g) => ({
             ...g,
             owner_name: g.owner_id ? nameMap.get(g.owner_id) ?? "Гость" : "Гость",
@@ -346,18 +382,54 @@ export function ReceiveGiftFlow({
     );
   }
 
+  const onLocked = (g: Gift, reqLevel: number) => setGate({ g, reqLevel });
   const renderCard = (g: Gift) => (
-    <GiftCard key={g.id} g={g} onPick={onPick} meId={meId} />
+    <GiftCard
+      key={g.id}
+      g={g}
+      onPick={onPick}
+      meId={meId}
+      userLevel={userLevel}
+      onLocked={onLocked}
+    />
   );
+
+  // Подсказка про уровень. Кнопка «Пригласить друга» делится ссылкой и
+  // засчитывает шаг пути; «Подарить» уводит в дарение (быстрый рост уровня).
+  const inviteUrl = `${APP_BASE_URL}/?ref=${meId ?? ""}`;
+  const handleInvite = () => {
+    shareLink(pickRandom(INVITE_VARIANTS), inviteUrl);
+    markInvitedFn({}).catch(() => {
+      /* офлайн — отметится позже */
+    });
+    try {
+      localStorage.setItem("cozygift_invited", "1");
+    } catch {
+      /* noop */
+    }
+    setGate(null);
+  };
+  const gateModal = gate ? (
+    <LevelGateModal
+      giftTitle={gate.g.title}
+      requiredLevel={gate.reqLevel}
+      userLevel={userLevel}
+      userXp={userXp}
+      onInvite={handleInvite}
+      onGive={() => {
+        setGate(null);
+        onGive?.();
+      }}
+      onClose={() => setGate(null)}
+    />
+  ) : null;
 
 
   // Search step
   if (step === "search") {
     const q = query.trim().toLowerCase();
-    const unlockedKinds = new Set(
-      GIFT_KINDS.filter((k) => userLevel >= k.minLevel).map((k) => k.id),
-    );
-    const pool = gifts.filter((g) => unlockedKinds.has(g.gift_kind));
+    // Лента полная: показываем подарки всех категорий, даже «закрытых».
+    const pool = gifts;
     const matched = q
       ? pool.filter(
           (g) =>
@@ -413,6 +485,7 @@ export function ReceiveGiftFlow({
             results.map(renderCard)
           )}
         </div>
+        {gateModal}
       </div>
     );
   }
@@ -450,31 +523,20 @@ export function ReceiveGiftFlow({
               <button
                 key={k.id}
                 onClick={() => {
-                  if (locked) {
-                    toast(`🔒 ${k.shortLabel}`, {
-                      description: `Откроется на ${k.minLevel} уровне. Дари и получай подарки — и ты дойдёшь сюда!`,
-                    });
-                    return;
-                  }
                   setKind(k.id);
                   setStep("feed");
                   emitTour("kind-picked");
                 }}
-                aria-disabled={locked}
-                className={`relative rounded-2xl border bg-card p-4 text-left shadow-sm transition ${
-                  locked ? "cursor-not-allowed opacity-60" : "hover:bg-accent hover:-translate-y-0.5"
-                }`}
+                className="relative rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent hover:-translate-y-0.5"
               >
                 <div className="mb-1 text-2xl">{k.emoji}</div>
                 <div className="text-sm font-medium">{k.shortLabel}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {locked ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Lock className="h-3 w-3" /> Откроется на ур. {k.minLevel}
-                    </span>
-                  ) : (
-                    <>{n} {n === 1 ? "подарок" : "подарков"}</>
-                  )}
+                <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  {locked && <Lock className="h-3 w-3" />}
+                  <span>
+                    {n} {n === 1 ? "подарок" : "подарков"}
+                    {locked ? ` · с ур. ${k.minLevel}` : ""}
+                  </span>
                 </div>
               </button>
             );
@@ -599,6 +661,7 @@ export function ReceiveGiftFlow({
       ) : (
         <div className="space-y-3" data-tour="tour-spot">{shown.map(renderCard)}</div>
       )}
+      {gateModal}
     </div>
   );
 }
