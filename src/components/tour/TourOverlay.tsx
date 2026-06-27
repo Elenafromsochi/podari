@@ -268,7 +268,14 @@ export function TourOverlay() {
             <button
               onClick={() => {
                 setAskResume(false);
+                // Гид брошен на полпути — пометим для плашки «сообщить об ошибке».
+                try {
+                  localStorage.setItem("cozygift_tour_report_prompt", "1");
+                } catch {
+                  /* noop */
+                }
                 completeTour();
+                window.dispatchEvent(new Event("cozy:tour-exit"));
               }}
               className="w-full rounded-xl px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent"
             >
@@ -286,13 +293,31 @@ export function TourOverlay() {
     const nxt = nextStepId(step.id);
     if (nxt) setTourStep(nxt);
     else {
-      // финал гида — отправляем человека в профиль (к достижениям)
+      // финал гида пройден полностью — плашку «сообщить об ошибке» НЕ показываем.
+      try {
+        localStorage.removeItem("cozygift_tour_report_prompt");
+      } catch {
+        /* noop */
+      }
+      // отправляем человека в профиль (к достижениям)
       completeTour();
       navigate({ to: "/", search: { tab: "profile" } as never });
     }
   };
 
-  const skip = () => completeTour();
+  // Ранний выход из гида (не дошёл до конца): помечаем, чтобы показать плашку
+  // с предложением прислать скриншот ошибки (TourExitReport).
+  const exitEarly = () => {
+    try {
+      localStorage.setItem("cozygift_tour_report_prompt", "1");
+    } catch {
+      /* noop */
+    }
+    completeTour();
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cozy:tour-exit"));
+  };
+
+  const skip = () => exitEarly();
 
   // Динамические шаги: первый — под баланс, «выбери категорию» — под уровень,
   // «попал в чат» — число замороженных баллов из стоимости подарка.

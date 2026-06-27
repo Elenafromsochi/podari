@@ -11,14 +11,28 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { sendAdminMessage } from "@/lib/admin-messages.functions";
 import { haptic } from "@/lib/haptics";
 
-export function WriteToAdminButton() {
-  const [open, setOpen] = useState(false);
+/**
+ * Управляемый диалог «написать админу»: текст + скриншот. Используется и кнопкой
+ * «Админу» в чатах, и плашкой после прерванного гида (отчёт об ошибке).
+ */
+export function AdminMessageDialog({
+  open,
+  onOpenChange,
+  title = "Написать админу",
+  description = "Поделись пожеланием или сообщи о проблеме. Можно приложить скриншот.",
+  placeholder = "Опиши, что нужно — идею, баг или пожелание",
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  title?: string;
+  description?: string;
+  placeholder?: string;
+}) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -69,7 +83,7 @@ export function WriteToAdminButton() {
       haptic("success");
       toast.success("Спасибо! Сообщение отправлено админу 💌");
       reset();
-      setOpen(false);
+      onOpenChange(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error("Не удалось отправить", { description: msg });
@@ -79,31 +93,24 @@ export function WriteToAdminButton() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          data-tour="admin-btn"
-          onClick={() => haptic("select")}
-          className="inline-flex items-center gap-1.5 rounded-full bg-lavender/60 px-3 py-1.5 text-xs font-medium text-lavender-foreground transition active:scale-95"
-        >
-          <MessageSquarePlus className="h-3.5 w-3.5" />
-          Админу
-        </button>
-      </DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) reset();
+      }}
+    >
       <DialogContent className="max-w-sm rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Написать админу</DialogTitle>
-          <DialogDescription>
-            Поделись пожеланием или сообщи о проблеме. Можно приложить скриншот.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Опиши, что нужно — идею, баг или пожелание"
+            placeholder={placeholder}
             maxLength={4000}
             rows={5}
             className="resize-none"
@@ -114,7 +121,10 @@ export function WriteToAdminButton() {
               <img src={preview} alt="превью" className="max-h-48 w-full rounded-xl object-cover" />
               <button
                 type="button"
-                onClick={() => { setFile(null); setPreview(null); }}
+                onClick={() => {
+                  setFile(null);
+                  setPreview(null);
+                }}
                 className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow"
                 aria-label="Убрать"
               >
@@ -136,7 +146,7 @@ export function WriteToAdminButton() {
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)} disabled={sending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>
             Отмена
           </Button>
           <Button onClick={submit} disabled={sending}>
@@ -145,5 +155,26 @@ export function WriteToAdminButton() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function WriteToAdminButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        data-tour="admin-btn"
+        onClick={() => {
+          haptic("select");
+          setOpen(true);
+        }}
+        className="inline-flex items-center gap-1.5 rounded-full bg-lavender/60 px-3 py-1.5 text-xs font-medium text-lavender-foreground transition active:scale-95"
+      >
+        <MessageSquarePlus className="h-3.5 w-3.5" />
+        Админу
+      </button>
+      <AdminMessageDialog open={open} onOpenChange={setOpen} />
+    </>
   );
 }
