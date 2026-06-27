@@ -45,7 +45,9 @@ NITRO_PRESET=node-server npm run build || { echo "✗ сборка не прош
 step "4/6  Поднимаю systemd-сервис podari"
 cp deploy/podari.service /etc/systemd/system/podari.service
 systemctl daemon-reload
-systemctl enable --now podari
+systemctl enable podari
+# restart (а не просто start) — чтобы уже запущенный сервис подхватил свежую сборку.
+systemctl restart podari
 sleep 2
 systemctl --no-pager status podari | head -6 || true
 
