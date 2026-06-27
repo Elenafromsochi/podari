@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 #
-# Перенос схемы public ЦЕЛИКОМ (структура таблиц + данные) из облака на
-# локальный self-hosted Supabase. Нужен именно так, потому что схема на сервере
-# устарела: в облаке у таблиц есть новые колонки (gifts.condition, profiles.city,
-# wishes.cost и т.п.), которых на сервере нет — поэтому data-only дамп не лёг.
+# Перенос схемы public ЦЕЛИКОМ (структура + данные) из облака на локальный
+# self-hosted Supabase. Делаем чистую замену: сносим всю схему public одной
+# командой (DROP SCHEMA ... CASCADE) и заливаем заново из облачного дампа.
+# Так не остаётся старых колонок, нет ошибок «уже существует» и нет дублей
+# (которые в прошлый раз раздули transactions до 140).
 #
-# Берём pg_dump --schema=public --clean --if-exists: он сам ДРОПнет старые
-# таблицы и пересоздаст их по облачной структуре, затем зальёт данные. auth и
-# storage уже загружены отдельно — их НЕ трогаем.
+# auth и storage уже загружены отдельно — их НЕ трогаем.
 # Запуск:
 #   cd /opt/podari && git pull && bash deploy/migrate-public.sh
 #
@@ -38,16 +37,16 @@ echo "===== 1/3  Выгружаю public (структура + данные) и�
 n=1; ok=0
 while [ "$n" -le 10 ]; do
   echo "  ...попытка $n"
-  if cloud_dump --no-owner --no-privileges --schema=public --clean --if-exists \
-       > "$RAW" 2>/tmp/derr && [ -s "$RAW" ]; then
+  # БЕЗ --clean: чистим схему сами, ниже. Привилегии (GRANT/RLS) оставляем,
+  # чтобы приложение видело таблицы; владельца не трогаем (--no-owner).
+  if cloud_dump --no-owner --schema=public > "$RAW" 2>/tmp/derr && [ -s "$RAW" ]; then
     echo "  OK: дамп $(wc -c < "$RAW") байт"; ok=1; break
   fi
   echo "  обрыв/таймаут, повтор через 4с..."; sleep 4; n=$((n + 1))
 done
 [ "$ok" = 1 ] || { echo "!! не удалось выгрузить за 10 попыток:"; tail -3 /tmp/derr; exit 1; }
 
-# Убираем параметры, которых нет в PostgreSQL 15 (база в облаке — PG17).
-# Это просто настройки сессии в шапке дампа, на данные не влияют.
+# Параметры сессии, которых нет в PostgreSQL 15 (база в облаке — PG17).
 sed -e '/^SET transaction_timeout/d' \
     -e '/^SET idle_session_timeout/d' \
     "$RAW" > "$DUMP"
@@ -58,9 +57,19 @@ psql_su() {
     psql -U supabase_admin -d postgres -v ON_ERROR_STOP=0 "$@"
 }
 
-echo "===== 2/3  Заливаю: пересоздаю таблицы public и наполняю данными ====="
-# session_replication_role=replica отключает триггеры и проверки FK на время
-# заливки — иначе handle_new_user наплодит мусор, а FK к auth.users помешают.
+echo "===== 2/3  Сношу схему public целиком и заливаю заново ====="
+# Чистый снос всей схемы одной командой — убирает таблицы, функции, триггеры
+# (в т.ч. handle_new_user, который плодил мусорные профили) и все зависимости.
+# Затем восстанавливаем пустую схему с правами для ролей Supabase.
+psql_su >/root/dropschema.log 2>&1 <<'SQL'
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL    ON SCHEMA public TO postgres, supabase_admin, service_role;
+SQL
+echo "  снос/создание схемы: ошибок $(grep -ci 'ERROR' /root/dropschema.log)"
+
+# session_replication_role=replica отключает проверки FK на время заливки.
 { echo "SET session_replication_role = replica;"; cat "$DUMP"; } \
   | psql_su >/root/loadpub.log 2>&1
 echo "  ошибок при заливке: $(grep -ci 'ERROR' /root/loadpub.log)"
