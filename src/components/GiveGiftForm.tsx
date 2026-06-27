@@ -41,11 +41,15 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const isThing = giftKind === "used_item";
   // Сердечки/износ показываем только для вещей; у услуг и встреч их нет.
   const showCondition = hasCondition(giftKind);
-  const initialDesc = presetHint ? `${presetHint}. ` : "";
-  const [description, setDescription] = useState(initialDesc);
-  // Текст-пример (подставленный из подсказки) убираем, как только человек
-  // ставит курсор, чтобы он писал по-своему с чистого поля.
-  const [presetCleared, setPresetCleared] = useState(false);
+  // Пример показываем подсказкой (placeholder) — серым курсивом. Он сам
+  // исчезает, когда человек начинает писать: сразу видно, что это образец,
+  // а не его текст.
+  const [description, setDescription] = useState("");
+  const examplePlaceholder = presetHint
+    ? `Пример: ${presetHint}`
+    : isThing
+      ? "Пример: Книга, которую прочитал и больше не вернусь к ней"
+      : "Пример: Часовая консультация по карьере и резюме";
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [condition, setCondition] = useState<number | null>(null);
@@ -365,18 +369,12 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
       <div className="flex gap-2">
         <Textarea
           id="desc"
-          placeholder={isThing ? "ИИ опишет по фото — можно поправить…" : "Что это, кому подойдёт, как проходит…"}
+          placeholder={examplePlaceholder}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          onFocus={() => {
-            if (!presetCleared && description === initialDesc && initialDesc) {
-              setDescription("");
-            }
-            setPresetCleared(true);
-          }}
           rows={5}
           maxLength={600}
-          className="flex-1"
+          className="flex-1 placeholder:italic placeholder:text-muted-foreground/60"
         />
         <button
           type="button"
