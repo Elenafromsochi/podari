@@ -40,72 +40,73 @@
 
 :root {
   --radius: 1.25rem;
-  /* Тёплый кремовый фон */
-  --background: oklch(0.985 0.012 85);
-  --foreground: oklch(0.28 0.04 280);
+  /* Унисекс «Олива и крафт»: крафтовый бежевый фон */
+  --background: oklch(0.93 0.028 92);
+  --foreground: oklch(0.27 0.02 95);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.04 280);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.04 280);
+  --card: oklch(0.96 0.022 92);
+  --card-foreground: oklch(0.27 0.02 95);
+  --popover: oklch(0.96 0.022 92);
+  --popover-foreground: oklch(0.27 0.02 95);
 
-  /* Мягкая пыльная роза — основной */
-  --primary: oklch(0.78 0.11 25);
-  --primary-foreground: oklch(0.99 0.005 60);
+  /* Олива — основной (текст на ней белый) */
+  --primary: oklch(0.52 0.1 122);
+  --primary-foreground: oklch(0.99 0.01 95);
 
-  /* Пастельная мята — вторичный */
-  --secondary: oklch(0.92 0.05 165);
-  --secondary-foreground: oklch(0.32 0.06 180);
+  /* Светлая олива — вторичный */
+  --secondary: oklch(0.9 0.035 118);
+  --secondary-foreground: oklch(0.4 0.06 120);
 
-  --muted: oklch(0.96 0.015 80);
-  --muted-foreground: oklch(0.5 0.03 280);
+  --muted: oklch(0.91 0.025 92);
+  --muted-foreground: oklch(0.5 0.025 92);
 
-  /* Лавандовый акцент */
-  --accent: oklch(0.9 0.06 305);
-  --accent-foreground: oklch(0.3 0.08 305);
+  /* Песочный акцент */
+  --accent: oklch(0.88 0.04 90);
+  --accent-foreground: oklch(0.4 0.05 88);
 
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.99 0.005 60);
 
-  --border: oklch(0.92 0.02 80);
-  --input: oklch(0.94 0.02 80);
-  --ring: oklch(0.78 0.11 25);
+  --border: oklch(0.85 0.035 90);
+  --input: oklch(0.88 0.03 90);
+  --ring: oklch(0.52 0.1 122);
 
-  /* Дополнительные пастельные токены */
-  --mint: oklch(0.88 0.08 165);
-  --mint-foreground: oklch(0.32 0.07 180);
-  --peach: oklch(0.9 0.08 50);
-  --peach-foreground: oklch(0.38 0.08 50);
-  --lavender: oklch(0.88 0.07 305);
-  --lavender-foreground: oklch(0.32 0.08 305);
+  /* Доп. землистые токены: шалфей / песок / тёплая глина */
+  --mint: oklch(0.9 0.045 122);
+  --mint-foreground: oklch(0.4 0.07 122);
+  --peach: oklch(0.88 0.045 80);
+  --peach-foreground: oklch(0.45 0.05 75);
+  /* «Подарить» — насыщенная олива с белым текстом */
+  --lavender: oklch(0.52 0.1 122);
+  --lavender-foreground: oklch(0.99 0.01 95);
 }
 
 .dark {
-  --background: oklch(0.2 0.03 285);
-  --foreground: oklch(0.96 0.01 80);
-  --card: oklch(0.26 0.035 285);
-  --card-foreground: oklch(0.96 0.01 80);
-  --popover: oklch(0.26 0.035 285);
-  --popover-foreground: oklch(0.96 0.01 80);
-  --primary: oklch(0.78 0.11 25);
-  --primary-foreground: oklch(0.2 0.03 285);
-  --secondary: oklch(0.35 0.05 180);
-  --secondary-foreground: oklch(0.96 0.01 80);
-  --muted: oklch(0.3 0.03 285);
-  --muted-foreground: oklch(0.72 0.02 280);
-  --accent: oklch(0.4 0.07 305);
-  --accent-foreground: oklch(0.96 0.01 80);
+  --background: oklch(0.2 0.012 95);
+  --foreground: oklch(0.95 0.018 92);
+  --card: oklch(0.255 0.014 92);
+  --card-foreground: oklch(0.95 0.018 92);
+  --popover: oklch(0.255 0.014 92);
+  --popover-foreground: oklch(0.95 0.018 92);
+  --primary: oklch(0.62 0.11 122);
+  --primary-foreground: oklch(0.16 0.01 95);
+  --secondary: oklch(0.36 0.04 120);
+  --secondary-foreground: oklch(0.95 0.018 92);
+  --muted: oklch(0.3 0.012 92);
+  --muted-foreground: oklch(0.74 0.02 92);
+  --accent: oklch(0.4 0.04 90);
+  --accent-foreground: oklch(0.95 0.018 92);
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.99 0.005 60);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.78 0.11 25);
-  --mint: oklch(0.4 0.06 175);
-  --mint-foreground: oklch(0.96 0.01 80);
-  --peach: oklch(0.45 0.08 50);
-  --peach-foreground: oklch(0.96 0.01 80);
-  --lavender: oklch(0.42 0.08 305);
-  --lavender-foreground: oklch(0.96 0.01 80);
+  --ring: oklch(0.62 0.11 122);
+  --mint: oklch(0.42 0.05 125);
+  --mint-foreground: oklch(0.95 0.018 92);
+  --peach: oklch(0.45 0.05 80);
+  --peach-foreground: oklch(0.95 0.018 92);
+  --lavender: oklch(0.62 0.11 122);
+  --lavender-foreground: oklch(0.16 0.01 95);
 }
 
 @layer base {
