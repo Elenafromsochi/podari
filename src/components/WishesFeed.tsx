@@ -34,6 +34,8 @@ interface Props {
   onOpen: (wishId: string) => void;
   onCreate: () => void;
   searchQuery?: string;
+  /** Скрыть кнопку «Загадать желание» (например, в режиме дарения). */
+  hideCreate?: boolean;
 }
 
 function WishCard({
@@ -131,7 +133,7 @@ function WishCard({
   );
 }
 
-export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
+export function WishesFeed({ onOpen, onCreate, searchQuery, hideCreate }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [wishIdx, setWishIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
@@ -168,24 +170,28 @@ export function WishesFeed({ onOpen, onCreate, searchQuery }: Props) {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => {
-          haptic("medium");
-          onCreate();
-        }}
-        className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-mint px-4 py-3 text-left text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90"
-      >
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-          <Sparkles className="h-5 w-5" />
-        </span>
-        <span>
-          <span className="block text-[15px] font-semibold leading-tight">✨ Загадать желание</span>
-          <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">
-            {WISH_EXAMPLES[wishIdx]}
+      {!hideCreate && (
+        <button
+          type="button"
+          onClick={() => {
+            haptic("medium");
+            onCreate();
+          }}
+          className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-mint px-4 py-3 text-left text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+            <Sparkles className="h-5 w-5" />
           </span>
-        </span>
-      </button>
+          <span>
+            <span className="block text-[15px] font-semibold leading-tight">
+              ✨ Загадать желание
+            </span>
+            <span className="block h-[14px] text-[11px] opacity-75 line-clamp-1">
+              {WISH_EXAMPLES[wishIdx]}
+            </span>
+          </span>
+        </button>
+      )}
 
       {wishes && (
         <CityChips cities={cities} online={online} value={validCity} onChange={setCityFilter} />
