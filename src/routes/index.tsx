@@ -7,6 +7,8 @@ import { AppShell } from "@/components/AppShell";
 import { GlobalChrome } from "@/components/GlobalChrome";
 
 
+import { GiveChoice } from "@/components/GiveChoice";
+import { GiveWishes } from "@/components/GiveWishes";
 import { GiveGiftChips } from "@/components/GiveGiftChips";
 import { GiveGiftForm } from "@/components/GiveGiftForm";
 import { ReceiveGiftFlow } from "@/components/ReceiveGiftFlow";
@@ -40,6 +42,8 @@ export const Route = createFileRoute("/")({
 
 type Flow =
   | { kind: "none" }
+  | { kind: "give_choice" }
+  | { kind: "give_wishes" }
   | { kind: "give_chip" }
   | { kind: "give_form"; presetHint: string | null; giftKind: import("@/lib/gift-kinds").GiftKind }
   | { kind: "publish_success" }
@@ -205,7 +209,7 @@ function Index() {
       {flow.kind === "none" && (
         <AppShell
           user={user}
-          onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_chip" }); }}
+          onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_choice" }); }}
           onReceive={(query) => setFlow({ kind: "receive", query })}
           onPickGift={handlePickGift}
           onCreateWish={() => setFlow({ kind: "wish_form" })}
@@ -268,10 +272,29 @@ function Index() {
         </GlobalChrome>
       )}
 
+      {flow.kind === "give_choice" && (
+        <GlobalChrome>
+        <GiveChoice
+          onBack={() => setFlow({ kind: "none" })}
+          onPickOwn={() => setFlow({ kind: "give_chip" })}
+          onPickWish={() => setFlow({ kind: "give_wishes" })}
+        />
+        </GlobalChrome>
+      )}
+
+      {flow.kind === "give_wishes" && (
+        <GlobalChrome>
+        <GiveWishes
+          onBack={() => setFlow({ kind: "give_choice" })}
+          onOpen={(wishId) => setFlow({ kind: "wish_details", wishId })}
+        />
+        </GlobalChrome>
+      )}
+
       {flow.kind === "give_chip" && (
         <GlobalChrome>
         <GiveGiftChips
-          onBack={() => setFlow({ kind: "none" })}
+          onBack={() => setFlow({ kind: "give_choice" })}
           userLevel={user.level}
           onPick={(kind, label) => {
             try {
