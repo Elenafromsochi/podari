@@ -78,20 +78,23 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const genImageFn = useServerFn(generateGiftImage);
   const [enhancing, setEnhancing] = useState(false);
   const [genImg, setGenImg] = useState(false);
+  // Ошибку генерации картинки показываем ПРЯМО у кнопки (а не общим полем внизу),
+  // чтобы было видно результат и причину, если не сработало.
+  const [imgError, setImgError] = useState<string | null>(null);
 
   const handleGenImage = async () => {
     const text = description.trim();
     if (!text) {
-      setError("Сначала опиши подарок — по описанию ИИ нарисует картинку ✨");
+      setImgError("Сначала опиши подарок в шаге 1 — по описанию ИИ нарисует картинку ✨");
       return;
     }
     setGenImg(true);
-    setError(null);
+    setImgError(null);
     try {
       const { imageDataUrl } = await genImageFn({ data: { description: text } });
       setPhotoPreviews((prev) => (prev.length >= MAX_PHOTOS ? prev : [...prev, imageDataUrl]));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось нарисовать картинку");
+      setImgError(err instanceof Error ? err.message : "Не удалось нарисовать картинку");
     } finally {
       setGenImg(false);
     }
@@ -427,13 +430,23 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
         type="button"
         onClick={handleGenImage}
         disabled={genImg || !description.trim()}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 py-2.5 text-sm font-medium text-primary transition active:scale-[0.98] disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 py-2.5 text-sm font-medium text-primary transition active:scale-[0.98] disabled:opacity-60"
       >
-        {genImg ? "🎨 ИИ рисует…" : "🎨 Нарисовать картинку по описанию"}
+        {genImg ? "🎨 ИИ рисует картинку…" : "🎨 Нарисовать картинку по описанию"}
       </button>
-      <p className="text-[11px] text-muted-foreground">
-        Нет фото? Опиши словами — и ИИ нарисует картинку. Подходит для услуг и встреч.
-      </p>
+      {genImg ? (
+        <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          <span>ИИ рисует картинку — обычно это 10–20 секунд, подожди чуть-чуть 🎨</span>
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Нет фото? Опиши словами — и ИИ нарисует картинку. Подходит для услуг и встреч.
+        </p>
+      )}
+      {imgError && (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{imgError}</p>
+      )}
     </>
   );
 
