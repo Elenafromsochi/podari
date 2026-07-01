@@ -46,7 +46,7 @@ type Flow =
   | { kind: "give_wishes" }
   | { kind: "give_chip" }
   | { kind: "give_form"; presetHint: string | null; giftKind: import("@/lib/gift-kinds").GiftKind }
-  | { kind: "publish_success" }
+  | { kind: "publish_success"; giftId: string }
   | { kind: "receive"; query?: string }
   | { kind: "chat"; giftId: string; txId: string }
   | { kind: "wish_form" }
@@ -316,7 +316,7 @@ function Index() {
           presetHint={flow.presetHint}
           giftKind={flow.giftKind}
           userLevel={user.level}
-          onDone={async () => {
+          onDone={async (id) => {
             burstConfetti();
             haptic("success");
             toast.success(pickRandom(PUBLISH_THANKS_TITLES), {
@@ -324,7 +324,7 @@ function Index() {
             });
             emitTour("gift-published");
             await refreshUser();
-            setFlow({ kind: "publish_success" });
+            setFlow({ kind: "publish_success", giftId: id });
           }}
         />
         </GlobalChrome>
@@ -334,6 +334,7 @@ function Index() {
         <GlobalChrome>
         <PublishSuccess
           balance={Number(user.balance)}
+          onViewGift={() => navigate({ to: "/gift/$giftId", params: { giftId: flow.giftId } })}
           onGiveAnother={() => setFlow({ kind: "give_chip" })}
           onReceive={() => setFlow({ kind: "receive" })}
           onHome={() => setFlow({ kind: "none" })}

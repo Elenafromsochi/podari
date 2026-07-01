@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Gift as GiftIcon, HandHeart, Sparkles } from "lucide-react";
+import { Gift as GiftIcon, HandHeart, Sparkles, Eye } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { pickRandom, PUBLISH_THANKS_TITLES, PUBLISH_THANKS_DESCRIPTIONS } from "@/lib/random-copy";
 
@@ -22,6 +22,8 @@ interface Props {
   onGiveAnother: () => void;
   onReceive: () => void;
   onHome: () => void;
+  /** Открыть карточку только что опубликованного подарка (со всеми действиями). */
+  onViewGift?: () => void;
 }
 
 function giftsWord(n: number) {
@@ -32,7 +34,7 @@ function giftsWord(n: number) {
   return "подарков";
 }
 
-export function PublishSuccess({ balance, onGiveAnother, onReceive, onHome }: Props) {
+export function PublishSuccess({ balance, onGiveAnother, onReceive, onHome, onViewGift }: Props) {
   const title = useMemo(() => pickRandom(PUBLISH_THANKS_TITLES), []);
   const desc = useMemo(() => pickRandom(PUBLISH_THANKS_DESCRIPTIONS), []);
   const randomHint = useMemo(() => pickRandom(BALANCE_HINTS), []);
@@ -117,6 +119,31 @@ export function PublishSuccess({ balance, onGiveAnother, onReceive, onHome }: Pr
         </div>
 
         <div className="mt-6 space-y-3">
+          {/* Сразу даём открыть карточку опубликованного подарка — там все
+              действия: посмотреть, редактировать, поделиться, удалить. */}
+          {onViewGift && (
+            <button
+              type="button"
+              onClick={() => {
+                haptic("medium");
+                onViewGift();
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl bg-lavender px-5 py-4 text-left text-lavender-foreground shadow-sm transition active:scale-[0.98]"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
+                <Eye className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-base font-semibold leading-tight">
+                  👀 Посмотреть мой подарок
+                </span>
+                <span className="block text-xs opacity-75">
+                  карточка целиком: редактировать, поделиться, удалить
+                </span>
+              </span>
+            </button>
+          )}
+
           {/* Когда баллов не хватает — ведём дарить ещё; иначе — получать */}
           {canReceive ? (
             <>
