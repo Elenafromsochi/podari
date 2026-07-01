@@ -1,6 +1,10 @@
-import { useMemo } from "react";
-import { Gift as GiftIcon, HandHeart, Sparkles, Eye } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Gift as GiftIcon, HandHeart, Sparkles } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { supabase } from "@/integrations/supabase/client";
+import { getPublicGift } from "@/lib/cozy.functions";
+import { Stars } from "@/components/ui/stars";
 import { pickRandom, PUBLISH_THANKS_TITLES, PUBLISH_THANKS_DESCRIPTIONS } from "@/lib/random-copy";
 
 const BALANCE_HINTS = [
@@ -19,12 +23,23 @@ const COST_TO_RECEIVE = 1;
 interface Props {
   /** Текущий баланс пользователя (в баллах) */
   balance: number;
+  /** Id только что опубликованного подарка — показываем его карточку-превью. */
+  giftId: string;
   onGiveAnother: () => void;
   onReceive: () => void;
   onHome: () => void;
-  /** Открыть карточку только что опубликованного подарка (со всеми действиями). */
-  onViewGift?: () => void;
 }
+
+type GiftPreview = {
+  title: string;
+  description: string | null;
+  cost: number;
+  condition: number | null;
+  image_url: string | null;
+  image_urls?: string[] | null;
+  city?: string | null;
+  is_online?: boolean | null;
+};
 
 function giftsWord(n: number) {
   const mod10 = n % 10;
@@ -34,10 +49,49 @@ function giftsWord(n: number) {
   return "подарков";
 }
 
-export function PublishSuccess({ balance, onGiveAnother, onReceive, onHome, onViewGift }: Props) {
+function ballWord(n: number) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "балл";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "балла";
+  return "баллов";
+}
+
+export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHome }: Props) {
   const title = useMemo(() => pickRandom(PUBLISH_THANKS_TITLES), []);
   const desc = useMemo(() => pickRandom(PUBLISH_THANKS_DESCRIPTIONS), []);
   const randomHint = useMemo(() => pickRandom(BALANCE_HINTS), []);
+
+  // Карточка-превью опубликованного подарка + счётчик «какой это по счёту».
+  const getGift = useServerFn(getPublicGift);
+  const [gift, setGift] = useState<GiftPreview | null>(null);
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getGift({ data: { gift_id: giftId } })
+      .then((g) => {
+        if (alive && g) setGift(g as unknown as GiftPreview);
+      })
+      .catch(() => {});
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      supabase
+        .from("gifts")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", uid)
+        .then(({ count: c }) => {
+          if (alive) setCount(c ?? null);
+        });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [giftId, getGift]);
+
+  const cover =
+    (gift?.image_urls && gift.image_urls[0]) || gift?.image_url || null;
 
   // Хватает ли баллов, чтобы выбрать подарок себе
   const canReceive = balance >= COST_TO_RECEIVE;
@@ -114,36 +168,69 @@ export function PublishSuccess({ balance, onGiveAnother, onReceive, onHome, onVi
         <h1 className="text-2xl font-semibold leading-tight tracking-tight">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
 
+        {/* Счётчик: какой это подарок по счёту у пользователя */}
+        {count != null && count > 0 && (
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-mint/40 px-3 py-1 text-sm font-medium text-foreground">
+            🎁 Это твой {count}-й подарок
+          </p>
+        )}
+
+        {/* Превью карточки — чтобы человек сразу увидел, как выглядит его подарок */}
+        {gift && (
+          <div className="mt-4 rounded-2xl border bg-background p-3 shadow-sm">
+            <div className="flex gap-3">
+              {cover ? (
+                <img
+                  src={cover}
+                  alt={gift.title}
+                  className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
+                  🎁
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="line-clamp-2 text-sm font-semibold leading-tight">
+                    {gift.title}
+                  </div>
+                  <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
+                    {gift.cost} {ballWord(gift.cost)}
+                  </span>
+                </div>
+                {gift.condition ? (
+                  <div className="mt-1 text-sm leading-none">
+                    <Stars value={gift.condition} />
+                  </div>
+                ) : null}
+                {gift.description && (
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {gift.description}
+                  </p>
+                )}
+                {gift.is_online ? (
+                  <span className="mt-1.5 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                    🌐 Онлайн
+                  </span>
+                ) : gift.city ? (
+                  <span className="mt-1.5 inline-block rounded-full bg-peach/40 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                    📍 {gift.city}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Так твой подарок видят другие ✨
+            </p>
+          </div>
+        )}
+
         <div className="mt-5 rounded-2xl bg-mint/40 p-4 text-sm leading-relaxed text-foreground/90">
           {hint}
         </div>
 
         <div className="mt-6 space-y-3">
-          {/* Сразу даём открыть карточку опубликованного подарка — там все
-              действия: посмотреть, редактировать, поделиться, удалить. */}
-          {onViewGift && (
-            <button
-              type="button"
-              onClick={() => {
-                haptic("medium");
-                onViewGift();
-              }}
-              className="flex w-full items-center gap-3 rounded-2xl bg-lavender px-5 py-4 text-left text-lavender-foreground shadow-sm transition active:scale-[0.98]"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-                <Eye className="h-5 w-5" />
-              </span>
-              <span>
-                <span className="block text-base font-semibold leading-tight">
-                  👀 Посмотреть мой подарок
-                </span>
-                <span className="block text-xs opacity-75">
-                  карточка целиком: редактировать, поделиться, удалить
-                </span>
-              </span>
-            </button>
-          )}
-
           {/* Когда баллов не хватает — ведём дарить ещё; иначе — получать */}
           {canReceive ? (
             <>

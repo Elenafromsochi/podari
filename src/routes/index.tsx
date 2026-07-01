@@ -334,7 +334,7 @@ function Index() {
         <GlobalChrome>
         <PublishSuccess
           balance={Number(user.balance)}
-          onViewGift={() => navigate({ to: "/gift/$giftId", params: { giftId: flow.giftId } })}
+          giftId={flow.giftId}
           onGiveAnother={() => setFlow({ kind: "give_chip" })}
           onReceive={() => setFlow({ kind: "receive" })}
           onHome={() => setFlow({ kind: "none" })}
