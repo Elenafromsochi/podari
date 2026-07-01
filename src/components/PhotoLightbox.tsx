@@ -42,63 +42,70 @@ export function PhotoLightbox({
         type="button"
         onClick={onClose}
         aria-label="Закрыть"
-        className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
+        className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
       >
         <X className="h-5 w-5" />
       </button>
 
-      <img
-        src={photos[i]}
-        alt=""
+      {/* Просмотр «под смартфон»: ширина ограничена телефонной колонкой, по
+          центру. На большом экране (планшет/комп) фото не разворачивается на
+          всю ширину, а стрелки и точки держатся у самого фото. */}
+      <div
+        className="relative flex max-h-[85dvh] w-full max-w-[min(92vw,26rem)] items-center justify-center"
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => {
-          touchX.current = e.touches[0]?.clientX ?? null;
-        }}
-        onTouchEnd={(e) => {
-          if (touchX.current === null) return;
-          const dx = (e.changedTouches[0]?.clientX ?? 0) - touchX.current;
-          if (Math.abs(dx) > 40) (dx < 0 ? next() : prev());
-          touchX.current = null;
-        }}
-        className="max-h-[85dvh] max-w-[92vw] rounded-xl object-contain"
-      />
+      >
+        <img
+          src={photos[i]}
+          alt=""
+          onTouchStart={(e) => {
+            touchX.current = e.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(e) => {
+            if (touchX.current === null) return;
+            const dx = (e.changedTouches[0]?.clientX ?? 0) - touchX.current;
+            if (Math.abs(dx) > 40) (dx < 0 ? next() : prev());
+            touchX.current = null;
+          }}
+          className="max-h-[85dvh] max-w-full rounded-xl object-contain"
+        />
 
-      {photos.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              prev();
-            }}
-            aria-label="Назад"
-            className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              next();
-            }}
-            aria-label="Вперёд"
-            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-          <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1.5">
-            {photos.map((_, n) => (
-              <span
-                key={n}
-                className={`h-2 w-2 rounded-full transition ${
-                  n === i ? "bg-white" : "bg-white/40"
-                }`}
-              />
-            ))}
-          </div>
-        </>
-      )}
+        {photos.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                prev();
+              }}
+              aria-label="Назад"
+              className="absolute left-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                next();
+              }}
+              aria-label="Вперёд"
+              className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+              {photos.map((_, n) => (
+                <span
+                  key={n}
+                  className={`h-2 w-2 rounded-full transition ${
+                    n === i ? "bg-white" : "bg-white/40"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
