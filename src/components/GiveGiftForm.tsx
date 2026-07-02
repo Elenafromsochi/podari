@@ -131,7 +131,9 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-  const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<string> =>
+  // Чуть более лёгкое сжатие (1200px / 0.72): визуально то же, но файлы меньше —
+  // фото быстрее грузятся в лентах, особенно на мобильном интернете.
+  const compressImage = (dataUrl: string, maxSize = 1200, quality = 0.72): Promise<string> =>
     new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {

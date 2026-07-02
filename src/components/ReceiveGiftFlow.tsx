@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, Search, Lock, Send, ChevronDown, Share2 } from "lucide-react";
+import { Mic, MicOff, Search, Lock, Send, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ import { shareLink, thirdVariant } from "@/lib/share";
 import { giftRequiredLevel } from "@/lib/levels";
 import { LevelGateModal } from "@/components/LevelGateModal";
 import { markInvited } from "@/lib/cozy.functions";
-import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { GiftDetailModal } from "@/components/GiftDetailModal";
 import { Stars } from "@/components/ui/stars";
 import { emitTour } from "@/lib/tour";
 
@@ -48,37 +48,34 @@ function GiftCard({
   meId,
   userLevel,
   onLocked,
+  onOpenDetail,
 }: {
   g: Gift;
   onPick: (id: string) => void;
   meId: string | null;
   userLevel: number;
   onLocked: (g: Gift, requiredLevel: number) => void;
+  onOpenDetail: (g: Gift) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [lightbox, setLightbox] = useState(false);
   // Подарок «по карману уровню»? И стоимость, и категория задают порог.
   const reqLevel = giftRequiredLevel(getKindMeta(g.gift_kind)?.minLevel, g.cost);
   const lockedByLevel = userLevel < reqLevel;
   // Ссылка ведёт на страницу самого подарка (и засчитывает реферал).
   const shareUrl = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
-  const longDesc = !!g.description && g.description.length > 38;
   const photos =
     g.image_urls && g.image_urls.length > 0
       ? g.image_urls
       : g.image_url
         ? [g.image_url]
         : [];
-  const hasGallery = photos.length > 1;
-  const hasMore = longDesc || hasGallery;
   return (
     <Card className="overflow-hidden p-3">
       <div className="flex gap-3">
         {photos.length > 0 ? (
           <button
             type="button"
-            onClick={() => setLightbox(true)}
-            aria-label="Посмотреть фото"
+            onClick={() => onOpenDetail(g)}
+            aria-label="Открыть подарок"
             className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg"
           >
             <img src={photos[0]} alt={g.title} className="h-full w-full object-cover" />
@@ -95,7 +92,13 @@ function GiftCard({
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1 text-base font-semibold leading-tight break-words">{g.title}</div>
+            <button
+              type="button"
+              onClick={() => onOpenDetail(g)}
+              className="min-w-0 flex-1 text-left text-base font-semibold leading-tight break-words active:opacity-70"
+            >
+              {g.title}
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -118,23 +121,12 @@ function GiftCard({
             </div>
           ) : null}
           {g.description && (
-            <p
-              className={`break-words text-xs text-muted-foreground ${expanded ? "" : "line-clamp-1"}`}
-            >
-              {g.description}
-            </p>
-          )}
-          {hasMore && (
             <button
               type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary active:scale-95"
-              aria-label={expanded ? "Свернуть" : "Показать подробнее"}
+              onClick={() => onOpenDetail(g)}
+              className="block w-full break-words text-left text-xs text-muted-foreground line-clamp-1"
             >
-              {expanded ? "Свернуть" : hasGallery ? `Подробнее · фото ${photos.length}` : "Подробнее"}
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
-              />
+              {g.description}
             </button>
           )}
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
@@ -165,21 +157,6 @@ function GiftCard({
         </div>
       </div>
 
-      {/* Галерея всех фото — раскрывается по «Подробнее» */}
-      {expanded && hasGallery && (
-        <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {photos.map((src, i) => (
-            <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="shrink-0">
-              <img
-                src={src}
-                alt={`${g.title} — фото ${i + 1}`}
-                className="h-20 w-20 rounded-lg object-cover ring-1 ring-border"
-              />
-            </a>
-          ))}
-        </div>
-      )}
-
       {lockedByLevel ? (
         <Button
           onClick={() => onLocked(g, reqLevel)}
@@ -205,8 +182,6 @@ function GiftCard({
           🎁 Получить за {g.cost ?? 1} балл
         </Button>
       )}
-
-      {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </Card>
   );
 }
@@ -292,6 +267,8 @@ export function ReceiveGiftFlow({
   const recRef = useRef<SR | null>(null);
   // Подарок, недоступный по уровню, по которому тапнули — показываем подсказку.
   const [gate, setGate] = useState<{ g: Gift; reqLevel: number } | null>(null);
+  // Подарок, открытый «поверх ленты» (модалка с фото-каруселью и описанием).
+  const [detail, setDetail] = useState<Gift | null>(null);
   const markInvitedFn = useServerFn(markInvited);
 
   useEffect(() => {
@@ -391,8 +368,27 @@ export function ReceiveGiftFlow({
       meId={meId}
       userLevel={userLevel}
       onLocked={onLocked}
+      onOpenDetail={(gg) => setDetail(gg)}
     />
   );
+
+  // Модалка подарка поверх ленты. «Получить» изнутри — закрываем и бронируем;
+  // недоступный по уровню — закрываем и показываем подсказку про уровень.
+  const detailModal = detail ? (
+    <GiftDetailModal
+      gift={detail}
+      meId={meId}
+      userLevel={userLevel}
+      onPick={(id) => {
+        setDetail(null);
+        onPick(id);
+      }}
+      onLocked={(_g, lvl) => {
+        if (detail) setGate({ g: detail, reqLevel: lvl });
+      }}
+      onClose={() => setDetail(null)}
+    />
+  ) : null;
 
   // Подсказка про уровень. Кнопка «Пригласить друга» делится ссылкой и
   // засчитывает шаг пути; «Подарить» уводит в дарение (быстрый рост уровня).
@@ -486,6 +482,7 @@ export function ReceiveGiftFlow({
           )}
         </div>
         {gateModal}
+        {detailModal}
       </div>
     );
   }
@@ -662,6 +659,7 @@ export function ReceiveGiftFlow({
         <div className="space-y-3" data-tour="tour-spot">{shown.map(renderCard)}</div>
       )}
       {gateModal}
+      {detailModal}
     </div>
   );
 }
