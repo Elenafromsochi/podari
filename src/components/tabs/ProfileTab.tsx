@@ -739,6 +739,8 @@ function InviteRow({
 
   const wishLocked = level < 3;
 
+  // Плитка действия: целиком залита ярким цветом (accent) с читаемым текстом (fg).
+  // Три главные кнопки специально ярче и заметнее, чем «Пригласить друга».
   const Tile = ({
     label,
     emoji,
@@ -746,6 +748,7 @@ function InviteRow({
     locked = false,
     lockHint,
     accent = "bg-muted",
+    fg = "text-foreground",
   }: {
     label: string;
     emoji: string;
@@ -753,6 +756,7 @@ function InviteRow({
     locked?: boolean;
     lockHint?: string;
     accent?: string;
+    fg?: string;
   }) => (
     <button
       type="button"
@@ -766,17 +770,15 @@ function InviteRow({
         haptic("medium");
         onClick?.();
       }}
-      className={`flex flex-col items-center gap-1.5 rounded-3xl border bg-card px-2 py-3 text-center shadow-sm transition active:scale-[0.96] ${
-        locked ? "opacity-60" : "hover:bg-accent"
+      className={`flex flex-col items-center gap-1.5 rounded-3xl px-2 py-3.5 text-center shadow-md transition active:scale-[0.96] ${accent} ${fg} ${
+        locked ? "opacity-70" : "hover:brightness-[1.05]"
       }`}
     >
-      <span
-        className={`flex h-12 w-12 items-center justify-center rounded-full text-2xl ${accent}`}
-      >
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/25 text-2xl">
         {emoji}
       </span>
-      <span className="text-[11px] font-medium leading-tight">{label}</span>
-      {locked && <span className="text-[9px] text-muted-foreground">🔒 ⭐ 3</span>}
+      <span className="text-[12px] font-semibold leading-tight">{label}</span>
+      {locked && <span className="text-[9px] opacity-80">🔒 ⭐ 3</span>}
     </button>
   );
 
@@ -784,15 +786,22 @@ function InviteRow({
     <>
       {/* Три действия — отдельный блок, выделены круглой формой и цветом */}
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <Tile label="Подарить" emoji="✨" onClick={onGive} accent="bg-lavender/60" />
-        <Tile label="Получить" emoji="🎁" onClick={() => onReceive?.()} accent="bg-mint/60" />
+        <Tile label="Подарить" emoji="✨" onClick={onGive} accent="bg-emerald-700" fg="text-white" />
+        <Tile
+          label="Получить"
+          emoji="🎁"
+          onClick={() => onReceive?.()}
+          accent="bg-orange-600"
+          fg="text-white"
+        />
         <Tile
           label="Загадать желание"
           emoji="💫"
           onClick={onCreateWish}
           locked={wishLocked}
           lockHint="Откроется на 3 уровне. Дари и получай — и ты дойдёшь сюда!"
-          accent="bg-peach/60"
+          accent="bg-amber-500"
+          fg="text-amber-950"
         />
       </div>
 
@@ -805,7 +814,7 @@ function InviteRow({
             shareLink(thirdVariant([...INVITE_VARIANTS]), inviteLink);
             onInviteShared();
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lavender px-3 py-2.5 text-sm font-semibold text-lavender-foreground shadow-sm transition active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-primary/10 px-3 py-2.5 text-sm font-semibold text-primary transition active:scale-[0.98] hover:bg-primary/15"
         >
           <Send className="h-4 w-4" /> Пригласить друга
         </button>
