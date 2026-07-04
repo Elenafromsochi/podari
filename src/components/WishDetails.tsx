@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { fulfillWish, deleteWish } from "@/lib/wishes.functions";
+import { fulfillWish, deleteWish, setWishHidden } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Share2 } from "lucide-react";
 import { shareLink, thirdVariant } from "@/lib/share";
@@ -53,6 +53,20 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fulfillFn = useServerFn(fulfillWish);
   const deleteFn = useServerFn(deleteWish);
+  const setHiddenFn = useServerFn(setWishHidden);
+
+  const toggleHidden = async () => {
+    if (!wish) return;
+    const hide = wish.status !== "hidden";
+    try {
+      const res = await setHiddenFn({ data: { wish_id: wishId, hidden: hide } });
+      setWish((p) => (p ? { ...p, status: res.status } : p));
+      haptic("success");
+      toast.success(hide ? "Скрыто — во Вселенной 🌌" : "Открыто для всех ✨");
+    } catch {
+      toast.error("Не получилось изменить видимость");
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -168,11 +182,15 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
               {wish.category}
             </span>
             <CityBadge city={wish.city} isOnline={wish.is_online} className="text-[11px]" />
-            {!isOpen && (
+            {wish.status === "hidden" ? (
+              <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                🌌 Скрыто — во Вселенной
+              </span>
+            ) : !isOpen ? (
               <span className="rounded-full bg-mint/60 px-2 py-0.5 text-[11px] font-semibold text-mint-foreground">
                 {wish.status === "reserved" ? "В работе" : "Исполнено"}
               </span>
-            )}
+            ) : null}
           </div>
           <h1 className="text-xl font-semibold tracking-tight">{wish.title}</h1>
           {wish.description && (
@@ -204,14 +222,25 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
           <div className="mt-6 space-y-2">
             {isOwn ? (
               <>
-                {isOpen && (
-                  <Button
-                    onClick={() => setConfirmDelete(true)}
-                    variant="outline"
-                    className="w-full rounded-2xl"
-                  >
-                    Снять с публикации
-                  </Button>
+                {(wish.status === "open" || wish.status === "hidden") && (
+                  <>
+                    <Button
+                      onClick={toggleHidden}
+                      variant="outline"
+                      className="w-full rounded-2xl"
+                    >
+                      {wish.status === "hidden"
+                        ? "🌍 Открыть для всех"
+                        : "🌌 Скрыть — во Вселенную"}
+                    </Button>
+                    <Button
+                      onClick={() => setConfirmDelete(true)}
+                      variant="outline"
+                      className="w-full rounded-2xl"
+                    >
+                      Снять с публикации
+                    </Button>
+                  </>
                 )}
                 <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
                   <AlertDialogContent>
@@ -227,7 +256,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-                {!isOpen && (
+                {wish.status !== "open" && wish.status !== "hidden" && (
                   <p className="rounded-2xl bg-muted p-3 text-center text-xs text-muted-foreground">
                     Это твоё пожелание — следи за ним в «Моих пожеланиях».
                   </p>

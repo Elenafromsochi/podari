@@ -13,7 +13,7 @@ import { haptic } from "@/lib/haptics";
 import { uploadImages } from "@/lib/upload-image";
 
 interface Props {
-  onDone: (wishId: string) => void;
+  onDone: (wishId: string, hidden?: boolean) => void;
   onBack: () => void;
   userLevel: number;
 }
@@ -45,6 +45,7 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [cost, setCost] = useState<number>(1);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -144,6 +145,7 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
           city: isOnline ? null : city.trim() || null,
           is_online: isOnline,
           link: link.trim() || null,
+          hidden,
         },
       });
       if (!isOnline && city.trim() && typeof localStorage !== "undefined") {
@@ -154,7 +156,7 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
         }
       }
       haptic("success");
-      onDone(id);
+      onDone(id, hidden);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error("Не получилось разместить", { description: msg });
@@ -381,8 +383,24 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
             )}
           </div>
 
+          <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-input bg-background px-3 py-3 text-sm">
+            <input
+              type="checkbox"
+              checked={hidden}
+              onChange={(e) => setHidden(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-emerald-600"
+            />
+            <span>
+              <span className="font-medium">🌌 Скрыть желание — «во Вселенную»</span>
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                Никто не увидит его в ленте. Оно останется у тебя в «Моих желаниях» —
+                можно открыть для всех в любой момент одной кнопкой.
+              </span>
+            </span>
+          </label>
+
           <Button onClick={submit} disabled={loading} className="w-full rounded-2xl">
-            {loading ? "Отправляем…" : "✨ Загадать желание"}
+            {loading ? "Отправляем…" : hidden ? "🌌 Отправить во Вселенную" : "✨ Загадать желание"}
           </Button>
         </CardContent>
       </Card>

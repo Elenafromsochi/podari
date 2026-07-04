@@ -230,12 +230,19 @@ function Index() {
         <WishForm
           onBack={() => setFlow({ kind: "none" })}
           userLevel={user.level}
-          onDone={async (id) => {
+          onDone={async (id, hidden) => {
             burstConfetti();
             haptic("success");
-            toast.success(pickRandom(WISH_PUBLISH_THANKS), {
-              description: "Любой пользователь может откликнуться ✨",
-            });
+            if (hidden) {
+              toast.success("Принято! Отправлено во Вселенную 🌌", {
+                description:
+                  "Желание обрабатывается по высшим каналам ✨ Никто, кроме тебя, его не видит.",
+              });
+            } else {
+              toast.success(pickRandom(WISH_PUBLISH_THANKS), {
+                description: "Любой пользователь может откликнуться ✨",
+              });
+            }
             await refreshUser();
             setFlow({ kind: "wish_details", wishId: id });
           }}

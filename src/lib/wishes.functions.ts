@@ -23,6 +23,9 @@ export const publishWish = createServerFn({ method: "POST" })
         city: z.string().max(80).nullable().optional(),
         is_online: z.boolean().default(false),
         link: z.string().max(2000).nullable().optional(),
+        // Скрытое желание — «во Вселенную»: в общую ленту не попадает,
+        // видно только автору (реализовано через status='hidden').
+        hidden: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -79,7 +82,36 @@ export const publishWish = createServerFn({ method: "POST" })
       if (!/^https?:\/\//i.test(link)) link = `https://${link}`;
       await supabase.from("wishes").update({ link }).eq("id", wishId).eq("owner_id", userId);
     }
+    // Скрытое желание — прячем из общей ленты (status='hidden').
+    if (wishId && data.hidden) {
+      await supabase
+        .from("wishes")
+        .update({ status: "hidden" })
+        .eq("id", wishId)
+        .eq("owner_id", userId);
+    }
     return { id: wishId };
+  });
+
+// ---------- Скрыть / открыть желание ----------
+// hidden=true → «во Вселенную» (status='hidden', не видно в ленте);
+// hidden=false → снова открыто. Не трогаем желания в работе/исполненные.
+export const setWishHidden = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ wish_id: z.string().uuid(), hidden: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const next = data.hidden ? "hidden" : "open";
+    const { error } = await supabase
+      .from("wishes")
+      .update({ status: next })
+      .eq("id", data.wish_id)
+      .eq("owner_id", userId)
+      .in("status", ["open", "hidden"]);
+    if (error) failOp("SET_WISH_HIDDEN_FAILED", error);
+    return { ok: true, status: next };
   });
 
 // ---------- List wishes (feed) ----------
@@ -295,7 +327,7 @@ export const deleteWish = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.wish_id)
       .eq("owner_id", userId)
-      .eq("status", "open");
+      .in("status", ["open", "hidden"]);
     if (error) failOp("DELETE_WISH_FAILED", error);
     return { ok: true };
   });

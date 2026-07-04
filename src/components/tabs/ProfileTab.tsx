@@ -31,7 +31,7 @@ import {
   markInvited,
 } from "@/lib/cozy.functions";
 import { COST_TIERS } from "@/lib/gift-kinds";
-import { getMyWishes } from "@/lib/wishes.functions";
+import { getMyWishes, setWishHidden } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
 import { shareLink, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
@@ -284,7 +284,17 @@ export function ProfileTab({
           ) : (
             <ul className="space-y-2">
               {myWishes.map((w) => (
-                <MyWishItem key={w.id} w={w} ownerId={user.user_id} onOpen={onOpenWish} />
+                <MyWishItem
+                  key={w.id}
+                  w={w}
+                  ownerId={user.user_id}
+                  onOpen={onOpenWish}
+                  onChanged={(id, status) =>
+                    setMyWishes((prev) =>
+                      prev ? prev.map((x) => (x.id === id ? { ...x, status } : x)) : prev,
+                    )
+                  }
+                />
               ))}
             </ul>
           )}
@@ -637,13 +647,35 @@ function MyWishItem({
   w,
   ownerId,
   onOpen,
+  onChanged,
 }: {
   w: MyWish;
   ownerId: string;
   onOpen?: (wishId: string) => void;
+  onChanged?: (id: string, status: string) => void;
 }) {
   const origin = APP_BASE_URL;
   const shareUrl = `${origin}/?ref=${ownerId}`;
+  const isHidden = w.status === "hidden";
+  // Менять видимость можно, пока никто не взялся исполнять.
+  const canToggle = isHidden || w.status === "open";
+  const setHiddenFn = useServerFn(setWishHidden);
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const res = await setHiddenFn({ data: { wish_id: w.id, hidden: !isHidden } });
+      onChanged?.(w.id, res.status);
+      haptic("success");
+      toast.success(isHidden ? "Желание открыто для всех ✨" : "Скрыто — во Вселенной 🌌");
+    } catch {
+      toast.error("Не получилось изменить видимость");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <li className="relative">
       <button
@@ -652,13 +684,15 @@ function MyWishItem({
           haptic("select");
           onOpen?.(w.id);
         }}
-        className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.98]"
+        className={`flex w-full items-center gap-3 rounded-2xl border p-3 pb-9 text-left shadow-sm transition active:scale-[0.98] ${
+          isHidden ? "border-emerald-300 bg-emerald-50" : "bg-card"
+        }`}
       >
         {w.image_url ? (
           <img
             src={w.image_url}
             alt={w.title}
-            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+            className={`h-12 w-12 shrink-0 rounded-xl object-cover ${isHidden ? "opacity-80" : ""}`}
           />
         ) : (
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
@@ -667,24 +701,45 @@ function MyWishItem({
         )}
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 pr-7 text-sm font-medium">{w.title}</p>
-          <div className="flex items-center gap-1.5">
-            <p className="truncate text-xs text-muted-foreground">
-              {w.category} ·{" "}
-              {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
-            </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            {isHidden ? (
+              <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                🌌 Скрыто — во Вселенной
+              </span>
+            ) : (
+              <p className="truncate text-xs text-muted-foreground">
+                {w.category} ·{" "}
+                {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
+              </p>
+            )}
             <CityBadge city={w.city} isOnline={w.is_online} />
           </div>
         </div>
       </button>
 
-      <button
-        type="button"
-        onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
-        aria-label="Поделиться желанием"
-        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
-      >
-        <Share2 className="h-3.5 w-3.5" />
-      </button>
+      {/* Переключатель видимости — внизу карточки */}
+      {canToggle && (
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={busy}
+          className="absolute bottom-2 right-2 rounded-full border bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-accent active:scale-95 disabled:opacity-60"
+        >
+          {busy ? "…" : isHidden ? "🌍 Открыть для всех" : "🌌 Скрыть"}
+        </button>
+      )}
+
+      {/* Поделиться — только у открытых желаний (скрытое не транслируем) */}
+      {!isHidden && (
+        <button
+          type="button"
+          onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
+          aria-label="Поделиться желанием"
+          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </li>
   );
 }
