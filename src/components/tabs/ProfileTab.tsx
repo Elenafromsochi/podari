@@ -786,13 +786,14 @@ function InviteRow({
     <>
       {/* Три действия — отдельный блок, выделены круглой формой и цветом */}
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <Tile label="Подарить" emoji="✨" onClick={onGive} accent="bg-emerald-700" fg="text-white" />
+        {/* Вариант B — одна зелёно-песочная гамма: тёмная олива / светлая олива / песок */}
+        <Tile label="Подарить" emoji="✨" onClick={onGive} accent="bg-[#5E6E33]" fg="text-white" />
         <Tile
           label="Получить"
           emoji="🎁"
           onClick={() => onReceive?.()}
-          accent="bg-orange-600"
-          fg="text-white"
+          accent="bg-[#94A662]"
+          fg="text-[#22270F]"
         />
         <Tile
           label="Загадать желание"
@@ -800,8 +801,8 @@ function InviteRow({
           onClick={onCreateWish}
           locked={wishLocked}
           lockHint="Откроется на 3 уровне. Дари и получай — и ты дойдёшь сюда!"
-          accent="bg-amber-500"
-          fg="text-amber-950"
+          accent="bg-[#CDB47A]"
+          fg="text-[#3A2E0A]"
         />
       </div>
 
