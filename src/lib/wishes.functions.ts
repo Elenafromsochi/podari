@@ -22,6 +22,7 @@ export const publishWish = createServerFn({ method: "POST" })
         image_urls: z.array(z.string().max(15_000_000)).max(10).optional(),
         city: z.string().max(80).nullable().optional(),
         is_online: z.boolean().default(false),
+        link: z.string().max(2000).nullable().optional(),
       })
       .parse(input),
   )
@@ -70,6 +71,13 @@ export const publishWish = createServerFn({ method: "POST" })
       if (wishCity) {
         await supabase.from("profiles").update({ city: wishCity }).eq("user_id", userId);
       }
+    }
+    // Ссылка на пример подарка — отдельным апдейтом (колонка могла ещё не
+    // появиться миграцией; тогда ошибку молча игнорируем, желание не ломаем).
+    if (wishId && data.link?.trim()) {
+      let link = data.link.trim();
+      if (!/^https?:\/\//i.test(link)) link = `https://${link}`;
+      await supabase.from("wishes").update({ link }).eq("id", wishId).eq("owner_id", userId);
     }
     return { id: wishId };
   });

@@ -35,6 +35,7 @@ type Wish = {
   created_at: string;
   city?: string | null;
   is_online?: boolean | null;
+  link?: string | null;
 };
 
 interface Props {
@@ -60,6 +61,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
       // Пробуем самый полный набор; если каких-то колонок нет (миграция не
       // накатана) — откатываемся к более узким.
       const colSets = [
+        "id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost,city,is_online,link",
         "id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost,city,is_online",
         "id,title,description,category,image_url,image_urls,status,owner_id,created_at,cost",
         "id,title,description,category,image_url,image_urls,status,owner_id,created_at",
@@ -177,6 +179,16 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
             <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">
               {wish.description}
             </p>
+          )}
+          {wish.link && (
+            <a
+              href={wish.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium text-primary shadow-sm transition hover:bg-accent active:scale-[0.98]"
+            >
+              🔗 Пример подарка (ссылка)
+            </a>
           )}
           <div className="mt-4 text-sm">
             <span className="text-muted-foreground">Пожелатель: </span>

@@ -44,6 +44,7 @@ const compressImage = (dataUrl: string, maxSize = 1280, quality = 0.8): Promise<
 export function WishForm({ onDone, onBack, userLevel }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [link, setLink] = useState("");
   const [cost, setCost] = useState<number>(1);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -142,6 +143,7 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
           image_urls: uploadedUrls,
           city: isOnline ? null : city.trim() || null,
           is_online: isOnline,
+          link: link.trim() || null,
         },
       });
       if (!isOnline && city.trim() && typeof localStorage !== "undefined") {
@@ -200,6 +202,21 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
               maxLength={2000}
               rows={4}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Ссылка на подарок (необязательно)</Label>
+            <Input
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="Ссылка на товар или пример, напр. wildberries.ru/…"
+              maxLength={2000}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Можно вставить ссылку на конкретный товар — так дарителю понятнее, что именно ты хочешь.
+            </p>
           </div>
 
           <div className="space-y-2">
