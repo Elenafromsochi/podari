@@ -61,6 +61,8 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
     typeof localStorage !== "undefined" ? localStorage.getItem("cozygift_city") ?? "" : "",
   );
   const [isOnline, setIsOnline] = useState(false);
+  // Скрытый подарок — дарим конкретному человеку по ссылке, в общей ленте не виден.
+  const [hidden, setHidden] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -270,9 +272,11 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           cost,
           condition: showCondition ? condition : null,
           // «Несколько раз» — только для услуг/встреч; вещь дарится один раз.
-          quantity: !isThing && multi ? quantity : 1,
+          // Скрытый (личный) подарок — всегда один экземпляр.
+          quantity: !hidden && !isThing && multi ? quantity : 1,
           city: isOnline ? null : city.trim() || null,
           is_online: isOnline,
+          hidden,
         },
       });
       if (!isOnline && city.trim() && typeof localStorage !== "undefined") {
@@ -620,6 +624,26 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
     </div>
   );
 
+  // Личный подарок: скрыть из общей ленты и подарить по ссылке конкретному человеку.
+  const hiddenBlock = (
+    <div className="space-y-2 rounded-2xl border border-input bg-background p-3">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={hidden}
+          onChange={(e) => setHidden(e.target.checked)}
+          className="h-4 w-4 accent-primary"
+        />
+        <span className="font-medium">🔒 Подарить конкретному человеку (по ссылке)</span>
+      </label>
+      <p className="pl-6 text-[11px] text-muted-foreground">
+        {hidden
+          ? "Подарок не появится в общей ленте. После публикации нажми «Поделиться» и отправь ссылку тому, кому даришь — получить сможет только он (даже если ещё не зарегистрирован)."
+          : "Обычно подарок виден всем в ленте. Поставь галочку, чтобы он был доступен только по ссылке — для подарка конкретному человеку."}
+      </p>
+    </div>
+  );
+
   return (
     <div className="mx-auto w-full max-w-md px-5 py-4">
       <button
@@ -655,6 +679,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                 {conditionBlock}
                 {costBlock}
                 {cityBlock}
+                {hiddenBlock}
               </section>
             </>
           ) : (
@@ -674,7 +699,8 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                 <StepHead n={3} title="Детали" />
                 {costBlock}
                 {cityBlock}
-                {multiBlock}
+                {!hidden && multiBlock}
+                {hiddenBlock}
               </section>
             </>
           )}

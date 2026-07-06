@@ -61,6 +61,9 @@ export const publishGift = createServerFn({ method: "POST" })
         quantity: z.number().int().min(1).max(99).default(1),
         city: z.string().max(80).nullable().optional(),
         is_online: z.boolean().default(false),
+        // Скрытый подарок — не показывается в общей ленте; получить можно
+        // только по прямой ссылке (личный подарок конкретному человеку).
+        hidden: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -88,13 +91,17 @@ export const publishGift = createServerFn({ method: "POST" })
 
     // Онлайн-подарок не привязан к городу; иначе берём указанный город.
     const giftCity = data.is_online ? null : (data.city?.trim() || null);
+    // Скрытый подарок дарится одному конкретному человеку по ссылке — всегда
+    // один экземпляр (иначе claim_gift после первой брони вернул бы статус
+    // 'available' и подарок «всплыл» бы в ленте).
+    const qty = data.hidden ? 1 : data.quantity;
     const baseInsert = {
       title: data.title,
       description: data.description ?? null,
       category: data.category,
       image_url: cover,
       image_urls: allUrls,
-      status: "available",
+      status: data.hidden ? "hidden" : "available",
       cost: data.cost,
       owner_id: userId,
       gift_kind: data.gift_kind,
@@ -123,8 +130,8 @@ export const publishGift = createServerFn({ method: "POST" })
         ...baseInsert,
         city: giftCity,
         is_online: data.is_online,
-        quantity: data.quantity,
-        quantity_remaining: data.quantity,
+        quantity: qty,
+        quantity_remaining: qty,
       })
       .select("id")
       .single();
@@ -143,6 +150,41 @@ export const publishGift = createServerFn({ method: "POST" })
     }
 
     return { id: ins.data.id, cost_flag };
+  });
+
+// ---------- Скрыть / открыть подарок (личный подарок по ссылке) ----------
+// Переключает подарок между 'hidden' (виден только по ссылке) и 'available'
+// (в общей ленте). Разрешено только владельцу и только пока подарок не в
+// сделке (статус 'available' или 'hidden'). Скрытый — всегда один экземпляр.
+export const setGiftHidden = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ gift_id: z.string().uuid(), hidden: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const nextStatus = data.hidden ? "hidden" : "available";
+    const patch: Record<string, unknown> = { status: nextStatus, updated_at: new Date().toISOString() };
+    // При скрытии делаем подарок одноразовым (см. комментарий в publishGift).
+    if (data.hidden) {
+      patch.quantity = 1;
+      patch.quantity_remaining = 1;
+    }
+    const upd = async (p: Record<string, unknown>) =>
+      supabase
+        .from("gifts")
+        .update(p)
+        .eq("id", data.gift_id)
+        .eq("owner_id", userId)
+        .in("status", ["available", "hidden"])
+        .select("id, status")
+        .maybeSingle();
+    let { data: row, error } = await upd(patch);
+    // Если колонок quantity ещё нет — повторяем без них.
+    if (error) ({ data: row, error } = await upd({ status: nextStatus }));
+    if (error) failOp("GIFT_HIDE_FAILED", error);
+    if (!row) throw new Error("GIFT_NOT_EDITABLE");
+    return { id: (row as { id: string }).id, status: (row as { status: string }).status };
   });
 
 // ---------- Check gift cost average for soft warning ----------

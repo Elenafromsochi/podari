@@ -174,7 +174,10 @@ function GiftPage() {
   };
 
   const isOwner = !!meId && gift?.owner_id === meId;
-  const canEditOwn = isOwner && gift?.status === "available";
+  const isHidden = gift?.status === "hidden";
+  // Скрытый (личный) подарок получают так же, как обычный — только по ссылке.
+  const isClaimable = gift?.status === "available" || isHidden;
+  const canEditOwn = isOwner && isClaimable;
   // «Подарить снова» имеет смысл, когда экземпляры кончились (не available):
   // у многоразового (тираж > 1) или у любого уже подаренного.
   const canReoffer =
@@ -369,25 +372,33 @@ function GiftPage() {
                   {reoffering ? "Минутку…" : "🔁 Подарить снова"}
                 </button>
               </div>
-            ) : gift.status !== "available" ? (
+            ) : !isClaimable ? (
               <div className="rounded-2xl bg-muted/60 px-4 py-3 text-center text-sm font-medium text-muted-foreground">
                 Этот подарок уже разобрали 🌷 — загляни в ленту, там много других
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={onGet}
-                disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90 disabled:opacity-60"
-              >
-                {busy
-                  ? "Минутку…"
-                  : authed
-                    ? `🎁 Получить за ${gift.cost} ${word(gift.cost)}`
-                    : "Авторизоваться и получить подарок"}
-              </button>
+              <>
+                {isHidden && (
+                  <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-center text-sm font-medium text-foreground">
+                    🔒 Личный подарок — он{isOwner ? " не виден" : " виден только"} в общей ленте
+                    {isOwner ? "" : " по этой ссылке"}. {isOwner ? "Отправь ссылку тому, кому даришь." : "Он для тебя 💚"}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={onGet}
+                  disabled={busy}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90 disabled:opacity-60"
+                >
+                  {busy
+                    ? "Минутку…"
+                    : authed
+                      ? `🎁 Получить за ${gift.cost} ${word(gift.cost)}`
+                      : "Авторизоваться и получить подарок"}
+                </button>
+              </>
             )}
-            {!authed && gift.status === "available" && (
+            {!authed && isClaimable && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 Вход в один тап через Telegram — и подарок твой 💚
               </p>

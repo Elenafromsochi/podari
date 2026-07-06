@@ -27,6 +27,7 @@ import {
   getMyChats,
   updateGift,
   deleteGift,
+  setGiftHidden,
   markInvited,
 } from "@/lib/cozy.functions";
 import { COST_TIERS } from "@/lib/gift-kinds";
@@ -558,7 +559,11 @@ function EditableActiveItem({
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const deleteFn = useServerFn(deleteGift);
-  const canModify = gift.status === "available";
+  const setHiddenFn = useServerFn(setGiftHidden);
+  const [hiding, setHiding] = useState(false);
+  const isHidden = gift.status === "hidden";
+  // Редактировать/удалять/менять видимость можно, пока подарок не в сделке.
+  const canModify = gift.status === "available" || isHidden;
 
   const handleDelete = async () => {
     try {
@@ -573,22 +578,54 @@ function EditableActiveItem({
     }
   };
 
+  const toggleHidden = async () => {
+    setHiding(true);
+    try {
+      const res = await setHiddenFn({ data: { gift_id: gift.id, hidden: !isHidden } });
+      onUpdated({ status: res.status });
+      haptic("success");
+      toast.success(
+        isHidden ? "Подарок снова в общей ленте 💚" : "Скрыт — теперь только по ссылке 🔒",
+      );
+    } catch {
+      toast.error("Не получилось изменить видимость");
+    } finally {
+      setHiding(false);
+    }
+  };
+
+  const badge = isHidden ? (
+    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+      🔒 Личный — только по ссылке
+    </span>
+  ) : null;
+
   const footer = canModify ? (
-    <div className="flex gap-2">
+    <div className="space-y-2">
       <button
         type="button"
-        onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
-        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-accent active:scale-95"
+        onClick={toggleHidden}
+        disabled={hiding}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-accent active:scale-95 disabled:opacity-60"
       >
-        <Pencil className="h-3.5 w-3.5" /> Редактировать
+        {hiding ? "…" : isHidden ? "🌍 Показать всем в ленте" : "🔒 Скрыть — подарить по ссылке"}
       </button>
-      <button
-        type="button"
-        onClick={() => setConfirmOpen(true)}
-        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/10 active:scale-95"
-      >
-        <Trash2 className="h-3.5 w-3.5" /> Удалить
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-accent active:scale-95"
+        >
+          <Pencil className="h-3.5 w-3.5" /> Редактировать
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/10 active:scale-95"
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Удалить
+        </button>
+      </div>
     </div>
   ) : null;
 
@@ -602,6 +639,8 @@ function EditableActiveItem({
         category={gift.category}
         city={gift.city}
         isOnline={gift.is_online}
+        highlight={isHidden}
+        badge={badge}
         onShare={() => shareGift(gift.id, gift.title)}
         footer={footer}
       />

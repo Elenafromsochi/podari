@@ -52,6 +52,7 @@ type GiftPreview = {
   image_urls?: string[] | null;
   city?: string | null;
   is_online?: boolean | null;
+  status?: string | null;
 };
 
 function giftsWord(n: number) {
@@ -232,9 +233,16 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
                 </div>
               }
             />
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              Так твой подарок видят другие ✨
-            </p>
+            {gift.status === "hidden" ? (
+              <p className="mt-2 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2 text-center text-[12px] font-medium text-foreground">
+                🔒 Личный подарок — его нет в общей ленте. Нажми «Поделиться» и отправь
+                ссылку тому, кому даришь: получить сможет только он.
+              </p>
+            ) : (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Так твой подарок видят другие ✨
+              </p>
+            )}
           </div>
         )}
 
