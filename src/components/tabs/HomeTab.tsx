@@ -2,17 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Sparkles,
-  Gift as GiftIcon,
-  HandHeart,
-  Search,
-  Compass,
-  Send,
-  Pencil,
-  Trash2,
-  Share2,
-} from "lucide-react";
+import { Search, Compass, Send, Pencil, Trash2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import { shareGift } from "@/lib/share";
@@ -34,7 +24,7 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { getHomeStats, deleteGift } from "@/lib/cozy.functions";
 
-import { pickRandom, HOME_TAGLINES, GIVE_EXAMPLES, RECEIVE_EXAMPLES } from "@/lib/random-copy";
+import { pickRandom, HOME_TAGLINES } from "@/lib/random-copy";
 import { useTourState } from "@/lib/tour";
 
 type Gift = {
@@ -88,18 +78,6 @@ export function HomeTab({
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
-  const [giveIdx, setGiveIdx] = useState(() => Math.floor(Math.random() * GIVE_EXAMPLES.length));
-  const [receiveIdx, setReceiveIdx] = useState(() =>
-    Math.floor(Math.random() * RECEIVE_EXAMPLES.length),
-  );
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setGiveIdx((i) => (i + 1) % GIVE_EXAMPLES.length);
-      setReceiveIdx((i) => (i + 1) % RECEIVE_EXAMPLES.length);
-    }, 30000);
-    return () => clearInterval(t);
-  }, []);
 
   // Гид по сервису: для шага home-wishes автоматически переключаем фид на «Загадали»,
   // а для home-gifted — на «Подарили», чтобы было что подсветить.
@@ -241,8 +219,9 @@ export function HomeTab({
         </button>
       </header>
 
-      {/* Action duo — сразу под приветствием */}
-      <div className="mb-5 grid grid-cols-2 gap-2">
+      {/* Три главных действия — те же, что в профиле: дарить / получать / загадать.
+          Одна зелёно-песочная гамма (Вариант B): тёмная олива / светлая олива / песок. */}
+      <div className="mb-5 grid grid-cols-3 gap-3">
         <button
           type="button"
           data-tour="give-btn"
@@ -250,17 +229,12 @@ export function HomeTab({
             haptic("medium");
             onGive();
           }}
-          className="group relative flex flex-col overflow-hidden rounded-2xl bg-lavender p-3 text-left text-lavender-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
+          className="flex flex-col items-center gap-1.5 rounded-3xl bg-[#5E6E33] px-2 py-3.5 text-center text-white shadow-md transition active:scale-[0.96] hover:brightness-[1.05]"
         >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-              <HandHeart className="h-4 w-4" />
-            </div>
-            <div className="text-sm font-semibold leading-tight">Подарить</div>
-          </div>
-          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">
-            {GIVE_EXAMPLES[giveIdx]}
-          </div>
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/25 text-2xl">
+            ✨
+          </span>
+          <span className="text-[12px] font-semibold leading-tight">Подарить</span>
         </button>
         <button
           type="button"
@@ -269,17 +243,26 @@ export function HomeTab({
             haptic("medium");
             onReceive();
           }}
-          className="group relative flex flex-col overflow-hidden rounded-2xl bg-mint p-3 text-left text-mint-foreground shadow-sm transition-all duration-300 active:scale-[0.97]"
+          className="flex flex-col items-center gap-1.5 rounded-3xl bg-[#94A662] px-2 py-3.5 text-center text-[#22270F] shadow-md transition active:scale-[0.96] hover:brightness-[1.05]"
         >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/60 backdrop-blur">
-              <GiftIcon className="h-4 w-4" />
-            </div>
-            <div className="text-sm font-semibold leading-tight">Получить</div>
-          </div>
-          <div className="mt-2 h-[30px] text-[11px] leading-[15px] opacity-75 transition-opacity duration-300 line-clamp-2 break-words">
-            {RECEIVE_EXAMPLES[receiveIdx]}
-          </div>
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/25 text-2xl">
+            🎁
+          </span>
+          <span className="text-[12px] font-semibold leading-tight">Получить</span>
+        </button>
+        <button
+          type="button"
+          data-tour="wish-btn"
+          onClick={() => {
+            haptic("medium");
+            onCreateWish?.();
+          }}
+          className="flex flex-col items-center gap-1.5 rounded-3xl bg-[#CDB47A] px-2 py-3.5 text-center text-[#3A2E0A] shadow-md transition active:scale-[0.96] hover:brightness-[1.05]"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/25 text-2xl">
+            💫
+          </span>
+          <span className="text-[12px] font-semibold leading-tight">Загадать желание</span>
         </button>
       </div>
 

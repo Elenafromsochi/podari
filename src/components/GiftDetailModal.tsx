@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { X, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -81,7 +82,9 @@ export function GiftDetailModal({
   const lockedByLevel = userLevel < reqLevel;
   const shareUrl = `${APP_BASE_URL}/gift/${gift.id}${meId ? `?ref=${meId}` : ""}`;
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-3 sm:p-6 animate-fade-in"
       onClick={onClose}
@@ -236,6 +239,7 @@ export function GiftDetailModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
