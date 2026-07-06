@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { Gift as GiftIcon, HandHeart, Sparkles } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
-import { getPublicGift } from "@/lib/cozy.functions";
+import { getPublicGift, deleteGift } from "@/lib/cozy.functions";
+import { shareGift } from "@/lib/share";
 import { Stars } from "@/components/ui/stars";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { pickRandom, PUBLISH_THANKS_TITLES, PUBLISH_THANKS_DESCRIPTIONS } from "@/lib/random-copy";
 
 const BALANCE_HINTS = [
@@ -66,6 +79,27 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
   const getGift = useServerFn(getPublicGift);
   const [gift, setGift] = useState<GiftPreview | null>(null);
   const [count, setCount] = useState<number | null>(null);
+
+  // Обычные действия карточки: поделиться / редактировать / удалить.
+  const deleteFn = useServerFn(deleteGift);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteFn({ data: { id: giftId } });
+      haptic("success");
+      toast.success("Подарок удалён");
+      setConfirmDelete(false);
+      onHome();
+    } catch (e) {
+      toast.error("Не удалось удалить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -223,8 +257,50 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Так твой подарок видят другие ✨
             </p>
+
+            {/* Обычные действия карточки — как на странице подарка */}
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => shareGift(giftId, gift?.title)}
+                className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+              >
+                📤 Поделиться
+              </button>
+              <Link
+                to="/gift/$giftId/edit"
+                params={{ giftId }}
+                className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+              >
+                ✏️ Редактировать
+              </Link>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
+              >
+                🗑 Удалить
+              </button>
+            </div>
           </div>
         )}
+
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить подарок?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Подарок исчезнет из ленты. Это действие нельзя отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={doDelete} disabled={deleting}>
+                {deleting ? "Удаляем…" : "Удалить"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="mt-5 rounded-2xl bg-mint/40 p-4 text-sm leading-relaxed text-foreground/90">
           {hint}
