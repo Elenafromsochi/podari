@@ -23,10 +23,9 @@ export function GiveChoice({ onPickOwn, onPickWish, onBack }: Props) {
       >
         ← Назад
       </button>
-      <h2 className="mb-2 text-2xl font-semibold tracking-tight">Что подарим? 💚</h2>
-      <p className="mb-5 text-balance text-muted-foreground">
-        Можно отдать что-то своё или исполнить чьё-то желание — выбирай.
-      </p>
+      <h2 className="mb-5 text-balance text-2xl font-semibold tracking-tight">
+        Подари что-то от себя или исполни чьё-то желание 💚
+      </h2>
 
       <div className="flex flex-col gap-3">
         <button
