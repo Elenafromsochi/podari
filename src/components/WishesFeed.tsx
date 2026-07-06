@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LevelBadge } from "@/components/LevelBadge";
-import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { ItemCard } from "@/components/ItemCard";
 
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
-import { Sparkles, Share2 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { WISH_EXAMPLES, wishShareVariants } from "@/lib/random-copy";
 import { shareLink, thirdVariant } from "@/lib/share";
 import { CityChips } from "@/components/CityChips";
@@ -47,88 +46,28 @@ function WishCard({
   meId: string | null;
   onOpen: (id: string) => void;
 }) {
-  const [lightbox, setLightbox] = useState(false);
-  // Канонический адрес — чтобы ссылка всегда вела на 23podari.ru, даже если
-  // приложение открыто по старому длинному адресу.
   const origin = APP_BASE_URL;
-  // Ссылка ведёт на главную и засчитывает реферал. Никуда не уводим.
   const shareUrl = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
   return (
-    <li className="relative">
-      <div className="flex w-full gap-3 rounded-2xl border bg-card p-3 text-left shadow-sm">
-        {w.image_url ? (
-          <button
-            type="button"
-            onClick={() => {
-              haptic("light");
-              setLightbox(true);
-            }}
-            aria-label="Посмотреть фото"
-            className="h-12 w-12 shrink-0 overflow-hidden rounded-xl"
-          >
-            <img
-              src={w.image_url}
-              alt={w.title}
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
-          </button>
-        ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
-            ✨
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            haptic("select");
-            onOpen(w.id);
-          }}
-          className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
-        >
-          {/* Единый стиль карточки: цена — бейджем справа у заголовка, как у
-              подарков (pr-8 оставляет место под плавающую кнопку «Поделиться»). */}
-          <div className="flex items-start justify-between gap-2 pr-8">
-            <div className="line-clamp-2 text-sm font-medium leading-tight">{w.title}</div>
-            <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
-              {w.cost} {w.cost === 1 ? "балл" : w.cost < 5 ? "балла" : "баллов"}
-            </span>
-          </div>
-          {w.description && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{w.description}</p>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold text-lavender-foreground">
-              {w.owner_name}
-            </span>
-            <LevelBadge level={w.owner_level} />
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-              {w.category}
-            </span>
-            {w.is_online ? (
-              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
-                🌐 Онлайн
-              </span>
-            ) : w.city ? (
-              <span className="rounded-full bg-peach/40 px-2 py-0.5 text-[10px] font-medium text-foreground">
-                📍 {w.city}
-              </span>
-            ) : null}
-          </div>
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
-        aria-label="Поделиться желанием"
-        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
-      >
-        <Share2 className="h-3.5 w-3.5" />
-      </button>
-      {lightbox && w.image_url && (
-        <PhotoLightbox photos={[w.image_url]} onClose={() => setLightbox(false)} />
-      )}
+    <li>
+      <ItemCard
+        image={w.image_url}
+        title={w.title}
+        description={w.description}
+        cost={w.cost}
+        category={w.category}
+        ownerName={w.owner_name}
+        ownerId={w.owner_id}
+        ownerLevel={w.owner_level}
+        city={w.city}
+        isOnline={w.is_online}
+        emptyEmoji="✨"
+        onOpen={() => {
+          haptic("select");
+          onOpen(w.id);
+        }}
+        onShare={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
+      />
     </li>
   );
 }

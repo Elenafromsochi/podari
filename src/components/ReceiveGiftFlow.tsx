@@ -13,6 +13,7 @@ import { applyCityFilter } from "@/lib/city-filter";
 import { getCategoryMeta } from "@/lib/gift-categories";
 import { APP_BASE_URL } from "@/lib/app-url";
 import { LevelBadge } from "@/components/LevelBadge";
+import { ItemCard } from "@/components/ItemCard";
 import { giftShareVariants, INVITE_VARIANTS, pickRandom } from "@/lib/random-copy";
 import { shareLink, thirdVariant } from "@/lib/share";
 import { giftRequiredLevel } from "@/lib/levels";
@@ -62,127 +63,55 @@ function GiftCard({
   const lockedByLevel = userLevel < reqLevel;
   // Ссылка ведёт на страницу самого подарка (и засчитывает реферал).
   const shareUrl = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
-  const photos =
-    g.image_urls && g.image_urls.length > 0
-      ? g.image_urls
-      : g.image_url
-        ? [g.image_url]
-        : [];
+  const image =
+    (g.image_urls && g.image_urls.length > 0 ? g.image_urls[0] : g.image_url) ?? null;
+
+  const footer = lockedByLevel ? (
+    <Button
+      onClick={() => onLocked(g, reqLevel)}
+      variant="outline"
+      className="w-full rounded-xl border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+      size="sm"
+    >
+      🔒 Откроется на {reqLevel} уровне
+    </Button>
+  ) : (
+    <Button
+      onClick={() => {
+        try {
+          localStorage.setItem("cozygift_last_claim_cost", String(g.cost ?? 1));
+        } catch {
+          /* noop */
+        }
+        onPick(g.id);
+      }}
+      className="w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+      size="sm"
+    >
+      🎁 Получить за {g.cost ?? 1} балл
+    </Button>
+  );
+
   return (
-    <Card className="overflow-hidden p-3">
-      <div className="flex gap-3">
-        {photos.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => onOpenDetail(g)}
-            aria-label="Открыть подарок"
-            className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg"
-          >
-            <img src={photos[0]} alt={g.title} className="h-full w-full object-cover" />
-            {photos.length > 1 && (
-              <span className="absolute bottom-1 right-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                📷 {photos.length}
-              </span>
-            )}
-          </button>
-        ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted text-3xl">
-            🎁
-          </div>
-        )}
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-start gap-2">
-            <button
-              type="button"
-              onClick={() => onOpenDetail(g)}
-              className="min-w-0 flex-1 text-left text-base font-semibold leading-tight break-words active:opacity-70"
-            >
-              {g.title}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                shareLink(thirdVariant(giftShareVariants(g.title)), shareUrl);
-                toast.success("Спасибо, что зовёшь друзей 💚");
-              }}
-              aria-label="Поделиться подарком"
-              className="-mr-1 -mt-0.5 shrink-0 rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground active:scale-95"
-            >
-              <Share2 className="h-4 w-4" />
-            </button>
-          </div>
-          {g.condition ? (
-            <div
-              className="flex items-center gap-0.5 text-sm leading-none"
-              aria-label={`Состояние ${g.condition} из 5`}
-              title={`Состояние: ${g.condition} из 5`}
-            >
-              <Stars value={g.condition} />
-            </div>
-          ) : null}
-          {g.description && (
-            <button
-              type="button"
-              onClick={() => onOpenDetail(g)}
-              className="block w-full break-words text-left text-xs text-muted-foreground line-clamp-1"
-            >
-              {g.description}
-            </button>
-          )}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {g.owner_id ? (
-              <Link
-                to="/user/$userId"
-                params={{ userId: g.owner_id }}
-                className="font-medium text-primary underline-offset-2 hover:underline"
-              >
-                {g.owner_name ?? "Гость"}
-              </Link>
-            ) : (
-              <span className="font-medium text-foreground">{g.owner_name ?? "Гость"}</span>
-            )}
-            <LevelBadge level={g.owner_level ?? 1} />
-
-            <span>· {timeAgo(g.created_at)}</span>
-            {g.is_online ? (
-              <span className="rounded-full bg-sky-100 px-1.5 py-0.5 font-medium text-sky-700">
-                🌐 Онлайн
-              </span>
-            ) : g.city ? (
-              <span className="rounded-full bg-peach/40 px-1.5 py-0.5 font-medium text-foreground">
-                📍 {g.city}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      {lockedByLevel ? (
-        <Button
-          onClick={() => onLocked(g, reqLevel)}
-          variant="outline"
-          className="mt-3 w-full rounded-xl border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
-          size="sm"
-        >
-          🔒 Откроется на {reqLevel} уровне
-        </Button>
-      ) : (
-        <Button
-          onClick={() => {
-            try {
-              localStorage.setItem("cozygift_last_claim_cost", String(g.cost ?? 1));
-            } catch {
-              /* noop */
-            }
-            onPick(g.id);
-          }}
-          className="mt-3 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-          size="sm"
-        >
-          🎁 Получить за {g.cost ?? 1} балл
-        </Button>
-      )}
-    </Card>
+    <ItemCard
+      image={image}
+      title={g.title}
+      description={g.description}
+      cost={g.cost}
+      condition={g.condition}
+      ownerName={g.owner_name ?? "Гость"}
+      ownerId={g.owner_id}
+      ownerLevel={g.owner_level ?? 1}
+      city={g.city}
+      isOnline={g.is_online}
+      meta={timeAgo(g.created_at)}
+      onOpen={() => onOpenDetail(g)}
+      onShare={() => {
+        shareLink(thirdVariant(giftShareVariants(g.title)), shareUrl);
+        toast.success("Спасибо, что зовёшь друзей 💚");
+      }}
+      footer={footer}
+    />
   );
 }
 

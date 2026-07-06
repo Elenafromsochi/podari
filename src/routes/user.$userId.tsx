@@ -2,10 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown, Share2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { shareGift } from "@/lib/share";
 import { supabase } from "@/integrations/supabase/client";
-import { CityBadge } from "@/components/CityBadge";
+import { ItemCard } from "@/components/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { claimGift } from "@/lib/cozy.functions";
@@ -13,7 +13,6 @@ import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
 import { GlobalChrome } from "@/components/GlobalChrome";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
-import { Stars } from "@/components/ui/stars";
 
 export const Route = createFileRoute("/user/$userId")({
   component: UserProfilePage,
@@ -66,7 +65,6 @@ function UserProfilePage() {
   const [given, setGiven] = useState<Gift[] | null>(null);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -179,85 +177,31 @@ function UserProfilePage() {
             <p className="text-sm text-muted-foreground">Пока нет активных подарков.</p>
           ) : (
             <ul className="space-y-3">
-              {active.map((g) => {
-                const isOpen = !!expanded[g.id];
-                return (
-                  <li key={g.id}>
-                    <article className="rounded-2xl border bg-card p-3 shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => setExpanded((s) => ({ ...s, [g.id]: !s[g.id] }))}
-                        className="flex w-full items-start gap-3 text-left"
-                        aria-expanded={isOpen}
+              {active.map((g) => (
+                <li key={g.id}>
+                  <ItemCard
+                    image={g.image_url}
+                    title={g.title}
+                    description={g.description}
+                    cost={g.cost}
+                    condition={g.condition}
+                    city={g.city}
+                    isOnline={g.is_online}
+                    onOpen={() => navigate({ to: "/gift/$giftId", params: { giftId: g.id } })}
+                    onShare={() => shareGift(g.id, g.title)}
+                    footer={
+                      <Button
+                        size="sm"
+                        className="h-8 w-full rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
+                        disabled={claiming === g.id}
+                        onClick={() => handleClaim(g.id)}
                       >
-                        {g.image_url ? (
-                          <img
-                            src={g.image_url}
-                            alt={g.title}
-                            className="h-20 w-20 shrink-0 rounded-xl object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-                            🎁
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start gap-1">
-                            <div
-                              className={`flex-1 text-[15px] font-semibold leading-tight ${isOpen ? "" : "truncate"}`}
-                            >
-                              {g.title}
-                            </div>
-                            <ChevronDown
-                              className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
-                            />
-                          </div>
-                          {g.condition ? (
-                            <div
-                              className="mt-0.5 text-sm leading-none"
-                              aria-label={`Состояние ${g.condition} из 5`}
-                              title={`Состояние: ${g.condition} из 5`}
-                            >
-                              <Stars value={g.condition} />
-                            </div>
-                          ) : null}
-                          {g.description && (
-                            <p
-                              className={`mt-0.5 text-xs text-muted-foreground whitespace-pre-wrap ${isOpen ? "" : "line-clamp-2"}`}
-                            >
-                              {g.description}
-                            </p>
-                          )}
-                          {(g.city || g.is_online) && (
-                            <div className="mt-1">
-                              <CityBadge city={g.city} isOnline={g.is_online} />
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                      <div className="mt-2 flex items-center gap-2 pl-[92px]">
-                        <Button
-                          size="sm"
-                          className="h-8 rounded-xl bg-mint text-mint-foreground hover:bg-mint/90"
-                          disabled={claiming === g.id}
-                          onClick={() => handleClaim(g.id)}
-                        >
-                          {claiming === g.id ? "Получаем…" : "Получить подарок"}
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => shareGift(g.id, g.title)}
-                          aria-label="Поделиться подарком"
-                          className="flex h-8 items-center gap-1.5 rounded-xl border bg-background px-3 text-xs font-medium text-muted-foreground transition hover:bg-accent active:scale-[0.98]"
-                        >
-                          <Share2 className="h-3.5 w-3.5" /> Поделиться
-                        </button>
-                      </div>
-                    </article>
-                  </li>
-                );
-              })}
+                        {claiming === g.id ? "Получаем…" : "Получить подарок"}
+                      </Button>
+                    }
+                  />
+                </li>
+              ))}
             </ul>
           )}
         </section>
@@ -272,36 +216,18 @@ function UserProfilePage() {
             <ul className="space-y-3">
               {given.map((g) => (
                 <li key={g.id}>
-                  <article className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm opacity-90">
-                    {g.image_url ? (
-                      <img
-                        src={g.image_url}
-                        alt={g.title}
-                        className="h-20 w-20 shrink-0 rounded-xl object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-                        🎁
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold leading-tight">
-                        {g.title}
-                      </div>
-                      {g.description && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                          {g.description}
-                        </p>
-                      )}
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <span className="inline-flex items-center rounded-full bg-mint/60 px-1.5 py-0.5 text-[10px] font-medium text-mint-foreground">
-                          подарено
-                        </span>
-                        <CityBadge city={g.city} isOnline={g.is_online} />
-                      </div>
-                    </div>
-                  </article>
+                  <ItemCard
+                    image={g.image_url}
+                    title={g.title}
+                    description={g.description}
+                    city={g.city}
+                    isOnline={g.is_online}
+                    badge={
+                      <span className="inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[11px] font-semibold text-mint-foreground">
+                        🎁 подарено
+                      </span>
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -318,39 +244,20 @@ function UserProfilePage() {
             <ul className="space-y-3">
               {wishes.map((w) => (
                 <li key={w.id}>
-                  <article className="flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
-                    {w.image_url ? (
-                      <img
-                        src={w.image_url}
-                        alt={w.title}
-                        className="h-20 w-20 shrink-0 rounded-xl object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-3xl">
-                        ✨
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold leading-tight">
-                        {w.title}
-                      </div>
-                      {w.description && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                          {w.description}
-                        </p>
-                      )}
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                          {w.category}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-peach/60 px-1.5 py-0.5 text-[10px] font-semibold text-peach-foreground">
-                          загадано
-                        </span>
-                        <CityBadge city={w.city} isOnline={w.is_online} />
-                      </div>
-                    </div>
-                  </article>
+                  <ItemCard
+                    image={w.image_url}
+                    title={w.title}
+                    description={w.description}
+                    category={w.category}
+                    city={w.city}
+                    isOnline={w.is_online}
+                    emptyEmoji="✨"
+                    badge={
+                      <span className="inline-flex items-center rounded-full bg-peach/60 px-2 py-0.5 text-[11px] font-semibold text-peach-foreground">
+                        ✨ загадано
+                      </span>
+                    }
+                  />
                 </li>
               ))}
             </ul>

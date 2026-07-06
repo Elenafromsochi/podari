@@ -8,7 +8,6 @@ import {
   BarChart3,
   Send,
   Sparkles,
-  Share2,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -35,7 +34,7 @@ import { getMyWishes, setWishHidden } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
 import { shareLink, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
-import { CityBadge } from "@/components/CityBadge";
+import { ItemCard } from "@/components/ItemCard";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
 // Премиум пока не настроен — плашка «Подари Global» временно скрыта.
 // import { GlobalPremiumCard } from "@/components/GlobalPremiumCard";
@@ -574,56 +573,38 @@ function EditableActiveItem({
     }
   };
 
+  const footer = canModify ? (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
+        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-accent active:scale-95"
+      >
+        <Pencil className="h-3.5 w-3.5" /> Редактировать
+      </button>
+      <button
+        type="button"
+        onClick={() => setConfirmOpen(true)}
+        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/10 active:scale-95"
+      >
+        <Trash2 className="h-3.5 w-3.5" /> Удалить
+      </button>
+    </div>
+  ) : null;
+
   return (
-    <li className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
-      {gift.image_url ? (
-        <img
-          src={gift.image_url}
-          alt={gift.title}
-          className="h-12 w-12 shrink-0 rounded-xl object-cover"
-        />
-      ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-          🎁
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm font-medium">{gift.title}</p>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="truncate text-xs text-muted-foreground">{gift.category}</p>
-          <CityBadge city={gift.city} isOnline={gift.is_online} />
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={() => shareGift(gift.id, gift.title)}
-          aria-label="Поделиться подарком"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
-        {canModify && (
-          <>
-            <button
-              type="button"
-              onClick={() => navigate({ to: "/gift/$giftId/edit", params: { giftId: gift.id } })}
-              aria-label="Редактировать подарок"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              aria-label="Удалить подарок"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-destructive transition hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
+    <li>
+      <ItemCard
+        image={gift.image_url}
+        title={gift.title}
+        description={gift.description}
+        cost={gift.cost}
+        category={gift.category}
+        city={gift.city}
+        isOnline={gift.is_online}
+        onShare={() => shareGift(gift.id, gift.title)}
+        footer={footer}
+      />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
@@ -676,70 +657,49 @@ function MyWishItem({
     }
   };
 
+  const badge = isHidden ? (
+    <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+      🌌 Скрыто — во Вселенной
+    </span>
+  ) : w.status === "reserved" ? (
+    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+      ⏳ В работе
+    </span>
+  ) : w.status !== "open" ? (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+      ✅ Исполнено
+    </span>
+  ) : null;
+
+  const footer = canToggle ? (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy}
+      className="flex w-full items-center justify-center gap-1.5 rounded-xl border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-accent active:scale-95 disabled:opacity-60"
+    >
+      {busy ? "…" : isHidden ? "🌍 Открыть для всех" : "🌌 Скрыть — во Вселенной"}
+    </button>
+  ) : null;
+
   return (
-    <li className="relative">
-      <button
-        type="button"
-        onClick={() => {
+    <li>
+      <ItemCard
+        image={w.image_url}
+        title={w.title}
+        category={w.category}
+        city={w.city}
+        isOnline={w.is_online}
+        emptyEmoji="✨"
+        highlight={isHidden}
+        badge={badge}
+        onOpen={() => {
           haptic("select");
           onOpen?.(w.id);
         }}
-        className={`flex w-full items-center gap-3 rounded-2xl border p-3 pb-9 text-left shadow-sm transition active:scale-[0.98] ${
-          isHidden ? "border-emerald-300 bg-emerald-50" : "bg-card"
-        }`}
-      >
-        {w.image_url ? (
-          <img
-            src={w.image_url}
-            alt={w.title}
-            className={`h-12 w-12 shrink-0 rounded-xl object-cover ${isHidden ? "opacity-80" : ""}`}
-          />
-        ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-peach/40 text-xl">
-            ✨
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 pr-7 text-sm font-medium">{w.title}</p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            {isHidden ? (
-              <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                🌌 Скрыто — во Вселенной
-              </span>
-            ) : (
-              <p className="truncate text-xs text-muted-foreground">
-                {w.category} ·{" "}
-                {w.status === "open" ? "ждёт" : w.status === "reserved" ? "в работе" : "исполнено"}
-              </p>
-            )}
-            <CityBadge city={w.city} isOnline={w.is_online} />
-          </div>
-        </div>
-      </button>
-
-      {/* Переключатель видимости — внизу карточки */}
-      {canToggle && (
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={busy}
-          className="absolute bottom-2 right-2 rounded-full border bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border transition hover:bg-accent active:scale-95 disabled:opacity-60"
-        >
-          {busy ? "…" : isHidden ? "🌍 Открыть для всех" : "🌌 Скрыть"}
-        </button>
-      )}
-
-      {/* Поделиться — только у открытых желаний (скрытое не транслируем) */}
-      {!isHidden && (
-        <button
-          type="button"
-          onClick={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
-          aria-label="Поделиться желанием"
-          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border transition hover:text-foreground active:scale-95"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-        </button>
-      )}
+        onShare={isHidden ? undefined : () => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
+        footer={footer}
+      />
     </li>
   );
 }

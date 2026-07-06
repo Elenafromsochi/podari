@@ -7,7 +7,7 @@ import { haptic } from "@/lib/haptics";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicGift, deleteGift } from "@/lib/cozy.functions";
 import { shareGift } from "@/lib/share";
-import { Stars } from "@/components/ui/stars";
+import { ItemCard } from "@/components/ItemCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,14 +60,6 @@ function giftsWord(n: number) {
   if (mod10 === 1 && mod100 !== 11) return "подарок";
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "подарка";
   return "подарков";
-}
-
-function ballWord(n: number) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "балл";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "балла";
-  return "баллов";
 }
 
 export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHome }: Props) {
@@ -209,79 +201,40 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
           </p>
         )}
 
-        {/* Превью карточки — чтобы человек сразу увидел, как выглядит его подарок */}
+        {/* Превью карточки — та же единая карточка, что и во всём приложении */}
         {gift && (
-          <div className="mt-4 rounded-2xl border bg-background p-3 shadow-sm">
-            <div className="flex gap-3">
-              {cover ? (
-                <img
-                  src={cover}
-                  alt={gift.title}
-                  className="h-20 w-20 shrink-0 rounded-xl object-cover"
-                />
-              ) : (
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-3xl">
-                  🎁
+          <div className="mt-4">
+            <ItemCard
+              image={cover}
+              title={gift.title}
+              description={gift.description}
+              cost={gift.cost}
+              condition={gift.condition}
+              city={gift.city}
+              isOnline={gift.is_online}
+              onShare={() => shareGift(giftId, gift?.title)}
+              footer={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Link
+                    to="/gift/$giftId/edit"
+                    params={{ giftId }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+                  >
+                    ✏️ Редактировать
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
+                  >
+                    🗑 Удалить
+                  </button>
                 </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="line-clamp-2 text-sm font-semibold leading-tight">
-                    {gift.title}
-                  </div>
-                  <span className="shrink-0 rounded-lg bg-mint/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-mint-foreground">
-                    {gift.cost} {ballWord(gift.cost)}
-                  </span>
-                </div>
-                {gift.condition ? (
-                  <div className="mt-1 text-sm leading-none">
-                    <Stars value={gift.condition} />
-                  </div>
-                ) : null}
-                {gift.description && (
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                    {gift.description}
-                  </p>
-                )}
-                {gift.is_online ? (
-                  <span className="mt-1.5 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
-                    🌐 Онлайн
-                  </span>
-                ) : gift.city ? (
-                  <span className="mt-1.5 inline-block rounded-full bg-peach/40 px-2 py-0.5 text-[10px] font-medium text-foreground">
-                    📍 {gift.city}
-                  </span>
-                ) : null}
-              </div>
-            </div>
+              }
+            />
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Так твой подарок видят другие ✨
             </p>
-
-            {/* Обычные действия карточки — как на странице подарка */}
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => shareGift(giftId, gift?.title)}
-                className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
-              >
-                📤 Поделиться
-              </button>
-              <Link
-                to="/gift/$giftId/edit"
-                params={{ giftId }}
-                className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
-              >
-                ✏️ Редактировать
-              </Link>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
-              >
-                🗑 Удалить
-              </button>
-            </div>
           </div>
         )}
 
