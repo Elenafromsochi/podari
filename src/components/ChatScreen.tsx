@@ -93,6 +93,9 @@ export function ChatScreen({
   const [handoverRequestedAt, setHandoverRequestedAt] = useState<string | null>(null);
   const [showReceiverConfirm, setShowReceiverConfirm] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  // Отзыв дарителя, написанный в момент передачи (до подтверждения получателем):
+  // хранится скрытым и «фиксируется» только когда получатель подтвердит.
+  const [reviewPending, setReviewPending] = useState(false);
   // Уже оставил отзыв по этой сделке? Тогда не показываем окно снова.
   // ref — чтобы свежее значение читалось из polling-замыкания.
   const alreadyReviewedRef = useRef(false);
@@ -230,6 +233,7 @@ export function ChatScreen({
         setShowReceiverConfirm(true);
       }
       if (row.status === "completed" && !alreadyReviewedRef.current) {
+        setReviewPending(false);
         setShowReview(true);
       }
     };
@@ -368,7 +372,15 @@ export function ChatScreen({
     try {
       await requestHandoverFn({ data: { transaction_id: transactionId } });
       setHandoverRequestedAt(new Date().toISOString());
-      toast.success("Запрос отправлен получателю");
+      toast.success("Передача отмечена", {
+        description: "Можешь сразу оставить отзыв — он появится, когда получатель подтвердит.",
+      });
+      // Даём дарителю оставить отзыв прямо сейчас — он хранится скрытым и
+      // «зафиксируется», только когда получатель подтвердит получение.
+      if (!alreadyReviewedRef.current) {
+        setReviewPending(true);
+        setShowReview(true);
+      }
     } catch (e) {
       toast.error("Не удалось отправить запрос", {
         description: e instanceof Error ? e.message : String(e),
@@ -686,21 +698,31 @@ export function ChatScreen({
                     is_auto: isAuto,
                     condition_confirmed: conditionConfirmed ?? null,
                     proof_image_url: proofUrl,
+                    // Отзыв, написанный при передаче — скрытый (ожидает подтверждения).
+                    pending: reviewPending,
                   },
                 });
                 // Отзыв сохранён — больше не показываем окно для этой сделки.
                 alreadyReviewedRef.current = true;
+                if (reviewPending) {
+                  toast.success("Отзыв сохранён 🕊", {
+                    description: "Он появится в профиле получателя, когда тот подтвердит получение.",
+                  });
+                }
               }
             } catch (e) {
               toast.error("Отзыв не сохранён", {
                 description: e instanceof Error ? e.message : String(e),
               });
             }
+            const wasPending = reviewPending;
+            setReviewPending(false);
             setShowReview(false);
             onReview?.();
             window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
-            // Услуги/аренду/впечатления можно подарить снова — предлагаем дарителю.
-            if (isOwner && gift?.gift_kind && gift.gift_kind !== "used_item") {
+            // Услуги/аренду/впечатления можно подарить снова — предлагаем дарителю
+            // (только после реального завершения сделки, не при скрытом отзыве).
+            if (!wasPending && isOwner && gift?.gift_kind && gift.gift_kind !== "used_item") {
               setRegiftOpen(true);
             }
           }}

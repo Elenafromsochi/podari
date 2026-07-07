@@ -100,12 +100,16 @@ function UserProfilePage() {
       if (wRes.error) wRes = await wishQ("id,title,description,image_url,category");
       setWishes((wRes.data as unknown as Wish[]) ?? []);
 
-      // Рейтинг человека из отзывов о нём
-      const { data: revs } = await supabase
+      // Рейтинг человека из отзывов о нём. Скрытые (ожидающие подтверждения)
+      // отзывы не учитываем; если колонки visible ещё нет — читаем без фильтра.
+      let revsRes = await supabase
         .from("reviews")
         .select("rating")
-        .eq("target_id", userId);
-      const list = (revs as { rating: number }[] | null) ?? [];
+        .eq("target_id", userId)
+        .eq("visible", true);
+      if (revsRes.error)
+        revsRes = await supabase.from("reviews").select("rating").eq("target_id", userId);
+      const list = (revsRes.data as { rating: number }[] | null) ?? [];
       if (list.length > 0) {
         const avg = list.reduce((s, r) => s + (r.rating ?? 0), 0) / list.length;
         setRating({ avg, count: list.length });

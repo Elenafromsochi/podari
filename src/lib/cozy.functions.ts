@@ -4,6 +4,52 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyUser, chatPath, giftPath } from "@/lib/notify.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+/** Уведомляет всех модераторов (role='admin') в Telegram. */
+async function notifyAdmins(text: string, path = "/") {
+  try {
+    const { data } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+    const ids = Array.from(
+      new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id).filter(Boolean)),
+    );
+    await Promise.all(ids.map((id) => notifyUser(id, text, path)));
+  } catch {
+    /* уведомление админам не критично — не роняем действие */
+  }
+}
+
+/** Удаляет «ожидающие» (скрытые) отзывы по сделке — когда сделка не состоялась,
+ *  чтобы отзыв дарителя, написанный при передаче, не зафиксировался. */
+async function dropPendingReviews(transactionId: string) {
+  try {
+    await supabaseAdmin
+      .from("reviews")
+      .delete()
+      .eq("transaction_id", transactionId)
+      .eq("visible", false);
+  } catch {
+    /* колонки visible может ещё не быть — тогда чистить нечего */
+  }
+}
+
+/** Делает скрытый отзыв дарителя видимым и начисляет за него XP (через триггер) —
+ *  когда получатель подтвердил получение подарка. */
+async function revealPendingReviews(transactionId: string) {
+  try {
+    const { data } = await supabaseAdmin
+      .from("reviews")
+      .update({ visible: true })
+      .eq("transaction_id", transactionId)
+      .eq("visible", false)
+      .select("target_id");
+    for (const r of (data ?? []) as Array<{ target_id: string | null }>) {
+      if (r.target_id)
+        await notifyUser(r.target_id, `⭐ Тебе оставили новый отзыв! Загляни в профиль.`, "/?tab=profile");
+    }
+  } catch {
+    /* колонки visible может ещё не быть */
+  }
+}
+
 
 function failOp(code: string, err: unknown): never {
   console.error(`[cozy] ${code}`, err);
@@ -345,6 +391,8 @@ export const confirmHandover = createServerFn({ method: "POST" })
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("HANDOVER_FAILED", error);
+    // Сделка состоялась — «фиксируем» скрытый отзыв дарителя (делаем видимым, +XP).
+    await revealPendingReviews(data.transaction_id);
     const { data: tx } = await supabase
       .from("transactions")
       .select("sender_id, receiver_id, gift_id")
@@ -397,15 +445,20 @@ export const declineHandover = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    // Узнаём, отмечал ли даритель передачу — тогда это спор (один сказал
+    // «передал», другой «не получил»), о нём уведомляем модераторов.
+    const { data: before } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, gift_id, handover_requested_at")
+      .eq("id", data.transaction_id)
+      .maybeSingle();
     const { error } = await supabase.rpc("decline_handover", {
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("HANDOVER_FAILED", error);
-    const { data: tx } = await supabase
-      .from("transactions")
-      .select("sender_id, receiver_id, gift_id")
-      .eq("id", data.transaction_id)
-      .maybeSingle();
+    // Сделка не состоялась — стираем скрытый отзыв дарителя (не фиксируется).
+    await dropPendingReviews(data.transaction_id);
+    const tx = before;
     if (tx) {
       const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
       await notifyUser(
@@ -413,6 +466,18 @@ export const declineHandover = createServerFn({ method: "POST" })
         `⚠️ Получатель отметил, что пока не получил подарок. Загляни в чат — разберитесь вместе.`,
         chatPath(tx.gift_id),
       );
+      // Спор: даритель отметил передачу, а получатель — «не получил». Зовём модераторов.
+      if (tx.handover_requested_at) {
+        const { data: g } = await supabase
+          .from("gifts")
+          .select("title")
+          .eq("id", tx.gift_id)
+          .maybeSingle();
+        await notifyAdmins(
+          `🛑 Спор по сделке: даритель отметил, что передал подарок «${(g as { title?: string } | null)?.title ?? ""}», а получатель нажал «не получил». Нужен разбор.`,
+          chatPath(tx.gift_id),
+        );
+      }
     }
     return { ok: true };
   });
@@ -429,6 +494,8 @@ export const cancelClaim = createServerFn({ method: "POST" })
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("CLAIM_CANCEL_FAILED", error);
+    // Сделка отменена — стираем скрытый (ожидающий) отзыв дарителя.
+    await dropPendingReviews(data.transaction_id);
     const { data: tx } = await supabase
       .from("transactions")
       .select("sender_id, receiver_id, gift_id")
@@ -457,6 +524,8 @@ export const cancelBySender = createServerFn({ method: "POST" })
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("SENDER_CANCEL_FAILED", error);
+    // Даритель отменил дарение — стираем его скрытый (ожидающий) отзыв.
+    await dropPendingReviews(data.transaction_id);
     const { data: tx } = await supabase
       .from("transactions")
       .select("sender_id, receiver_id, gift_id")
@@ -515,6 +584,10 @@ export const submitReview = createServerFn({ method: "POST" })
         is_auto: z.boolean().default(false),
         condition_confirmed: z.number().int().min(1).max(5).nullable().optional(),
         proof_image_url: z.string().max(15_000_000).nullable().optional(),
+        // Отзыв дарителя, написанный в момент передачи: хранится скрытым и
+        // «фиксируется» (становится видимым, начисляет XP) только когда
+        // получатель подтвердит получение. Если сделка сорвётся — стирается.
+        pending: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -533,7 +606,7 @@ export const submitReview = createServerFn({ method: "POST" })
     const expectedTarget = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
     if (data.target_id !== expectedTarget) throw new Error("INVALID_TARGET");
 
-    const { error } = await supabase.from("reviews").insert({
+    const baseReview = {
       transaction_id: data.transaction_id,
       target_id: data.target_id,
       author_id: userId,
@@ -542,13 +615,26 @@ export const submitReview = createServerFn({ method: "POST" })
       is_auto: data.is_auto,
       condition_confirmed: data.condition_confirmed ?? null,
       proof_image_url: data.proof_image_url ?? null,
-    });
+    };
+    // Скрытый (ожидающий) отзыв пишем с visible=false; обычный — видимый сразу.
+    let { error } = await supabase.from("reviews").insert({ ...baseReview, visible: !data.pending });
+    // Если колонки visible ещё нет (миграция не накатана) — пишем без неё.
+    const isUndefinedColumn = (e: { code?: string; message?: string } | null) =>
+      e?.code === "42703" ||
+      e?.code === "PGRST204" ||
+      /column .* does not exist|could not find the .* column|schema cache/i.test(e?.message ?? "");
+    if (error && isUndefinedColumn(error)) {
+      ({ error } = await supabase.from("reviews").insert(baseReview));
+    }
     if (error) failOp("REVIEW_FAILED", error);
-    await notifyUser(
-      data.target_id,
-      `⭐ Тебе оставили новый отзыв! Загляни в профиль.`,
-      "/?tab=profile",
-    );
+    // Скрытый отзыв пока никого не уведомляет — уведомим при подтверждении сделки.
+    if (!data.pending) {
+      await notifyUser(
+        data.target_id,
+        `⭐ Тебе оставили новый отзыв! Загляни в профиль.`,
+        "/?tab=profile",
+      );
+    }
     return { ok: true };
   });
 
@@ -677,12 +763,19 @@ export const getReviewsAbout = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: rows } = await supabase
-      .from("reviews")
-      .select("id, rating, comment, created_at, author_id, is_auto")
-      .eq("target_id", data.user_id)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    // Показываем только «видимые» отзывы: скрытый (ожидающий) отзыв дарителя не
+    // виден, пока получатель не подтвердит получение. Если колонки visible ещё
+    // нет (миграция не накатана) — читаем без фильтра.
+    const buildQuery = (withVisible: boolean) => {
+      let q = supabase
+        .from("reviews")
+        .select("id, rating, comment, created_at, author_id, is_auto")
+        .eq("target_id", data.user_id);
+      if (withVisible) q = q.eq("visible", true);
+      return q.order("created_at", { ascending: false }).limit(50);
+    };
+    let { data: rows, error: rErr } = await buildQuery(true);
+    if (rErr) ({ data: rows } = await buildQuery(false));
     const list = (rows ?? []) as Array<{
       id: string;
       rating: number;
