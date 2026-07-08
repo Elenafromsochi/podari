@@ -17,6 +17,82 @@ async function notifyAdmins(text: string, path = "/") {
   }
 }
 
+const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
+
+/** Оформляет «заявку о споре» в общую папку админов (admin_messages): сделка не
+ *  завершена — даритель отметил передачу, а получатель отказался. В заявке видны
+ *  оба участника (имя, @telegram, ID) со ссылками, чтобы админ сразу связался и
+ *  написал им лично, плюс сам оставленный отзыв. Отзыв при этом НЕ стирается —
+ *  остаётся скрытым, решение за модератором. */
+async function openDisputeTicket(tx: {
+  id: string;
+  sender_id: string | null;
+  receiver_id: string | null;
+  gift_id: string | null;
+}) {
+  try {
+    const ids = [tx.sender_id, tx.receiver_id].filter((v): v is string => !!v);
+    const { data: profs } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, display_name, telegram_username")
+      .in("user_id", ids);
+    const pmap = new Map(
+      ((profs ?? []) as Array<{
+        user_id: string;
+        display_name: string | null;
+        telegram_username: string | null;
+      }>).map((p) => [p.user_id, p]),
+    );
+    const { data: g } = await supabaseAdmin
+      .from("gifts")
+      .select("title")
+      .eq("id", tx.gift_id)
+      .maybeSingle();
+    // Скрытый отзыв дарителя по этой сделке (если оставил при передаче).
+    const { data: rev } = await supabaseAdmin
+      .from("reviews")
+      .select("rating, comment")
+      .eq("transaction_id", tx.id)
+      .eq("visible", false)
+      .maybeSingle();
+
+    const line = (uid: string | null, role: string) => {
+      if (!uid) return `${role}: —`;
+      const p = pmap.get(uid);
+      const name = p?.display_name || "—";
+      const tg = p?.telegram_username ? ` · @${p.telegram_username}` : "";
+      const tgLink = p?.telegram_username
+        ? `\n   ✉️ Написать: https://t.me/${p.telegram_username}`
+        : "";
+      return `${role}: ${name}${tg}\n   🆔 ${uid}\n   👤 Профиль: ${APP_URL}/user/${uid}${tgLink}`;
+    };
+
+    const comment = (rev as { comment?: string | null } | null)?.comment;
+    const reviewLine = rev
+      ? `\n\n⭐ Отзыв дарителя (пока скрыт, не зафиксирован): ${
+          (rev as { rating?: number | null }).rating ?? "—"
+        }/5${comment ? ` — «${comment}»` : ""}`
+      : "";
+
+    const content =
+      `🛑 СПОР ПО СДЕЛКЕ — сделка не завершена\n` +
+      `Подарок: «${(g as { title?: string } | null)?.title ?? "—"}»\n` +
+      `Даритель отметил передачу, получатель нажал «не получил».\n\n` +
+      `${line(tx.sender_id, "🎁 Даритель")}\n\n` +
+      `${line(tx.receiver_id, "📥 Получатель")}` +
+      reviewLine +
+      `\n\n💬 Открыть чат сделки: ${APP_URL}/chat/${tx.gift_id}`;
+
+    await supabaseAdmin.from("admin_messages").insert({
+      user_id: tx.sender_id ?? tx.receiver_id,
+      content,
+      status: "new",
+    });
+  } catch {
+    /* заявку в админку создать не удалось — не роняем действие */
+  }
+}
+
 /** Удаляет «ожидающие» (скрытые) отзывы по сделке — когда сделка не состоялась,
  *  чтобы отзыв дарителя, написанный при передаче, не зафиксировался. */
 async function dropPendingReviews(transactionId: string) {
@@ -456,8 +532,6 @@ export const declineHandover = createServerFn({ method: "POST" })
       _transaction_id: data.transaction_id,
     });
     if (error) failOp("HANDOVER_FAILED", error);
-    // Сделка не состоялась — стираем скрытый отзыв дарителя (не фиксируется).
-    await dropPendingReviews(data.transaction_id);
     const tx = before;
     if (tx) {
       const other = tx.sender_id === userId ? tx.receiver_id : tx.sender_id;
@@ -466,17 +540,28 @@ export const declineHandover = createServerFn({ method: "POST" })
         `⚠️ Получатель отметил, что пока не получил подарок. Загляни в чат — разберитесь вместе.`,
         chatPath(tx.gift_id),
       );
-      // Спор: даритель отметил передачу, а получатель — «не получил». Зовём модераторов.
+      // Спор: даритель отметил передачу, а получатель — «не получил».
+      // Отзыв дарителя НЕ стираем — оформляем заявку в общую папку админов
+      // (с обоими участниками и ссылками для связи) и пингуем модераторов.
       if (tx.handover_requested_at) {
+        await openDisputeTicket({
+          id: data.transaction_id,
+          sender_id: tx.sender_id,
+          receiver_id: tx.receiver_id,
+          gift_id: tx.gift_id,
+        });
         const { data: g } = await supabase
           .from("gifts")
           .select("title")
           .eq("id", tx.gift_id)
           .maybeSingle();
         await notifyAdmins(
-          `🛑 Спор по сделке: даритель отметил, что передал подарок «${(g as { title?: string } | null)?.title ?? ""}», а получатель нажал «не получил». Нужен разбор.`,
-          chatPath(tx.gift_id),
+          `🛑 Спор по сделке: даритель отметил, что передал «${(g as { title?: string } | null)?.title ?? ""}», а получатель нажал «не получил». Заявка в папке админов — нужен разбор.`,
+          "/?tab=profile",
         );
+      } else {
+        // Спора нет (передачу не отмечали) — просто чистим скрытый отзыв, если был.
+        await dropPendingReviews(data.transaction_id);
       }
     }
     return { ok: true };

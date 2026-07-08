@@ -7,6 +7,31 @@ import { listAdminMessages, setAdminMessageStatus } from "@/lib/admin-messages.f
 
 type Msg = Awaited<ReturnType<typeof listAdminMessages>>[number];
 
+// Делает ссылки (профиль, t.me, чат сделки) кликабельными — чтобы админ мог
+// сразу открыть Telegram участника или его профиль прямо из заявки о споре.
+function LinkedText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <p className="whitespace-pre-wrap break-words text-sm text-zinc-100">
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noreferrer"
+            className="text-indigo-300 underline underline-offset-2 break-all hover:text-indigo-200"
+          >
+            {part}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
 export function AdminInbox() {
   const listFn = useServerFn(listAdminMessages);
   const setStatusFn = useServerFn(setAdminMessageStatus);
@@ -84,7 +109,12 @@ export function AdminInbox() {
                   {new Date(m.created_at).toLocaleString("ru-RU")}
                 </span>
               </div>
-              <p className="whitespace-pre-wrap break-words text-sm text-zinc-100">{m.content}</p>
+              <LinkedText text={m.content} />
+              {m.content.startsWith("🛑") && (
+                <span className="mt-1 inline-block rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-300">
+                  Спор по сделке
+                </span>
+              )}
               {m.image_url && (
                 <a href={m.image_url} target="_blank" rel="noreferrer" className="mt-2 inline-block">
                   <img
