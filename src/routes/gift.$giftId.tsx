@@ -177,7 +177,9 @@ function GiftPage() {
   const isHidden = gift?.status === "hidden";
   // Скрытый (личный) подарок получают так же, как обычный — только по ссылке.
   const isClaimable = gift?.status === "available" || isHidden;
-  const canEditOwn = isOwner && isClaimable;
+  // Редактировать можно свободный/скрытый и забронированный (у последнего сервер
+  // сам разрешит правку, только пока сделка «свежая» — нет сообщений в чате).
+  const canEditOwn = isOwner && (isClaimable || gift?.status === "reserved");
   // «Подарить снова» имеет смысл, когда экземпляры кончились (не available):
   // у многоразового (тираж > 1) или у любого уже подаренного.
   const canReoffer =

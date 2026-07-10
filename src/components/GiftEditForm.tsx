@@ -143,7 +143,9 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Что-то пошло не так";
       if (msg.includes("GIFT_IN_DEAL"))
-        setError("Нельзя изменить: подарок уже в сделке");
+        setError(
+          "Изменить уже нельзя — по этому подарку начали общаться в чате. Правки доступны, пока диалог не начался.",
+        );
       else if (msg.includes("LEVEL_TOO_LOW"))
         setError("Эта стоимость откроется на более высоком уровне");
       else if (msg.includes("NOT_OWNER"))

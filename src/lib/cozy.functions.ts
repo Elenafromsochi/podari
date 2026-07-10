@@ -1563,7 +1563,42 @@ export const updateGift = createServerFn({ method: "POST" })
     if (!existing) throw new Error("GIFT_NOT_FOUND");
     const ex = existing as { owner_id?: string; status?: string; quantity?: number };
     if (ex.owner_id !== userId) throw new Error("NOT_OWNER");
-    if (ex.status !== "available") throw new Error("GIFT_IN_DEAL");
+
+    // Что можно править:
+    //  • available / hidden — всегда (подарок ещё не в сделке);
+    //  • reserved — только пока сделка «свежая»: передачу не отмечали и в чате
+    //    ещё нет ни одного сообщения (кнопка «отправить» не нажималась). Так
+    //    можно поправить, например, неудачное название, пока диалог не начался.
+    const status = ex.status;
+    let editable = status === "available" || status === "hidden";
+    let notifyReceiverId: string | null = null;
+    if (!editable && status === "reserved") {
+      const { data: tx } = await supabase
+        .from("transactions")
+        .select("receiver_id, handover_requested_at")
+        .eq("gift_id", data.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const handoverStarted = !!(tx as { handover_requested_at?: string | null } | null)?.handover_requested_at;
+      let hasMessages = false;
+      const { data: chat } = await supabase
+        .from("chats")
+        .select("id")
+        .eq("gift_id", data.id)
+        .maybeSingle();
+      if (chat?.id) {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("chat_id", chat.id);
+        hasMessages = (count ?? 0) > 0;
+      }
+      editable = !handoverStarted && !hasMessages;
+      if (editable) notifyReceiverId = (tx as { receiver_id?: string | null } | null)?.receiver_id ?? null;
+    }
+    if (!editable) throw new Error("GIFT_IN_DEAL");
 
     const patch: Record<string, unknown> = {
       title: data.title,
@@ -1595,7 +1630,9 @@ export const updateGift = createServerFn({ method: "POST" })
     const extended: Record<string, unknown> = { ...patch };
     if (data.city !== undefined) extended.city = data.city;
     if (typeof data.is_online === "boolean") extended.is_online = data.is_online;
-    if (typeof data.quantity === "number") {
+    // Тираж трогаем только у свободного подарка: у забронированного остаток уже
+    // равен 0, и менять его нельзя — иначе подарок «всплывёт» обратно в ленту.
+    if (typeof data.quantity === "number" && (status === "available" || status === "hidden")) {
       extended.quantity = data.quantity;
       // Остаток пересобираем только если тираж реально изменился — чтобы не
       // обнулять уже сделанные брони при правке других полей.
@@ -1609,6 +1646,14 @@ export const updateGift = createServerFn({ method: "POST" })
       ({ error } = await supabase.from("gifts").update(patch).eq("id", data.id));
     }
     if (error) failOp("GIFT_UPDATE_FAILED", error);
+    // Если правили уже забронированный подарок — по-честному сообщаем получателю.
+    if (notifyReceiverId) {
+      await notifyUser(
+        notifyReceiverId,
+        `✏️ Даритель уточнил подарок «${data.title}» — загляни в чат.`,
+        chatPath(data.id),
+      );
+    }
     return { ok: true };
   });
 
@@ -1625,7 +1670,9 @@ export const deleteGift = createServerFn({ method: "POST" })
     if (loadErr) failOp("GIFT_LOAD_FAILED", loadErr);
     if (!existing) throw new Error("GIFT_NOT_FOUND");
     if (existing.owner_id !== userId) throw new Error("NOT_OWNER");
-    if (existing.status !== "available") throw new Error("GIFT_IN_DEAL");
+    // Удалять можно свободный или скрытый (личный) подарок — оба не в сделке.
+    if (existing.status !== "available" && existing.status !== "hidden")
+      throw new Error("GIFT_IN_DEAL");
     const { error } = await supabase.from("gifts").delete().eq("id", data.id);
     if (error) failOp("GIFT_DELETE_FAILED", error);
     return { ok: true };
