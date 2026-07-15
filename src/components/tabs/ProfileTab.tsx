@@ -36,6 +36,7 @@ import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/ran
 import { shareLink, thirdVariant, shareGift } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { ItemCard } from "@/components/ItemCard";
+import { CertificateBuilder } from "@/components/CertificateBuilder";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
 // Премиум пока не настроен — плашка «Подари Global» временно скрыта.
 // import { GlobalPremiumCard } from "@/components/GlobalPremiumCard";
@@ -459,6 +460,7 @@ export function ProfileTab({
                     gift={g}
                     ownerId={user.user_id}
                     userLevel={user.level}
+                    myName={user.display_name}
                     onUpdated={(patch) =>
                       setPosted((prev) =>
                         (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)),
@@ -547,17 +549,20 @@ function EditableActiveItem({
   gift,
   ownerId,
   userLevel,
+  myName,
   onUpdated,
   onDeleted,
 }: {
   gift: Gift;
   ownerId: string;
   userLevel: number;
+  myName: string;
   onUpdated: (patch: Partial<Gift>) => void;
   onDeleted: () => void;
 }) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
   const deleteFn = useServerFn(deleteGift);
   const setHiddenFn = useServerFn(setGiftHidden);
   const [hiding, setHiding] = useState(false);
@@ -628,6 +633,13 @@ function EditableActiveItem({
       >
         {hiding ? "…" : isHidden ? "🌍 Показать всем в ленте" : "🔒 Скрыть — подарить по ссылке"}
       </button>
+      <button
+        type="button"
+        onClick={() => setCertOpen(true)}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15 active:scale-95"
+      >
+        🎟 Создать сертификат
+      </button>
       <div className="flex gap-2">
         {editBtn}
         <button
@@ -674,6 +686,16 @@ function EditableActiveItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {certOpen && (
+        <CertificateBuilder
+          giftId={gift.id}
+          giftTitle={gift.title}
+          myName={myName}
+          onClose={() => setCertOpen(false)}
+          onCreated={() => onUpdated({ status: "hidden" })}
+        />
+      )}
     </li>
   );
 }

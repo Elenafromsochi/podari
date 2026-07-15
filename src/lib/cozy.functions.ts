@@ -309,6 +309,71 @@ export const setGiftHidden = createServerFn({ method: "POST" })
     return { id: (row as { id: string }).id, status: (row as { status: string }).status };
   });
 
+// ---------- Превратить подарок в подарочный сертификат ----------
+// Прикрепляет готовую картинку-сертификат как обложку и делает подарок личным
+// (скрытым, по ссылке). Получить его сможет только тот, кому отправят ссылку.
+export const makeGiftCertificate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        gift_id: z.string().uuid(),
+        cert_image_url: z.string().min(1).max(2000),
+        expires_at: z.string().datetime().nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: loadErr } = await supabase
+      .from("gifts")
+      .select("id, owner_id, status, image_url, image_urls")
+      .eq("id", data.gift_id)
+      .maybeSingle();
+    if (loadErr) failOp("GIFT_LOAD_FAILED", loadErr);
+    if (!existing) throw new Error("GIFT_NOT_FOUND");
+    const ex = existing as {
+      owner_id?: string;
+      status?: string;
+      image_url?: string | null;
+      image_urls?: string[] | null;
+    };
+    if (ex.owner_id !== userId) throw new Error("NOT_OWNER");
+    // Сертификат делаем только из подарка, который ещё не в сделке.
+    if (ex.status !== "available" && ex.status !== "hidden") throw new Error("GIFT_IN_DEAL");
+
+    // Картинка-сертификат становится обложкой; прежние фото оставляем следом.
+    const prevUrls = (ex.image_urls ?? []).filter((u): u is string => !!u);
+    const urls = [data.cert_image_url, ...prevUrls.filter((u) => u !== data.cert_image_url)].slice(0, 10);
+
+    const isUndefinedColumn = (e: { code?: string; message?: string } | null) =>
+      e?.code === "42703" ||
+      e?.code === "PGRST204" ||
+      /column .* does not exist|could not find the .* column|schema cache/i.test(e?.message ?? "");
+
+    const base = {
+      status: "hidden",
+      image_url: data.cert_image_url,
+      image_urls: urls,
+      updated_at: new Date().toISOString(),
+    };
+    const extended: Record<string, unknown> = {
+      ...base,
+      quantity: 1,
+      quantity_remaining: 1,
+      is_certificate: true,
+      cert_expires_at: data.expires_at ?? null,
+    };
+    let { error } = await supabase.from("gifts").update(extended).eq("id", data.gift_id);
+    if (error && isUndefinedColumn(error)) {
+      // Колонок is_certificate / cert_expires_at ещё нет — сохраняем хотя бы
+      // обложку-сертификат и «скрытость». Полное поведение — после миграции.
+      ({ error } = await supabase.from("gifts").update(base).eq("id", data.gift_id));
+    }
+    if (error) failOp("CERT_SAVE_FAILED", error);
+    return { id: data.gift_id };
+  });
+
 // ---------- Check gift cost average for soft warning ----------
 export const checkGiftCost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -817,7 +882,7 @@ export const getPublicGift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
     const full =
-      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online, quantity, quantity_remaining";
+      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online, quantity, quantity_remaining, is_certificate, cert_expires_at";
     let { data: g, error } = await supabaseAdmin.from("gifts").select(full).eq("id", data.gift_id).maybeSingle();
     if (error)
       ({ data: g, error } = await supabaseAdmin

@@ -62,6 +62,14 @@ CREATE TRIGGER trg_award_review_xp_reveal
   AFTER UPDATE OF visible ON public.reviews
   FOR EACH ROW EXECUTE FUNCTION public.award_review_xp_on_reveal();
 
+-- ---------------------------------------------------------------------
+-- 3) Подарочный сертификат — «режим сертификата» и срок действия.
+-- ---------------------------------------------------------------------
+ALTER TABLE public.gifts
+  ADD COLUMN IF NOT EXISTS is_certificate boolean NOT NULL DEFAULT false;
+ALTER TABLE public.gifts
+  ADD COLUMN IF NOT EXISTS cert_expires_at timestamptz;
+
 -- Готово ✅  Проверить можно так (обе строки должны вернуться):
 --   select column_name from information_schema.columns
 --     where table_name='wishes' and column_name='link';

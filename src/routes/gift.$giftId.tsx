@@ -43,6 +43,8 @@ type PublicGift = {
   owner_id: string | null;
   owner_name: string;
   owner_level: number;
+  is_certificate?: boolean | null;
+  cert_expires_at?: string | null;
 };
 
 function GiftPage() {
@@ -175,8 +177,12 @@ function GiftPage() {
 
   const isOwner = !!meId && gift?.owner_id === meId;
   const isHidden = gift?.status === "hidden";
+  const isCertificate = !!gift?.is_certificate;
+  const certExpired =
+    !!gift?.cert_expires_at && new Date(gift.cert_expires_at).getTime() < Date.now();
   // Скрытый (личный) подарок получают так же, как обычный — только по ссылке.
-  const isClaimable = gift?.status === "available" || isHidden;
+  // Просроченный сертификат забрать нельзя.
+  const isClaimable = (gift?.status === "available" || isHidden) && !certExpired;
   // Редактировать можно свободный/скрытый и забронированный (у последнего сервер
   // сам разрешит правку, только пока сделка «свежая» — нет сообщений в чате).
   const canEditOwn = isOwner && (isClaimable || gift?.status === "reserved");
@@ -374,18 +380,29 @@ function GiftPage() {
                   {reoffering ? "Минутку…" : "🔁 Подарить снова"}
                 </button>
               </div>
+            ) : certExpired ? (
+              <div className="rounded-2xl bg-muted/60 px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+                🎟 Срок действия сертификата истёк
+              </div>
             ) : !isClaimable ? (
               <div className="rounded-2xl bg-muted/60 px-4 py-3 text-center text-sm font-medium text-muted-foreground">
                 Этот подарок уже разобрали 🌷 — загляни в ленту, там много других
               </div>
             ) : (
               <>
-                {isHidden && (
+                {isCertificate ? (
+                  <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-center text-sm font-medium text-foreground">
+                    🎟 Подарочный сертификат{" "}
+                    {isOwner
+                      ? "— отправь ссылку тому, кому даришь."
+                      : "— он для тебя 💚 Активируй, и договоритесь о встрече."}
+                  </div>
+                ) : isHidden ? (
                   <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-center text-sm font-medium text-foreground">
                     🔒 Личный подарок — он{isOwner ? " не виден" : " виден только"} в общей ленте
                     {isOwner ? "" : " по этой ссылке"}. {isOwner ? "Отправь ссылку тому, кому даришь." : "Он для тебя 💚"}
                   </div>
-                )}
+                ) : null}
                 <button
                   type="button"
                   onClick={onGet}
@@ -395,8 +412,12 @@ function GiftPage() {
                   {busy
                     ? "Минутку…"
                     : authed
-                      ? `🎁 Получить за ${gift.cost} ${word(gift.cost)}`
-                      : "Авторизоваться и получить подарок"}
+                      ? isCertificate
+                        ? `🎟 Активировать за ${gift.cost} ${word(gift.cost)}`
+                        : `🎁 Получить за ${gift.cost} ${word(gift.cost)}`
+                      : isCertificate
+                        ? "Войти и активировать сертификат"
+                        : "Авторизоваться и получить подарок"}
                 </button>
               </>
             )}
