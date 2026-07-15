@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPublicGift, claimGift, reofferGift, deleteGift } from "@/lib/cozy.functions";
 import { shareGift } from "@/lib/share";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { CertificateBuilder } from "@/components/CertificateBuilder";
 import { LevelBadge } from "@/components/LevelBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stars } from "@/components/ui/stars";
@@ -65,6 +66,7 @@ function GiftPage() {
   const [reofferQty, setReofferQty] = useState(3);
   const [reoffering, setReoffering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
 
   useEffect(() => {
     // Реферал из ссылки — чтобы при входе засчитался пригласившему.
@@ -326,6 +328,29 @@ function GiftPage() {
               </>
             )}
           </div>
+
+          {/* Сертификат из этого подарка — владельцу, пока подарок не в сделке */}
+          {isOwner && (gift.status === "available" || isHidden) && (
+            <button
+              type="button"
+              onClick={() => setCertOpen(true)}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2.5 text-sm font-semibold text-primary transition active:scale-[0.98] hover:bg-primary/15"
+            >
+              🎟 Создать подарочный сертификат
+            </button>
+          )}
+
+          {certOpen && (
+            <CertificateBuilder
+              giftId={giftId}
+              giftTitle={gift.title}
+              myName={gift.owner_name}
+              onClose={() => setCertOpen(false)}
+              onCreated={() => {
+                setGift((g) => (g ? { ...g, status: "hidden", is_certificate: true } : g));
+              }}
+            />
+          )}
 
           <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
             <AlertDialogContent>

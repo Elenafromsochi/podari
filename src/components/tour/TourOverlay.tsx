@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import confetti from "canvas-confetti";
 import {
@@ -137,6 +137,9 @@ export function TourOverlay() {
   const step = getStep(state.step);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const navigate = useNavigate();
+  // Чтобы прокрутить подсвеченный шаг в зону видимости ровно один раз на шаг
+  // (а не бороться со скроллом пользователя на каждом опросе позиции).
+  const scrolledForStep = useRef<string | null>(null);
 
   // Решаем ОДИН раз при загрузке страницы: если гид сохранён не на первом
   // шаге и не завершён — значит человек вернулся после перезагрузки/повторного
@@ -167,6 +170,16 @@ export function TourOverlay() {
       if (cancelled) return;
       const el = document.querySelector(step.target!) as HTMLElement | null;
       if (el) {
+        // Один раз на шаг — подводим подсвеченный элемент в центр экрана, чтобы
+        // он (и кнопка «Выложить подарок» внизу формы) точно был виден.
+        if (scrolledForStep.current !== step.id) {
+          scrolledForStep.current = step.id ?? null;
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          } catch {
+            /* старый браузер — не критично */
+          }
+        }
         const r = el.getBoundingClientRect();
         setRect((prev) => {
           if (

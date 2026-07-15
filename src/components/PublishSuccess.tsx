@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPublicGift, deleteGift } from "@/lib/cozy.functions";
 import { shareGift } from "@/lib/share";
 import { ItemCard } from "@/components/ItemCard";
+import { CertificateBuilder } from "@/components/CertificateBuilder";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,7 @@ type GiftPreview = {
   city?: string | null;
   is_online?: boolean | null;
   status?: string | null;
+  owner_name?: string | null;
 };
 
 function giftsWord(n: number) {
@@ -77,6 +79,7 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
   const deleteFn = useServerFn(deleteGift);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
   const doDelete = async () => {
     setDeleting(true);
     try {
@@ -215,21 +218,32 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
               isOnline={gift.is_online}
               onShare={() => shareGift(giftId, gift?.title)}
               footer={
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Link
-                    to="/gift/$giftId/edit"
-                    params={{ giftId }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
-                  >
-                    ✏️ Редактировать
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(true)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
-                  >
-                    🗑 Удалить
-                  </button>
+                <div className="space-y-2">
+                  {gift.status !== "hidden" && (
+                    <button
+                      type="button"
+                      onClick={() => setCertOpen(true)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary transition active:scale-[0.98] hover:bg-primary/15"
+                    >
+                      🎟 Создать подарочный сертификат
+                    </button>
+                  )}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Link
+                      to="/gift/$giftId/edit"
+                      params={{ giftId }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+                    >
+                      ✏️ Редактировать
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm font-medium text-destructive shadow-sm transition active:scale-[0.98] hover:bg-destructive/10"
+                    >
+                      🗑 Удалить
+                    </button>
+                  </div>
                 </div>
               }
             />
@@ -239,8 +253,9 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
                 ссылку тому, кому даришь: получить сможет только он.
               </p>
             ) : (
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Так твой подарок видят другие ✨
+              <p className="mt-2 text-center text-[12px] text-muted-foreground">
+                ✨ Вот так выглядит твой подарок. Можешь отредактировать — или сделать из него
+                подарочный сертификат и подарить кому-то лично.
               </p>
             )}
           </div>
@@ -262,6 +277,16 @@ export function PublishSuccess({ balance, giftId, onGiveAnother, onReceive, onHo
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {certOpen && gift && (
+          <CertificateBuilder
+            giftId={giftId}
+            giftTitle={gift.title}
+            myName={gift.owner_name ?? ""}
+            onClose={() => setCertOpen(false)}
+            onCreated={() => setGift((g) => (g ? { ...g, status: "hidden" } : g))}
+          />
+        )}
 
         <div className="mt-5 rounded-2xl bg-mint/40 p-4 text-sm leading-relaxed text-foreground/90">
           {hint}

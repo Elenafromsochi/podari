@@ -665,12 +665,12 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
         <CardContent className="space-y-6">
           {isThing ? (
             <>
-              <section className="space-y-3">
+              <section className="space-y-3" data-tour="give-step1">
                 <StepHead n={1} title="Фото подарка" hint="ИИ опишет его по фото" />
                 {photoButtons}
                 {previews}
               </section>
-              <section className="space-y-3">
+              <section className="space-y-3" data-tour="give-step2">
                 <StepHead n={2} title="Описание" hint="можно поправить текст от ИИ" />
                 {descriptionField}
               </section>
@@ -684,12 +684,12 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
             </>
           ) : (
             <>
-              <section className="space-y-3">
+              <section className="space-y-3" data-tour="give-step1">
                 <StepHead n={1} title="Описание" hint="расскажи, что даришь" />
                 {descriptionField}
                 {enhanceButton}
               </section>
-              <section className="space-y-3">
+              <section className="space-y-3" data-tour="give-step2">
                 <StepHead n={2} title="Картинка" hint="по описанию или своё фото" />
                 {genImageButton}
                 {photoButtons}
