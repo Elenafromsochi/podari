@@ -40,9 +40,9 @@ export function GiveChoice({ onPickOwn, onPickWish, onBack }: Props) {
             <HandHeart className="h-5 w-5" />
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-semibold leading-tight">Подарить своё</span>
+            <span className="block text-[15px] font-semibold leading-tight">Подарить от себя</span>
             <span className="mt-0.5 block text-xs opacity-75">
-              Подарить то, что у тебя есть или хочется подарить
+              То, что у тебя есть или хочется подарить
             </span>
           </span>
           <span className="mt-1 transition group-hover:translate-x-1">→</span>
@@ -61,10 +61,10 @@ export function GiveChoice({ onPickOwn, onPickWish, onBack }: Props) {
           </span>
           <span className="flex-1">
             <span className="block text-[15px] font-semibold leading-tight">
-              Подарить то, что хотят другие
+              Исполнить чьё-то желание
             </span>
             <span className="mt-0.5 block text-xs opacity-75">
-              Исполни чьё-то желание
+              Открой ленту желаний и подари то, что ждут
             </span>
           </span>
           <span className="mt-1 transition group-hover:translate-x-1">→</span>

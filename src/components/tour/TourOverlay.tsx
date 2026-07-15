@@ -350,29 +350,23 @@ export function TourOverlay() {
   // так она не закрывает кнопки, которые надо нажать.
   const waitsForAction = !!step.advanceOn;
 
-  // позиционирование карточки
+  // Позиционирование карточки. Правило: подсказка НЕ должна перекрывать заголовки
+  // и подсвеченную область. Заголовки почти всегда сверху, поэтому по умолчанию
+  // держим карточку ВНИЗУ (над нижней навигацией). Если подсвеченная область сама
+  // внизу — уводим карточку наверх, чтобы её не закрыть.
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  let cardTop = vh / 2 - 110;
+  const bottomPos = Math.max(120, vh - 230);
+  let cardTop: number;
   if (hole) {
-    // высокую область (например, длинную ленту) не обойти — ставим подсказку
-    // наверх, чтобы не закрывать её середину.
-    if (hole.height > vh * 0.55) {
-      cardTop = 92;
-    } else {
-      // есть подсвеченная область — ставим карточку над или под ней, чтобы не закрывать
-      const below = hole.top + hole.height + 16;
-      const above = hole.top - 16 - 200;
-      cardTop = hole.top + hole.height / 2 < vh / 2
-        ? Math.min(vh - 220, below)
-        : Math.max(16, above);
-    }
+    const holeCenter = hole.top + hole.height / 2;
+    cardTop = holeCenter < vh * 0.55 ? bottomPos : 92;
   } else if (waitsForAction) {
-    cardTop = 92;
+    cardTop = bottomPos;
+  } else {
+    // Чисто текстовый шаг: фон затемнён целиком, заголовки не видны — можно по центру.
+    cardTop = vh / 2 - 110;
   }
-  // Шаг про описание при дарении: подсказку держим ВНИЗУ экрана (над нижней
-  // навигацией), чтобы она не накрывала кнопки формы (фото / Дополнить / Готово).
-  // Форму при этом не прокручиваем — она открывается сверху, зона описания
-  // остаётся выше карточки и полностью кликабельна.
+  // Шаг про описание при дарении: держим ВНИЗУ, чтобы не накрывать кнопки формы.
   if (step.id === "give-photo") {
     cardTop = Math.max(120, vh - 180);
   }
@@ -400,37 +394,39 @@ export function TourOverlay() {
         {/* яркое пульсирующее кольцо вокруг подсвеченной кнопки/области */}
         {hole && (
           <div
-            className="pointer-events-none absolute rounded-2xl ring-4 ring-primary/60 shadow-[0_0_0_3px_rgba(16,185,129,0.5)] animate-pulse"
+            className="pointer-events-none absolute rounded-2xl ring-4 ring-primary shadow-[0_0_0_5px_rgba(205,180,122,0.6)] animate-pulse"
             style={hole}
           />
         )}
 
         <div
-          className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl bg-lavender p-4 text-lavender-foreground shadow-xl ring-1 ring-lavender-foreground/15 animate-scale-in"
+          className="pointer-events-auto absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl border border-primary/25 bg-background p-4 text-foreground shadow-2xl animate-scale-in"
           style={{ top: cardTop }}
         >
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[10.5px] font-medium uppercase tracking-wider text-lavender-foreground/70">
-              Гид по «Подари»
+            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+              🌿 Гид по «Подари»
             </span>
             <button
               onClick={skip}
-              className="text-[11px] text-lavender-foreground/70 underline-offset-4 hover:underline"
+              className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
             >
               Пропустить
             </button>
           </div>
-          <p className="whitespace-pre-line text-[15px] font-medium leading-snug">{displayText}</p>
+          <p className="whitespace-pre-line text-[15px] font-medium leading-snug text-foreground">
+            {displayText}
+          </p>
           {step.cta && (
             <button
               onClick={advance}
-              className="mt-3 w-full rounded-xl bg-mint px-4 py-2.5 text-sm font-semibold text-mint-foreground transition active:scale-[0.98] hover:bg-mint/90"
+              className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90"
             >
               {step.cta}
             </button>
           )}
           {!step.cta && (
-            <p className="mt-2 text-center text-[11px] text-lavender-foreground/70">
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
               👆 сделай шаг, и я продолжу
             </p>
           )}
