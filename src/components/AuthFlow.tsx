@@ -460,8 +460,8 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
         {phase === "idle" && stats && stats.gifts > 0 && (
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-xs text-muted-foreground">
             <span className="relative mr-0.5 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
             Уже на платформе{" "}
             <span className="font-semibold text-foreground">{stats.gifts}</span>{" "}

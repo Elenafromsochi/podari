@@ -59,7 +59,7 @@ export function UserJourney({ userId }: { userId: string }) {
                 key={stage.id}
                 className="flex items-center gap-2.5 rounded-2xl bg-background/50 px-3 py-2.5"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-white">
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />
                 </span>
                 <span className="text-sm font-medium text-muted-foreground">
@@ -103,7 +103,7 @@ export function UserJourney({ userId }: { userId: string }) {
                 </div>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    className="h-full rounded-full bg-primary transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -117,7 +117,7 @@ export function UserJourney({ userId }: { userId: string }) {
                     >
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                          t.done ? "bg-emerald-500 text-white" : "border border-muted-foreground/40"
+                          t.done ? "bg-primary text-white" : "border border-muted-foreground/40"
                         }`}
                       >
                         {t.done && <Check className="h-3 w-3" strokeWidth={3} />}

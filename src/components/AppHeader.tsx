@@ -137,7 +137,7 @@ export function AppHeader({ user }: Props) {
               {xpFx.map((f) => (
                 <span
                   key={f.id}
-                  className={`balance-fx absolute left-1/2 -top-1 text-[11px] font-semibold ${f.positive ? "text-emerald-600" : "text-rose-500"}`}
+                  className={`balance-fx absolute left-1/2 -top-1 text-[11px] font-semibold ${f.positive ? "text-primary" : "text-rose-500"}`}
                 >
                   {f.text}
                 </span>
@@ -159,7 +159,7 @@ export function AppHeader({ user }: Props) {
           {balFx.map((f) => (
             <span
               key={f.id}
-              className={`balance-fx absolute left-1/2 -top-2 text-[11px] font-semibold ${f.positive ? "text-emerald-600" : "text-rose-500"}`}
+              className={`balance-fx absolute left-1/2 -top-2 text-[11px] font-semibold ${f.positive ? "text-primary" : "text-rose-500"}`}
             >
               {f.text}
             </span>

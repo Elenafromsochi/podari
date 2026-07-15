@@ -185,7 +185,7 @@ export function GiftDetailModal({
                 </Link>
               ) : null}
               {gift.is_online ? (
-                <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-700">
+                <span className="rounded-full bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
                   🌐 Онлайн
                 </span>
               ) : gift.city ? (

@@ -540,7 +540,7 @@ export function ChatScreen({
               size="sm"
               disabled={!!handoverRequestedAt}
               onClick={handleRequestHandover}
-              className="h-9 flex-1 rounded-full bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+              className="h-9 flex-1 rounded-full bg-primary text-white shadow-sm hover:bg-primary disabled:opacity-60"
             >
               <Check className="mr-1 h-4 w-4" />
               {handoverRequestedAt ? "Ожидаем подтверждения…" : "Подтвердить передачу"}
@@ -583,7 +583,7 @@ export function ChatScreen({
           <div key={m.id} className={`flex ${m.from === "me" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
               m.from === "me"
-                ? "bg-emerald-600 text-white"
+                ? "bg-primary text-white"
                 : "bg-card text-foreground border"
             }`}>
               <Linkified text={m.text} isMe={m.from === "me"} />
@@ -593,7 +593,7 @@ export function ChatScreen({
       </div>
 
       {/* Нижняя панель: шаблоны (видны сразу, без прокрутки) + поле ввода */}
-      <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-30 border-t-2 border-emerald-600/30 bg-card px-3 pb-3 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
+      <div className="sticky bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] z-30 border-t-2 border-primary/30 bg-card px-3 pb-3 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
         {!handedOver && !cancelled && !bothSpoke && (
           <div className="mb-2 grid grid-cols-2 gap-2" data-tour="chat-templates">
             {hints.map((s) => (
@@ -629,11 +629,11 @@ export function ChatScreen({
             }}
             placeholder="Напишите сообщение…"
             rows={3}
-            className="max-h-44 min-h-[76px] flex-1 resize-none rounded-2xl border-2 border-border bg-background px-4 py-2.5 text-base leading-snug outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+            className="max-h-44 min-h-[76px] flex-1 resize-none rounded-2xl border-2 border-border bg-background px-4 py-2.5 text-base leading-snug outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <Button
             size="icon"
-            className="h-12 w-12 shrink-0 rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700"
+            className="h-12 w-12 shrink-0 rounded-full bg-primary text-white shadow-md hover:bg-primary"
             onClick={() => send(text)}
           >
             <Send className="h-5 w-5" />

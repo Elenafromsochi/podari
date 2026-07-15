@@ -63,7 +63,7 @@ export function ItemCard({
   return (
     <div
       className={`relative rounded-2xl border p-3 shadow-sm ${
-        highlight ? "border-emerald-300 bg-emerald-50" : "bg-card"
+        highlight ? "border-primary/40 bg-primary/5" : "bg-card"
       }`}
     >
       <div className="flex gap-3">
@@ -138,7 +138,7 @@ export function ItemCard({
               </span>
             ) : null}
             {isOnline ? (
-              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
                 🌐 Онлайн
               </span>
             ) : city ? (

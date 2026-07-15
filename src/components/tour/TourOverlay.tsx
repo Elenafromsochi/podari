@@ -400,7 +400,7 @@ export function TourOverlay() {
         {/* яркое пульсирующее кольцо вокруг подсвеченной кнопки/области */}
         {hole && (
           <div
-            className="pointer-events-none absolute rounded-2xl ring-4 ring-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.5)] animate-pulse"
+            className="pointer-events-none absolute rounded-2xl ring-4 ring-primary/60 shadow-[0_0_0_3px_rgba(16,185,129,0.5)] animate-pulse"
             style={hole}
           />
         )}

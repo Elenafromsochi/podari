@@ -510,7 +510,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
                 locked
                   ? "cursor-not-allowed border-input bg-muted/40 text-muted-foreground/50"
                   : active
-                    ? "border-emerald-500 bg-emerald-100 text-emerald-800 shadow-sm"
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
                     : "border-input bg-background text-muted-foreground hover:bg-accent"
               }`}
             >
@@ -557,7 +557,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
               onClick={() => setCity(c)}
               className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                 city === c
-                  ? "border-emerald-500 bg-emerald-100 text-emerald-800"
+                  ? "border-primary bg-primary/10 text-primary"
                   : "border-input bg-background text-muted-foreground hover:bg-accent"
               }`}
             >
@@ -571,7 +571,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           type="checkbox"
           checked={isOnline}
           onChange={(e) => setIsOnline(e.target.checked)}
-          className="h-4 w-4 accent-emerald-600"
+          className="h-4 w-4 accent-primary"
         />
         <span className="font-medium">🌐 Онлайн — доступно в любом городе</span>
       </label>
@@ -590,7 +590,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           type="checkbox"
           checked={multi}
           onChange={(e) => setMulti(e.target.checked)}
-          className="h-4 w-4 accent-emerald-600"
+          className="h-4 w-4 accent-primary"
         />
         <span className="font-medium">🔁 Подарить несколько раз</span>
       </label>

@@ -372,7 +372,7 @@ export function ProfileTab({
                             to="/chat/$giftId"
                             params={{ giftId: b.gift_id }}
                             onClick={() => haptic("select")}
-                            className="flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3 shadow-sm transition active:scale-[0.98]"
+                            className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
                           >
                             {b.gift_image ? (
                               <img
@@ -391,7 +391,7 @@ export function ProfileTab({
                                 забронировал(а) {b.receiver_name}
                               </p>
                             </div>
-                            <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                            <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white">
                               Открыть чат
                             </span>
                           </Link>
@@ -434,7 +434,7 @@ export function ProfileTab({
                                 от {b.other_name}
                               </p>
                             </div>
-                            <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                            <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white">
                               Открыть чат
                             </span>
                           </Link>
@@ -734,7 +734,7 @@ function MyWishItem({
   };
 
   const badge = isHidden ? (
-    <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
       🌌 Скрыто — во Вселенной
     </span>
   ) : w.status === "reserved" ? (

@@ -237,7 +237,7 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
                     onClick={() => setGiftKind(k.id as GiftKind)}
                     className={`flex items-center gap-1.5 rounded-xl border-2 px-2 py-2 text-xs font-medium transition ${
                       active
-                        ? "border-emerald-500 bg-emerald-100 text-emerald-800"
+                        ? "border-primary bg-primary/10 text-primary"
                         : "border-input bg-background text-muted-foreground hover:bg-accent"
                     }`}
                   >
@@ -324,7 +324,7 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
                       locked
                         ? "cursor-not-allowed border-input bg-muted/40 text-muted-foreground/50"
                         : active
-                          ? "border-emerald-500 bg-emerald-100 text-emerald-800 shadow-sm"
+                          ? "border-primary bg-primary/10 text-primary shadow-sm"
                           : "border-input bg-background text-muted-foreground hover:bg-accent"
                     }`}
                   >
@@ -356,7 +356,7 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
                 type="checkbox"
                 checked={isOnline}
                 onChange={(e) => setIsOnline(e.target.checked)}
-                className="h-4 w-4 accent-emerald-600"
+                className="h-4 w-4 accent-primary"
               />
               <span className="font-medium">🌐 Онлайн — доступно в любом городе</span>
             </label>
@@ -369,7 +369,7 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
                 type="checkbox"
                 checked={multi}
                 onChange={(e) => setMulti(e.target.checked)}
-                className="h-4 w-4 accent-emerald-600"
+                className="h-4 w-4 accent-primary"
               />
               <span className="font-medium">🔁 Подарить несколько раз</span>
             </label>
@@ -404,7 +404,7 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
             <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
-          <Button onClick={handleSave} disabled={loading} className="w-full bg-emerald-600 text-white hover:bg-emerald-700">
+          <Button onClick={handleSave} disabled={loading} className="w-full bg-primary text-white hover:bg-primary">
             {loading ? "Сохраняем…" : "💾 Сохранить изменения"}
           </Button>
         </CardContent>

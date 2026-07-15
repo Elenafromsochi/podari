@@ -174,7 +174,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
         )}
         <div className="p-5">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[12px] font-semibold text-emerald-800">
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[12px] font-semibold text-primary">
               🎁 {wish.cost} {wish.cost === 1 ? "балл" : wish.cost < 5 ? "балла" : "баллов"} за
               исполнение
             </span>
@@ -183,7 +183,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
             </span>
             <CityBadge city={wish.city} isOnline={wish.is_online} className="text-[11px]" />
             {wish.status === "hidden" ? (
-              <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
                 🌌 Скрыто — во Вселенной
               </span>
             ) : !isOpen ? (

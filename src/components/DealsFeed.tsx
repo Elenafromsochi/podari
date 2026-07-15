@@ -90,7 +90,7 @@ export function DealsFeed() {
           }`}
         >
           <span
-            className={`inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 ${
+            className={`inline-block h-1.5 w-1.5 rounded-full bg-primary ${
               pulse ? "animate-ping" : "animate-pulse"
             }`}
           />

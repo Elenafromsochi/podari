@@ -166,7 +166,7 @@ export function FirstSteps() {
 
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-background">
         <div
-          className="h-full rounded-full bg-emerald-500 transition-all"
+          className="h-full rounded-full bg-primary transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -183,7 +183,7 @@ export function FirstSteps() {
               >
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                    s.done ? "bg-emerald-500 text-white" : "border border-muted-foreground/40"
+                    s.done ? "bg-primary text-white" : "border border-muted-foreground/40"
                   }`}
                 >
                   {s.done && <Check className="h-3 w-3" strokeWidth={3} />}

@@ -173,7 +173,7 @@ export function Achievements({ variant = "full" }: Props) {
                           {meta.title}
                         </p>
                         {it.unlocked ? (
-                          <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                          <Check className="h-4 w-4 shrink-0 text-primary" />
                         ) : (
                           <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         )}
@@ -191,7 +191,7 @@ export function Achievements({ variant = "full" }: Props) {
                       )}
                     </div>
                     <div className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
-                      it.unlocked ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"
+                      it.unlocked ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                     }`}>
                       {meta.xp > 0 ? `+${meta.xp} XP` : (it.unlocked ? "✓" : "🏅")}
                     </div>

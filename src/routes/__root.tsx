@@ -140,7 +140,7 @@ function RootComponent() {
       <LevelUpModal />
       <TourOverlay />
       <TourExitReport />
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" />
     </QueryClientProvider>
 
   );

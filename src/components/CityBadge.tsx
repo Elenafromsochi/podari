@@ -11,7 +11,7 @@ export function CityBadge({
   if (isOnline)
     return (
       <span
-        className={`rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 ${className}`}
+        className={`rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground ${className}`}
       >
         🌐 Онлайн
       </span>
