@@ -1674,15 +1674,8 @@ export const updateGift = createServerFn({ method: "POST" })
     if (data.gift_kind !== undefined) patch.gift_kind = data.gift_kind;
     if (data.image_url !== undefined) patch.image_url = data.image_url;
     if (data.image_urls !== undefined) patch.image_urls = data.image_urls;
-    // Стоимость менять можно, но не выше своего уровня (как и при публикации).
+    // Стоимость можно ставить любую (как и при публикации) — уровень её не режет.
     if (typeof data.cost === "number") {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("level")
-        .eq("user_id", userId)
-        .maybeSingle();
-      const level = (prof?.level as number | undefined) ?? 1;
-      if (data.cost > level) throw new Error("LEVEL_TOO_LOW");
       patch.cost = data.cost;
     }
 

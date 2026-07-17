@@ -67,7 +67,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "☕",
     label: "Угостить чем-нибудь",
     shortLabel: "Угостить",
-    minLevel: 2,
+    minLevel: 1,
     subtitles: [
       "чашка кофе или обед в кафе",
       "угостить кофе с десертом",
@@ -91,7 +91,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "🎟",
     label: "Приглашение на выставку или мероприятие",
     shortLabel: "Выставка / событие",
-    minLevel: 3,
+    minLevel: 1,
     subtitles: [
       "позвать на выставку вдвоём",
       "взять кого-то с собой на концерт",

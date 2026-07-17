@@ -305,32 +305,20 @@ export function GiftEditForm({ gift, userLevel, onDone, onBack }: Props) {
             <div className="grid grid-cols-5 gap-1.5">
               {COST_TIERS.map((t) => {
                 const active = cost === t.cost;
-                const locked = t.cost > userLevel;
                 return (
                   <button
                     key={t.cost}
                     type="button"
-                    onClick={() => {
-                      if (locked) {
-                        toast(`🔒 ${t.cost} ${t.cost < 5 ? "балла" : "баллов"}`, {
-                          description: `Откроется на ${t.cost} уровне.`,
-                        });
-                        return;
-                      }
-                      setCost(t.cost);
-                    }}
-                    aria-disabled={locked}
+                    onClick={() => setCost(t.cost)}
                     className={`flex flex-col items-center rounded-xl border-2 px-1 py-2 text-[11px] font-medium transition ${
-                      locked
-                        ? "cursor-not-allowed border-input bg-muted/40 text-muted-foreground/50"
-                        : active
-                          ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "border-input bg-background text-muted-foreground hover:bg-accent"
+                      active
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-input bg-background text-muted-foreground hover:bg-accent"
                     }`}
                   >
-                    <span className="text-sm font-semibold">{locked ? "🔒" : t.cost}</span>
+                    <span className="text-sm font-semibold">{t.cost}</span>
                     <span className="text-[9px] opacity-70">
-                      {locked ? `ур. ${t.cost}` : t.cost === 1 ? "балл" : t.cost < 5 ? "балла" : "баллов"}
+                      {t.cost === 1 ? "балл" : t.cost < 5 ? "балла" : "баллов"}
                     </span>
                   </button>
                 );
