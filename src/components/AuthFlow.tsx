@@ -15,6 +15,8 @@ import {
 } from "@/lib/password-auth.functions";
 import { loginWithVk } from "@/lib/vk-auth.functions";
 import { VkLoginButton } from "@/components/VkLoginButton";
+import { loginWithYandex } from "@/lib/yandex-auth.functions";
+import { YandexLoginButton, readYandexReturnToken } from "@/components/YandexLoginButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,6 +169,44 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setStatusText("");
     }
   };
+
+  // --- Вход через Яндекс (без VPN) ---
+  const yandexLoginFn = useServerFn(loginWithYandex);
+  const handleYandexToken = async (accessToken: string) => {
+    setPhase("signing_in");
+    setStatusText("Входим через Яндекс…");
+    try {
+      const referrer_id =
+        typeof window !== "undefined" ? localStorage.getItem("cozygift_pending_ref") : null;
+      const res = await yandexLoginFn({ data: { access_token: accessToken, referrer_id } });
+      await setTelegramSession(res.access_token, res.refresh_token);
+      const profile = await loadUser();
+      if (!profile) throw new Error("Профиль не загружен");
+      confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
+      toast.success(
+        res.is_new
+          ? `Добро пожаловать, ${profile.display_name} 💚`
+          : `С возвращением, ${profile.display_name} 💚`,
+      );
+      onAuthed(profile, res.is_new);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось войти через Яндекс";
+      if (msg.includes("YANDEX_TOKEN_INVALID")) text = "Яндекс не подтвердил вход — попробуй ещё раз";
+      else if (msg.includes("YANDEX_API_UNREACHABLE")) text = "Яндекс временно недоступен";
+      console.error("[AuthFlow] handleYandexToken failed:", msg);
+      toast.error(text, { description: msg, duration: 12000 });
+      setPhase("idle");
+      setStatusText("");
+    }
+  };
+
+  // Возврат с Яндекса: если в URL пришёл #access_token — сразу входим.
+  useEffect(() => {
+    const token = readYandexReturnToken();
+    if (token) handleYandexToken(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -601,6 +641,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                     <span className="h-px flex-1 bg-border" />
                   </div>
                   <VkLoginButton onToken={handleVkToken} />
+                  <YandexLoginButton />
                 </>
               )}
             </>
