@@ -52,20 +52,21 @@ function giftWord(n: number): string {
   return "подарков";
 }
 
-/** Первый шаг гида подстраивается под реальный баланс пользователя. */
+/** Первый шаг гида: рамка «ты в игре» + подстройка под реальный баланс. */
 function balanceStepText(): string {
   const { balance } = readCachedProfile();
   const b = Math.round(balance * 10) / 10;
+  const intro =
+    "🎮 Добро пожаловать в игру «Подари»!\n\nДарить можно сразу всё — вещи, услуги, угощения, встречи. А получать ценные подарки и загадывать желания открывается с уровнями — растёшь, даря добро.\n\n";
   if (b >= 1) {
     const max = Math.floor(b);
-    const extra = max >= 2 ? " (или несколько подешевле)" : "";
-    return `У тебя ${fmtBal(b)} ${ballWord(b)} — можешь выбрать подарок ценой до ${max} ${ballWord(max)}${extra}. Покажу, как 🎁`;
+    return `${intro}У тебя уже ${fmtBal(b)} ${ballWord(b)} — можешь выбрать подарок до ${max} ${ballWord(max)}. Начнём 👇`;
   }
   if (b <= 0) {
-    return "Пока у тебя 0 баллов. Чтобы выбрать подарок, нужен 1 балл — выкладывай свои подарки, каждый даёт +0.2 балла, так баланс и наберётся.";
+    return `${intro}Баллов пока 0. Чтобы выбрать подарок, нужен 1 балл — выкладывай свои подарки, каждый даёт +0.2 балла.`;
   }
   const need = Math.max(1, Math.ceil((1 - b) / 0.2 - 1e-9));
-  return `Сейчас у тебя ${fmtBal(b)} ${ballWord(b)}. Чтобы накопить 1 балл и выбрать подарок, выложи ещё ${need} ${giftWord(need)} — каждый даёт +0.2 балла.`;
+  return `${intro}Сейчас у тебя ${fmtBal(b)} ${ballWord(b)}. До 1 балла — выложи ещё ${need} ${giftWord(need)} (каждый даёт +0.2).`;
 }
 
 /** Текст шага «ты попал в чат» — число замороженных баллов из стоимости
@@ -417,8 +418,11 @@ export function TourOverlay() {
           style={{ top: cardTop }}
         >
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-primary">
-              🌿 Гид по «Подари»
+            <span className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-primary">
+              🎮 Гид по «Подари»
+              <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold normal-case tracking-normal text-primary">
+                Ур. {readCachedProfile().level}
+              </span>
             </span>
             <button
               onClick={skip}
