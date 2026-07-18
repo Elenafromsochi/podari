@@ -459,6 +459,11 @@ export function ReceiveGiftFlow({
               >
                 <div className="mb-1 text-2xl">{k.emoji}</div>
                 <div className="text-sm font-medium">{k.receiveLabel}</div>
+                {k.receiveHint && (
+                  <div className="text-[11px] leading-tight text-muted-foreground/80">
+                    {k.receiveHint}
+                  </div>
+                )}
                 <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                   {locked && <Lock className="h-3 w-3" />}
                   <span>

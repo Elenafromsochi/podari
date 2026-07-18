@@ -9,6 +9,7 @@ export interface KindMeta {
   label: string;
   shortLabel: string;      // подпись при ДАРЕНИИ (глагол: «Угостить»)
   receiveLabel: string;    // подпись при ПОЛУЧЕНИИ (существительное: «Угощение»)
+  receiveHint?: string;    // примеры под подписью на экране «Получить»
   minLevel: number;
   hints: string[];      // заготовки для описания подарка в форме
   subtitles: string[];  // короткие меняющиеся описания категории на карточке
@@ -71,6 +72,7 @@ export const GIFT_KINDS: KindMeta[] = [
     label: "Угостить чем-нибудь",
     shortLabel: "Угостить",
     receiveLabel: "Угощение",
+    receiveHint: "кофе, обед, десерт",
     minLevel: 1,
     subtitles: [
       "чашка кофе или обед в кафе",
@@ -93,9 +95,10 @@ export const GIFT_KINDS: KindMeta[] = [
   {
     id: "event_invite",
     emoji: "🎟",
-    label: "Приглашение на выставку или мероприятие",
-    shortLabel: "Выставка / событие",
-    receiveLabel: "Выставка",
+    label: "Приглашение на мероприятие (кино, прогулка, выставка)",
+    shortLabel: "Мероприятие",
+    receiveLabel: "Мероприятие",
+    receiveHint: "кино, прогулка, выставка",
     minLevel: 1,
     subtitles: [
       "позвать на выставку вдвоём",
