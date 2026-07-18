@@ -48,6 +48,7 @@ function GiftCard({
   onPick,
   meId,
   userLevel,
+  ownsKind,
   onLocked,
   onOpenDetail,
 }: {
@@ -55,11 +56,14 @@ function GiftCard({
   onPick: (id: string) => void;
   meId: string | null;
   userLevel: number;
+  ownsKind: boolean;
   onLocked: (g: Gift, requiredLevel: number) => void;
   onOpenDetail: (g: Gift) => void;
 }) {
-  // Подарок «по карману уровню»? И стоимость, и категория задают порог.
-  const reqLevel = giftRequiredLevel(getKindMeta(g.gift_kind)?.minLevel, g.cost);
+  // Подарок «по карману уровню»? Стоимость задаёт порог всегда; порог категории
+  // снимается, если пользователь сам добавил подарок в эту категорию.
+  const kindMin = ownsKind ? 1 : getKindMeta(g.gift_kind)?.minLevel;
+  const reqLevel = giftRequiredLevel(kindMin, g.cost);
   const lockedByLevel = userLevel < reqLevel;
   // Ссылка ведёт на страницу самого подарка (и засчитывает реферал).
   const shareUrl = `${APP_BASE_URL}/gift/${g.id}${meId ? `?ref=${meId}` : ""}`;
@@ -187,6 +191,9 @@ export function ReceiveGiftFlow({
   );
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
+  // Категории, в которые пользователь сам добавил подарок — они открыты ему для
+  // получения, даже если уровень ещё не дорос (дари → и категория открывается).
+  const [ownedKinds, setOwnedKinds] = useState<Set<GiftKind>>(new Set());
   const [kind, setKind] = useState<GiftKind | null>(null);
   const [feedCat, setFeedCat] = useState<string | null>(null);
   // По умолчанию — все города (иначе подарки без города «исчезают» из ленты).
@@ -208,6 +215,19 @@ export function ReceiveGiftFlow({
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setMeId(user?.id ?? null);
+      // Какие категории пользователь уже «наполнил» своими подарками —
+      // они открыты ему для получения независимо от уровня.
+      if (user?.id) {
+        const { data: mine } = await supabase
+          .from("gifts")
+          .select("gift_kind")
+          .eq("owner_id", user.id);
+        const set = new Set<GiftKind>();
+        for (const row of (mine ?? []) as Array<{ gift_kind: GiftKind }>) {
+          if (row.gift_kind) set.add(row.gift_kind);
+        }
+        setOwnedKinds(set);
+      }
       const baseCols = "id,title,description,category,image_url,image_urls,cost,condition,owner_id,gift_kind,created_at";
       const buildQ = (cols: string) => {
         let q = supabase
@@ -296,6 +316,7 @@ export function ReceiveGiftFlow({
       onPick={onPick}
       meId={meId}
       userLevel={userLevel}
+      ownsKind={ownedKinds.has(g.gift_kind)}
       onLocked={onLocked}
       onOpenDetail={(gg) => setDetail(gg)}
     />
@@ -421,8 +442,11 @@ export function ReceiveGiftFlow({
     const countsByKind = new Map<string, number>();
     for (const g of gifts) countsByKind.set(g.gift_kind, (countsByKind.get(g.gift_kind) ?? 0) + 1);
 
-    const openKinds = GIFT_KINDS.filter((k) => userLevel >= k.minLevel);
-    const lockedKinds = GIFT_KINDS.filter((k) => userLevel < k.minLevel);
+    // Категория открыта, если дорос уровнем ИЛИ сам добавил в неё подарок.
+    const isOpen = (k: (typeof GIFT_KINDS)[number]) =>
+      userLevel >= k.minLevel || ownedKinds.has(k.id);
+    const openKinds = GIFT_KINDS.filter(isOpen);
+    const lockedKinds = GIFT_KINDS.filter((k) => !isOpen(k));
     // Аккуратно склеиваем названия: «Вещи и Услуги», «Вещи, Услуги и Угощение».
     const joinLabels = (arr: typeof GIFT_KINDS) =>
       arr.map((k) => k.receiveLabel).reduce((acc, l, i, a) => {
@@ -444,8 +468,8 @@ export function ReceiveGiftFlow({
             🌱 Сейчас тебе открыты: <b>{joinLabels(openKinds)}</b>.
             {" "}
             {lockedKinds.length === 1 ? "Категория" : "Категории"} <b>{joinLabels(lockedKinds)}</b>{" "}
-            {lockedKinds.length === 1 ? "откроется" : "откроются"} с ростом твоего уровня —
-            дари и получай подарки, и они станут доступны 💚
+            {lockedKinds.length === 1 ? "откроется" : "откроются"} с ростом уровня — или сразу,
+            как только добавишь свой подарок из этой категории 💚
           </div>
         )}
 
@@ -483,14 +507,17 @@ export function ReceiveGiftFlow({
           <div className="space-y-2">
             {GIFT_KINDS.map((k) => {
               const n = countsByKind.get(k.id) ?? 0;
-              const locked = userLevel < k.minLevel;
+              const locked = userLevel < k.minLevel && !ownedKinds.has(k.id);
               return (
                 <button
                   key={k.id}
                   onClick={() => {
                     if (locked) {
                       toast(`🔒 Откроется на ${k.minLevel} уровне`, {
-                        description: "Дари и получай подарки — и дойдёшь до неё 💚",
+                        description: "…или сразу, если добавишь свой подарок из этой категории 💚",
+                        action: onGive
+                          ? { label: "Подарить", onClick: () => onGive() }
+                          : undefined,
                       });
                       return;
                     }
