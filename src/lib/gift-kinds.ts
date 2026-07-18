@@ -73,7 +73,7 @@ export const GIFT_KINDS: KindMeta[] = [
     shortLabel: "Угостить",
     receiveLabel: "Угощение",
     receiveHint: "кофе, обед, десерт",
-    minLevel: 1,
+    minLevel: 2,
     subtitles: [
       "чашка кофе или обед в кафе",
       "угостить кофе с десертом",
@@ -99,7 +99,7 @@ export const GIFT_KINDS: KindMeta[] = [
     shortLabel: "Мероприятие",
     receiveLabel: "Мероприятие",
     receiveHint: "кино, прогулка, выставка",
-    minLevel: 1,
+    minLevel: 3,
     subtitles: [
       "позвать на выставку вдвоём",
       "взять кого-то с собой на концерт",

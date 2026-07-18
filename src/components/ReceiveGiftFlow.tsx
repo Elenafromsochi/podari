@@ -421,6 +421,15 @@ export function ReceiveGiftFlow({
     const countsByKind = new Map<string, number>();
     for (const g of gifts) countsByKind.set(g.gift_kind, (countsByKind.get(g.gift_kind) ?? 0) + 1);
 
+    const openKinds = GIFT_KINDS.filter((k) => userLevel >= k.minLevel);
+    const lockedKinds = GIFT_KINDS.filter((k) => userLevel < k.minLevel);
+    // Аккуратно склеиваем названия: «Вещи и Услуги», «Вещи, Услуги и Угощение».
+    const joinLabels = (arr: typeof GIFT_KINDS) =>
+      arr.map((k) => k.receiveLabel).reduce((acc, l, i, a) => {
+        if (i === 0) return l;
+        return i === a.length - 1 ? `${acc} и ${l}` : `${acc}, ${l}`;
+      }, "");
+
     return (
       <div className="mx-auto w-full max-w-md px-5 py-8">
         <button
@@ -430,9 +439,13 @@ export function ReceiveGiftFlow({
           ← Назад
         </button>
 
-        {GIFT_KINDS.some((k) => userLevel < k.minLevel) && (
-          <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm">
-            🎉 У тебя есть подарочные баллы. Категории открываются по уровню — твой сейчас: <b>{userLevel}</b>.
+        {lockedKinds.length > 0 && (
+          <div className="mb-5 rounded-2xl bg-peach/40 p-4 text-sm leading-relaxed">
+            🌱 Сейчас тебе открыты: <b>{joinLabels(openKinds)}</b>.
+            {" "}
+            {lockedKinds.length === 1 ? "Категория" : "Категории"} <b>{joinLabels(lockedKinds)}</b>{" "}
+            {lockedKinds.length === 1 ? "откроется" : "откроются"} с ростом твоего уровня —
+            дари и получай подарки, и они станут доступны 💚
           </div>
         )}
 
@@ -465,22 +478,34 @@ export function ReceiveGiftFlow({
             </span>
           </button>
 
-          {/* Категории — компактные строки: подпись слева, число справа */}
+          {/* Категории — компактные строки: подпись слева, число справа.
+              Закрытые по уровню категории видны, но приглушены и с замочком. */}
           <div className="space-y-2">
             {GIFT_KINDS.map((k) => {
               const n = countsByKind.get(k.id) ?? 0;
+              const locked = userLevel < k.minLevel;
               return (
                 <button
                   key={k.id}
                   onClick={() => {
+                    if (locked) {
+                      toast(`🔒 Откроется на ${k.minLevel} уровне`, {
+                        description: "Дари и получай подарки — и дойдёшь до неё 💚",
+                      });
+                      return;
+                    }
                     setKind(k.id);
                     setStep("feed");
                     emitTour("kind-picked");
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 text-left shadow-sm transition hover:bg-accent active:scale-[0.99]"
+                  className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition active:scale-[0.99] ${
+                    locked
+                      ? "border-dashed bg-muted/40 opacity-70 hover:opacity-100"
+                      : "bg-card hover:bg-accent"
+                  }`}
                 >
                   <span className="flex min-w-0 items-center gap-3">
-                    <span className="text-2xl">{k.emoji}</span>
+                    <span className={`text-2xl ${locked ? "grayscale" : ""}`}>{k.emoji}</span>
                     <span className="min-w-0">
                       <span className="block text-sm font-medium leading-tight">
                         {k.receiveLabel}
@@ -492,9 +517,15 @@ export function ReceiveGiftFlow({
                       )}
                     </span>
                   </span>
-                  <span className="shrink-0 text-lg font-bold tabular-nums text-foreground/60">
-                    {n}
-                  </span>
+                  {locked ? (
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-peach/60 px-2 py-1 text-[11px] font-semibold text-foreground/70">
+                      🔒 с {k.minLevel} ур.
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-lg font-bold tabular-nums text-foreground/60">
+                      {n}
+                    </span>
+                  )}
                 </button>
               );
             })}
