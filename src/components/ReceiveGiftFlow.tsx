@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Mic, MicOff, Search, Lock, Send, Share2 } from "lucide-react";
+import { Mic, MicOff, Search, Send, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -443,53 +443,62 @@ export function ReceiveGiftFlow({
           Один из тех, что подарили другие участники — выбери категорию:
         </p>
 
-        <div className="grid grid-cols-2 gap-3" data-tour="tour-spot">
-          {GIFT_KINDS.map((k) => {
-            const locked = userLevel < k.minLevel;
-            const n = countsByKind.get(k.id) ?? 0;
-            return (
-              <button
-                key={k.id}
-                onClick={() => {
-                  setKind(k.id);
-                  setStep("feed");
-                  emitTour("kind-picked");
-                }}
-                className="relative rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent hover:-translate-y-0.5"
-              >
-                <div className="mb-1 text-2xl">{k.emoji}</div>
-                <div className="text-sm font-medium">{k.receiveLabel}</div>
-                {k.receiveHint && (
-                  <div className="text-[11px] leading-tight text-muted-foreground/80">
-                    {k.receiveHint}
-                  </div>
-                )}
-                <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  {locked && <Lock className="h-3 w-3" />}
-                  <span>
-                    {n} {n === 1 ? "подарок" : "подарков"}
-                    {locked ? ` · с ур. ${k.minLevel}` : ""}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-
-          {/* Все подарки — единая лента всех категорий */}
+        <div data-tour="tour-spot">
+          {/* Все подарки — большая широкая кнопка сверху, во всю ширину */}
           <button
             onClick={() => {
               setKind(null);
               setStep("feed");
               emitTour("kind-picked");
             }}
-            className="relative rounded-2xl border border-primary/40 bg-primary/10 p-4 text-left shadow-sm transition hover:bg-primary/15 hover:-translate-y-0.5"
+            className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-4 text-left shadow-sm transition hover:bg-primary/15 active:scale-[0.99]"
           >
-            <div className="mb-1 text-2xl">🎁</div>
-            <div className="text-sm font-semibold text-primary">Все подарки</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {gifts.length} {gifts.length === 1 ? "подарок" : "подарков"} — вся лента
-            </div>
+            <span className="flex items-center gap-3">
+              <span className="text-2xl">🎁</span>
+              <span>
+                <span className="block text-base font-semibold text-primary">Все подарки</span>
+                <span className="block text-xs text-muted-foreground">вся лента</span>
+              </span>
+            </span>
+            <span className="shrink-0 text-xl font-bold tabular-nums text-primary">
+              {gifts.length}
+            </span>
           </button>
+
+          {/* Категории — компактные строки: подпись слева, число справа */}
+          <div className="space-y-2">
+            {GIFT_KINDS.map((k) => {
+              const n = countsByKind.get(k.id) ?? 0;
+              return (
+                <button
+                  key={k.id}
+                  onClick={() => {
+                    setKind(k.id);
+                    setStep("feed");
+                    emitTour("kind-picked");
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 text-left shadow-sm transition hover:bg-accent active:scale-[0.99]"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="text-2xl">{k.emoji}</span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium leading-tight">
+                        {k.receiveLabel}
+                      </span>
+                      {k.receiveHint && (
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {k.receiveHint}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-lg font-bold tabular-nums text-foreground/60">
+                    {n}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-5 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm">
