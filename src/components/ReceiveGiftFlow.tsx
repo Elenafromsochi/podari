@@ -436,9 +436,11 @@ export function ReceiveGiftFlow({
           </div>
         )}
 
-        <h2 className="mb-1 text-2xl font-semibold">Что бы тебе хотелось?</h2>
+        <h2 className="mb-1 text-2xl font-semibold text-balance">
+          Для начала выбери себе подарок 🎁
+        </h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Выбери категорию подарка
+          Один из тех, что подарили другие участники — выбери категорию:
         </p>
 
         <div className="grid grid-cols-2 gap-3" data-tour="tour-spot">
