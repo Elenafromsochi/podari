@@ -458,7 +458,7 @@ export function ReceiveGiftFlow({
                 className="relative rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:bg-accent hover:-translate-y-0.5"
               >
                 <div className="mb-1 text-2xl">{k.emoji}</div>
-                <div className="text-sm font-medium">{k.shortLabel}</div>
+                <div className="text-sm font-medium">{k.receiveLabel}</div>
                 <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                   {locked && <Lock className="h-3 w-3" />}
                   <span>
@@ -469,6 +469,22 @@ export function ReceiveGiftFlow({
               </button>
             );
           })}
+
+          {/* Все подарки — единая лента всех категорий */}
+          <button
+            onClick={() => {
+              setKind(null);
+              setStep("feed");
+              emitTour("kind-picked");
+            }}
+            className="relative rounded-2xl border border-primary/40 bg-primary/10 p-4 text-left shadow-sm transition hover:bg-primary/15 hover:-translate-y-0.5"
+          >
+            <div className="mb-1 text-2xl">🎁</div>
+            <div className="text-sm font-semibold text-primary">Все подарки</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {gifts.length} {gifts.length === 1 ? "подарок" : "подарков"} — вся лента
+            </div>
+          </button>
         </div>
 
         <div className="mt-5 flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 shadow-sm">
@@ -509,7 +525,8 @@ export function ReceiveGiftFlow({
   // остальное собираем во вкладку «Разное». Пока подарков мало — вкладок нет,
   // просто общая лента.
   const kindMeta = kind ? getKindMeta(kind) : null;
-  const inKind = gifts.filter((g) => g.gift_kind === kind);
+  // kind === null → «Все подарки»: лента всех категорий.
+  const inKind = kind ? gifts.filter((g) => g.gift_kind === kind) : gifts;
 
   // Фильтр по местоположению: города + «Онлайн». Онлайн-подарки доступны
   // в любом городе, поэтому показываются и при выбранном городе.
@@ -553,7 +570,7 @@ export function ReceiveGiftFlow({
         ← К категориям
       </button>
       <h2 className="mb-1 text-2xl font-semibold">
-        {kindMeta?.emoji} {kindMeta?.shortLabel}
+        {kindMeta ? `${kindMeta.emoji} ${kindMeta.receiveLabel}` : "🎁 Все подарки"}
       </h2>
       <p className="mb-4 text-sm text-muted-foreground">
         {inKind.length} {inKind.length === 1 ? "подарок" : "подарков"} доступно

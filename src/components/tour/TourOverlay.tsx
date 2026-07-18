@@ -340,27 +340,34 @@ export function TourOverlay() {
       }
     : null;
 
-  // Шаг ждёт действия на самой странице (advanceOn): страницу НЕ блокируем,
-  // нужную область только подсвечиваем кольцом, а подсказку держим сверху —
-  // так она не закрывает кнопки, которые надо нажать.
-  const waitsForAction = !!step.advanceOn;
-
-  // Позиционирование карточки. Правило: подсказка НЕ должна перекрывать заголовки
-  // и подсвеченную область. Заголовки почти всегда сверху, поэтому по умолчанию
-  // держим карточку ВНИЗУ (над нижней навигацией). Если подсвеченная область сама
-  // внизу — уводим карточку наверх, чтобы её не закрыть.
+  // Позиционирование карточки. Правило: по умолчанию карточка ПО ЦЕНТРУ. Сдвигаем
+  // её (вверх/вниз) только если по центру она перекрыла бы подсвеченную область —
+  // тогда уходим на ту сторону, где больше места. Вниз «просто так» не смещаем.
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const bottomPos = Math.max(120, vh - 230);
+  const cardH = 210; // примерная высота карточки
+  const centerTop = Math.max(80, vh / 2 - cardH / 2);
   let cardTop: number;
   if (hole) {
-    const holeCenter = hole.top + hole.height / 2;
-    cardTop = holeCenter < vh * 0.55 ? bottomPos : 92;
-  } else if (waitsForAction) {
-    cardTop = bottomPos;
+    const gap = 14;
+    const holeTop = hole.top - gap;
+    const holeBot = hole.top + hole.height + gap;
+    // Перекрыла бы подсветку, если стоя по центру?
+    const overlaps = centerTop + cardH > holeTop && centerTop < holeBot;
+    if (!overlaps) {
+      cardTop = centerTop;
+    } else if (vh - holeBot >= cardH + 16) {
+      cardTop = holeBot + 12; // места хватает снизу от подсветки
+    } else if (holeTop >= cardH + 16) {
+      cardTop = holeTop - 12 - cardH; // иначе сверху
+    } else {
+      cardTop = Math.max(80, vh - cardH - 88); // край. случай — над навигацией
+    }
   } else {
-    // Чисто текстовый шаг: фон затемнён целиком, заголовки не видны — можно по центру.
-    cardTop = vh / 2 - 110;
+    // Чисто текстовый шаг (или ожидание действия без подсветки) — по центру.
+    cardTop = centerTop;
   }
+  // Чтобы не улетала за экран.
+  cardTop = Math.min(Math.max(80, cardTop), Math.max(80, vh - cardH - 16));
   // Шаг про описание при дарении: держим ВНИЗУ, чтобы не накрывать кнопки формы.
   if (step.id === "give-photo") {
     cardTop = Math.max(120, vh - 180);

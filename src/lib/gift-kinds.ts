@@ -7,7 +7,8 @@ export interface KindMeta {
   id: GiftKind;
   emoji: string;
   label: string;
-  shortLabel: string;
+  shortLabel: string;      // подпись при ДАРЕНИИ (глагол: «Угостить»)
+  receiveLabel: string;    // подпись при ПОЛУЧЕНИИ (существительное: «Угощение»)
   minLevel: number;
   hints: string[];      // заготовки для описания подарка в форме
   subtitles: string[];  // короткие меняющиеся описания категории на карточке
@@ -19,6 +20,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "📦",
     label: "Вещи",
     shortLabel: "Вещи",
+    receiveLabel: "Вещи",
     minLevel: 1,
     subtitles: [
       "то, что давно не используется",
@@ -43,6 +45,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "💼",
     label: "Услуги / время",
     shortLabel: "Услуги / время",
+    receiveLabel: "Услуги",
     minLevel: 1,
     subtitles: [
       "то, что ты любишь делать",
@@ -67,6 +70,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "☕",
     label: "Угостить чем-нибудь",
     shortLabel: "Угостить",
+    receiveLabel: "Угощение",
     minLevel: 1,
     subtitles: [
       "чашка кофе или обед в кафе",
@@ -91,6 +95,7 @@ export const GIFT_KINDS: KindMeta[] = [
     emoji: "🎟",
     label: "Приглашение на выставку или мероприятие",
     shortLabel: "Выставка / событие",
+    receiveLabel: "Выставка",
     minLevel: 1,
     subtitles: [
       "позвать на выставку вдвоём",

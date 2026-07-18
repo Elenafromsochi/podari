@@ -48,8 +48,14 @@ export function TourExitReport() {
   return (
     <>
       {show && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[85] flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-fade-in">
-          <div className="pointer-events-auto w-full max-w-md rounded-2xl border bg-background p-4 shadow-xl">
+        <div
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+          onClick={dismiss}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border bg-background p-5 shadow-xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
             <p className="text-sm font-semibold">Что-то пошло не так в гиде? 💛</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Если ты увидел ошибку и не смог пройти дальше — пришли скриншот экрана с ошибкой.

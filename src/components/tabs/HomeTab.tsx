@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,15 +78,6 @@ export function HomeTab({
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
-  const feedRef = useRef<HTMLDivElement | null>(null);
-  const openAllGifts = () => {
-    haptic("select");
-    setFeedTab("active");
-    // Даём вкладке переключиться, затем плавно подводим к ленте.
-    requestAnimationFrame(() =>
-      feedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
-  };
 
   // Гид по сервису: для шага home-wishes автоматически переключаем фид на «Загадали»,
   // а для home-gifted — на «Подарили», чтобы было что подсветить.
@@ -275,16 +266,6 @@ export function HomeTab({
         </button>
       </div>
 
-      {/* Все подарки — прямой вход в общую ленту, без выбора категорий */}
-      <button
-        type="button"
-        data-tour="all-gifts"
-        onClick={openAllGifts}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary transition active:scale-[0.98] hover:bg-primary/15"
-      >
-        🎁 Все подарки — вся лента
-      </button>
-
       {/* Search */}
       <div
         data-tour="home-search"
@@ -322,9 +303,8 @@ export function HomeTab({
       {/* Вкладки ленты со встроенным счётчиком: цифры «жизни сервиса» теперь
           прямо на кнопках — число в «календарной» плитке под названием. */}
       <div
-        ref={feedRef}
         data-tour="home-stats"
-        className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1 scroll-mt-4"
+        className="mb-4 grid grid-cols-3 gap-1 rounded-2xl border bg-muted/60 p-1"
       >
         {(
           [
