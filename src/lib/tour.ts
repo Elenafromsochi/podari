@@ -128,7 +128,8 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "point-receive",
     target: '[data-tour="receive-btn"]',
-    text: "Нажми сюда 👆",
+    text:
+      "Для начала выберем себе подарок — один из тех, что подарили другие участники. Нажми «Получить» 👆",
     advanceOn: "receive-opened",
   },
   {
