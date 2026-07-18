@@ -52,23 +52,6 @@ function giftWord(n: number): string {
   return "подарков";
 }
 
-/** Первый шаг гида: рамка «ты в игре» + подстройка под реальный баланс. */
-function balanceStepText(): string {
-  const { balance } = readCachedProfile();
-  const b = Math.round(balance * 10) / 10;
-  const intro =
-    "🎮 Добро пожаловать в игру «Подари»!\n\nДарить можно сразу всё — вещи, услуги, угощения, встречи. А получать ценные подарки и загадывать желания открывается с уровнями — растёшь, даря добро.\n\n";
-  if (b >= 1) {
-    const max = Math.floor(b);
-    return `${intro}У тебя уже ${fmtBal(b)} ${ballWord(b)} — можешь выбрать подарок до ${max} ${ballWord(max)}. Начнём 👇`;
-  }
-  if (b <= 0) {
-    return `${intro}Баллов пока 0. Чтобы выбрать подарок, нужен 1 балл — выкладывай свои подарки, каждый даёт +0.2 балла.`;
-  }
-  const need = Math.max(1, Math.ceil((1 - b) / 0.2 - 1e-9));
-  return `${intro}Сейчас у тебя ${fmtBal(b)} ${ballWord(b)}. До 1 балла — выложи ещё ${need} ${giftWord(need)} (каждый даёт +0.2).`;
-}
-
 /** Текст шага «ты попал в чат» — число замороженных баллов из стоимости
  *  только что выбранного подарка. */
 function freezeStepText(): string {
@@ -333,16 +316,14 @@ export function TourOverlay() {
 
   const skip = () => exitEarly();
 
-  // Динамические шаги: первый — под баланс, «выбери категорию» — под уровень,
-  // «попал в чат» — число замороженных баллов из стоимости подарка.
+  // Динамические шаги: «выбери категорию» — под уровень, «попал в чат» —
+  // число замороженных баллов из стоимости подарка.
   const displayText =
-    step.id === "auth-confetti"
-      ? balanceStepText()
-      : step.id === "kinds-explain"
-        ? kindsStepText()
-        : step.id === "chat-freeze"
-          ? freezeStepText()
-          : step.id === "give-intro"
+    step.id === "kinds-explain"
+      ? kindsStepText()
+      : step.id === "chat-freeze"
+        ? freezeStepText()
+        : step.id === "give-intro"
           ? giveIntroStepText()
           : step.id === "give-cost"
             ? giveCostStepText()

@@ -221,7 +221,7 @@ export function HomeTab({
 
       {/* Три главных действия — те же, что в профиле: дарить / получать / загадать.
           Одна зелёно-песочная гамма (Вариант B): тёмная олива / светлая олива / песок. */}
-      <div className="mb-5 grid grid-cols-3 gap-3">
+      <div className="mb-5 grid grid-cols-3 gap-3" data-tour="home-actions">
         <button
           type="button"
           data-tour="give-btn"
