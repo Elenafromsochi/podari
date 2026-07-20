@@ -451,8 +451,8 @@ export const claimGift = createServerFn({ method: "POST" })
     if (g?.owner_id && g.owner_id !== userId) {
       await notifyUser(
         g.owner_id,
-        `🎁 Кто-то забронировал твой подарок «${g.title}»! Загляни в чат — договоритесь о встрече.`,
-        chatPath(data.gift_id),
+        `🎁 Кто-то забронировал твой подарок «${g.title}»! Открой «Подари» — там ждёт подтверждение.`,
+        "/",
       );
       // Для многоразового подарока: подсказываем владельцу, что экземпляры
       // заканчиваются. remaining приходит из claim_gift только после миграции.

@@ -1,18 +1,36 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
+import { requestHandover } from "@/lib/cozy.functions";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type PendingHandover = { txId: string; giftId: string; title: string };
 
 /**
- * Глобальный слушатель Realtime для:
- *  - уведомлений дарителю, что его подарок выбрали (новая транзакция);
- *  - уведомлений о новых сообщениях в чатах (от другого участника).
- * Монтируется один раз в __root.tsx и работает на любом маршруте.
+ * Глобальный слушатель Realtime: когда чужой подарок выбирают, дарителю
+ * на ЛЮБОЙ странице показывается окно с подтверждением передачи — не
+ * тост, который можно пропустить. Монтируется один раз в __root.tsx.
  */
 export function GlobalNotifications() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
+  // Подарки, которые у меня забронировали и я ещё не отметил(а) передачу —
+  // окно с подтверждением висит на ЛЮБОЙ странице, пока не подтвердишь.
+  const [pending, setPending] = useState<PendingHandover[]>([]);
+  const requestHandoverFn = useServerFn(requestHandover);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +44,31 @@ export function GlobalNotifications() {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // При входе подтягиваем уже накопившиеся брони без подтверждения передачи —
+  // например, подарок выбрали, пока человек не заходил в приложение.
+  useEffect(() => {
+    if (!user?.user_id) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("transactions")
+        .select("id, gift_id, gift:gifts(title)")
+        .eq("sender_id", user.user_id)
+        .eq("status", "pending")
+        .is("handover_requested_at", null)
+        .order("created_at", { ascending: true });
+      if (!alive || !data) return;
+      setPending(
+        (data as Array<{ id: string; gift_id: string; gift: { title: string } | null }>).map(
+          (row) => ({ txId: row.id, giftId: row.gift_id, title: row.gift?.title ?? "Подарок" }),
+        ),
+      );
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [user?.user_id]);
 
   // Подписки на realtime-события
   useEffect(() => {
@@ -49,16 +92,31 @@ export function GlobalNotifications() {
             .select("title")
             .eq("id", tx.gift_id)
             .maybeSingle();
-          toast.success("Твой подарок выбрали! 💚", {
-            description: `«${gift?.title ?? "Подарок"}» — открой чат с получателем`,
-            action: {
-              label: "В чат",
-              onClick: () => navigate({ to: "/chat/$giftId", params: { giftId: tx.gift_id } }),
-            },
-            duration: 12000,
-          });
+          // Окно с подтверждением передачи появится на любой странице —
+          // отдельный тост тут больше не нужен, чтобы не дублировать.
+          setPending((prev) =>
+            prev.some((p) => p.txId === tx.id)
+              ? prev
+              : [...prev, { txId: tx.id, giftId: tx.gift_id, title: gift?.title ?? "Подарок" }],
+          );
           // увеличим счётчик «новых событий по подаркам» для бейджа в кабинете
           window.dispatchEvent(new CustomEvent("cozy:gifts-activity"));
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "transactions",
+          filter: `sender_id=eq.${me}`,
+        },
+        (payload) => {
+          const tx = payload.new as { id: string; status: string; handover_requested_at: string | null };
+          // Передачу отметили (или сделку отменили) — окно больше не нужно.
+          if (tx.handover_requested_at || tx.status !== "pending") {
+            setPending((prev) => prev.filter((p) => p.txId !== tx.id));
+          }
         },
       )
       .subscribe();
@@ -66,7 +124,55 @@ export function GlobalNotifications() {
     return () => {
       supabase.removeChannel(txChannel);
     };
-  }, [user?.user_id, navigate]);
+  }, [user?.user_id]);
 
-  return null;
+  const current = pending[0] ?? null;
+
+  const confirmHandover = async () => {
+    if (!current) return;
+    setConfirming(true);
+    try {
+      await requestHandoverFn({ data: { transaction_id: current.txId } });
+      toast.success("Передача отмечена 💚", {
+        description: "Получатель подтвердит — и сделка завершится",
+      });
+      setPending((prev) => prev.filter((p) => p.txId !== current.txId));
+      window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
+    } catch (e) {
+      toast.error("Не удалось подтвердить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const goToChat = () => {
+    if (!current) return;
+    const giftId = current.giftId;
+    setPending((prev) => prev.filter((p) => p.txId !== current.txId));
+    navigate({ to: "/chat/$giftId", params: { giftId } });
+  };
+
+  return (
+    <AlertDialog open={!!current} onOpenChange={() => {}}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Подарок выбрали! 🎁</AlertDialogTitle>
+          <AlertDialogDescription>
+            «{current?.title}» забронировали. Когда передашь подарок — подтверди
+            здесь, и сделка сможет завершиться.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+          <AlertDialogAction onClick={confirmHandover} disabled={confirming} className="w-full">
+            {confirming ? "Минутку…" : "✅ Подтвердить передачу"}
+          </AlertDialogAction>
+          <Button variant="outline" className="w-full" onClick={goToChat}>
+            💬 Перейти в чат
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
