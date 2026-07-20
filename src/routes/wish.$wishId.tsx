@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -41,6 +41,11 @@ type PublicWish = {
 function WishPage() {
   const { wishId } = Route.useParams();
   const navigate = useNavigate();
+  const router = useRouter();
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
+    else navigate({ to: "/" });
+  };
   const getWish = useServerFn(getPublicWish);
   const fulfill = useServerFn(fulfillWish);
 
@@ -260,12 +265,13 @@ function WishPage() {
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-md bg-background px-5 pb-10 pt-5">
-      <Link
-        to="/"
+      <button
+        type="button"
+        onClick={goBack}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> На главную
-      </Link>
+        <ArrowLeft className="h-4 w-4" /> Назад
+      </button>
 
       {wish === undefined ? (
         <div className="mt-5 space-y-3">
