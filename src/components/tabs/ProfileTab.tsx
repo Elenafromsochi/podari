@@ -8,6 +8,7 @@ import {
   BarChart3,
   Send,
   Sparkles,
+  History,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ import {
   setGiftHidden,
   markInvited,
   updateMyProfile,
+  getBalanceHistory,
 } from "@/lib/cozy.functions";
 import { uploadImage } from "@/lib/upload-image";
 import { COST_TIERS } from "@/lib/gift-kinds";
@@ -101,6 +103,31 @@ type IncomingItem = {
 };
 type ActivityKey = "posted" | "gifted" | "received" | "booked";
 
+type BalanceEvent = {
+  id: string;
+  delta: number;
+  reason: string;
+  created_at: string;
+  title: string | null;
+};
+
+// Подпись и эмодзи для каждой причины изменения баланса — единое место для текста.
+const BALANCE_REASONS: Record<string, { label: (title: string | null) => string; emoji: string }> = {
+  welcome_bonus: { label: () => "Приветственный балл", emoji: "🎉" },
+  gift_published: { label: (t) => `Опубликовал(а) подарок «${t ?? "подарок"}»`, emoji: "🎁" },
+  gift_claimed: { label: (t) => `Забрал(а) подарок «${t ?? "подарок"}»`, emoji: "🛍" },
+  gift_handed_over: { label: (t) => `Вручил(а) подарок «${t ?? "подарок"}»`, emoji: "💚" },
+  gift_claim_cancelled: { label: (t) => `Отменена бронь «${t ?? "подарок"}» — баллы вернулись`, emoji: "↩️" },
+  wish_paid: { label: (t) => `Исполнили желание «${t ?? "желание"}»`, emoji: "✨" },
+  wish_fulfilled: { label: (t) => `Исполнил(а) желание «${t ?? "желание"}»`, emoji: "🌟" },
+};
+
+function formatBalanceEvent(e: BalanceEvent): { text: string; emoji: string } {
+  const known = BALANCE_REASONS[e.reason];
+  if (known) return { text: known.label(e.title), emoji: known.emoji };
+  return { text: e.title ? `«${e.title}»` : "Изменение баланса", emoji: "🎁" };
+}
+
 // Правила XP/уровней теперь живут в поповере на верхней плашке (AppHeader).
 
 interface Props {
@@ -146,6 +173,21 @@ export function ProfileTab({
   const [aboutDraft, setAboutDraft] = useState(user.about ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
   const updateProfileFn = useServerFn(updateMyProfile);
+
+  // История баллов: подгружаем лениво, при первом раскрытии секции.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<BalanceEvent[] | null>(null);
+  const historyFn = useServerFn(getBalanceHistory);
+  const toggleHistory = () => {
+    haptic("select");
+    setHistoryOpen((v) => {
+      const next = !v;
+      if (next && history === null) {
+        historyFn({}).then((h) => setHistory(h as BalanceEvent[])).catch(() => setHistory([]));
+      }
+      return next;
+    });
+  };
 
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
@@ -381,6 +423,73 @@ export function ProfileTab({
         {achOpen && (
           <div className="achievements-list border-t bg-background/40 p-4">
             <Achievements variant="full" />
+          </div>
+        )}
+      </section>
+
+      {/* История баллов: начисления и списания одним списком */}
+      <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
+        <button
+          type="button"
+          onClick={toggleHistory}
+          className="flex w-full items-center justify-between px-4 py-3.5 text-left transition active:bg-accent/50"
+          aria-expanded={historyOpen}
+        >
+          <span className="flex items-center gap-2 text-[15px] font-semibold">
+            <History className="h-4 w-4 text-primary" />
+            История баллов
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${
+              historyOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {historyOpen && (
+          <div className="border-t bg-background/40 p-4">
+            {history === null ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Пока пусто — баллы появятся здесь, как только начнёшь дарить и получать 💚
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {history.map((e) => {
+                  const { text, emoji } = formatBalanceEvent(e);
+                  const positive = e.delta >= 0;
+                  return (
+                    <li
+                      key={e.id}
+                      className="flex items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5"
+                    >
+                      <span className="shrink-0 text-lg leading-none">{emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm">{text}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {new Date(e.created_at).toLocaleDateString("ru-RU", {
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 text-sm font-semibold tabular-nums ${
+                          positive ? "text-mint-foreground" : "text-muted-foreground"
+                        }`}
+                      >
+                        {positive ? "+" : ""}
+                        {e.delta.toFixed(1)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         )}
       </section>

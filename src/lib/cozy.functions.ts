@@ -899,6 +899,38 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- История баллов (начисления и списания) ----------
+export const getBalanceHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    // Таблицы balance_events может ещё не быть (миграция не накатана) —
+    // тогда просто отдаём пустую историю, ничего не ломаем.
+    const { data, error } = await supabase
+      .from("balance_events")
+      .select("id, delta, reason, created_at, gift:gifts(title), wish:wishes(title)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error || !data) return [];
+    return (
+      data as Array<{
+        id: string;
+        delta: number;
+        reason: string;
+        created_at: string;
+        gift: { title: string } | null;
+        wish: { title: string } | null;
+      }>
+    ).map((r) => ({
+      id: r.id,
+      delta: Number(r.delta),
+      reason: r.reason,
+      created_at: r.created_at,
+      title: r.gift?.title ?? r.wish?.title ?? null,
+    }));
+  });
+
 // ---------- Public single gift (для страницы подарка по ссылке, без входа) ----------
 export const getPublicGift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))
