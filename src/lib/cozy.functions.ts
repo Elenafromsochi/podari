@@ -877,6 +877,28 @@ export const reofferGift = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Обновление своего профиля (фото и «о себе») ----------
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        avatar_url: z.string().max(2000).nullable().optional(),
+        about: z.string().max(300).nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const patch: Record<string, unknown> = {};
+    if (data.avatar_url !== undefined) patch.avatar_url = data.avatar_url;
+    if (data.about !== undefined) patch.about = data.about?.trim() || null;
+    if (Object.keys(patch).length === 0) return { ok: true };
+    const { error } = await supabase.from("profiles").update(patch).eq("user_id", userId);
+    if (error) failOp("PROFILE_UPDATE_FAILED", error);
+    return { ok: true };
+  });
+
 // ---------- Public single gift (для страницы подарка по ссылке, без входа) ----------
 export const getPublicGift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))

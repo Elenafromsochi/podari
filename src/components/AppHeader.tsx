@@ -111,10 +111,14 @@ export function AppHeader({ user }: Props) {
         <Link
           to="/"
           search={{ tab: "profile" } as never}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-peach text-base font-semibold text-peach-foreground shadow-sm"
+          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-peach text-base font-semibold text-peach-foreground shadow-sm"
           aria-label="Профиль"
         >
-          {initial}
+          {user.avatar_url ? (
+            <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initial
+          )}
         </Link>
 
         <div className="min-w-0 flex-1" data-tour="header-levelxp">

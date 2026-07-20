@@ -29,7 +29,9 @@ import {
   deleteGift,
   setGiftHidden,
   markInvited,
+  updateMyProfile,
 } from "@/lib/cozy.functions";
+import { uploadImage } from "@/lib/upload-image";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes, setWishHidden } from "@/lib/wishes.functions";
 import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
@@ -138,6 +140,13 @@ export function ProfileTab({
   const [incoming, setIncoming] = useState<IncomingItem[] | null>(null);
   const [myWishes, setMyWishes] = useState<MyWish[] | null>(null);
 
+  // Редактирование профиля: фото и «о себе».
+  const [editOpen, setEditOpen] = useState(false);
+  const [avatarDraft, setAvatarDraft] = useState<string | null>(user.avatar_url ?? null);
+  const [aboutDraft, setAboutDraft] = useState(user.about ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const updateProfileFn = useServerFn(updateMyProfile);
+
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
@@ -203,6 +212,38 @@ export function ProfileTab({
     });
   };
 
+  const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAvatarDraft(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const avatarUrl = avatarDraft?.startsWith("data:")
+        ? await uploadImage(avatarDraft)
+        : avatarDraft;
+      await updateProfileFn({
+        data: { avatar_url: avatarUrl, about: aboutDraft.trim() || null },
+      });
+      toast.success("Профиль обновлён 💚");
+      setEditOpen(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("cozy:profile-updated"));
+      }
+    } catch (e) {
+      toast.error("Не удалось сохранить", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -224,6 +265,78 @@ export function ProfileTab({
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
+      {/* Фото профиля + «о себе» + вход в редактирование */}
+      <div className="mb-4 flex items-center gap-3">
+        {user.avatar_url ? (
+          <img
+            src={user.avatar_url}
+            alt={user.display_name}
+            className="h-14 w-14 shrink-0 rounded-full object-cover shadow-sm"
+          />
+        ) : (
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-peach text-xl font-semibold text-peach-foreground shadow-sm">
+            {(user.display_name || "?").trim().charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-base font-semibold">{user.display_name}</div>
+          {user.about ? (
+            <p className="truncate text-xs text-muted-foreground">{user.about}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setAvatarDraft(user.avatar_url ?? null);
+            setAboutDraft(user.about ?? "");
+            setEditOpen(true);
+          }}
+          className="flex shrink-0 items-center gap-1 rounded-xl border bg-card px-3 py-1.5 text-xs font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+        >
+          <Pencil className="h-3.5 w-3.5" /> Редактировать
+        </button>
+      </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Редактировать профиль</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {avatarDraft ? (
+              <img
+                src={avatarDraft}
+                alt="Фото профиля"
+                className="h-24 w-24 rounded-full object-cover shadow-sm"
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-peach text-3xl font-semibold text-peach-foreground shadow-sm">
+                {(user.display_name || "?").trim().charAt(0).toUpperCase()}
+              </div>
+            )}
+            <label className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-xl border bg-background px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] hover:bg-accent">
+              📷 {avatarDraft ? "Заменить фото" : "Добавить фото"}
+              <input type="file" accept="image/*" onChange={handleAvatarPick} className="hidden" />
+            </label>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="about">О себе</Label>
+            <Textarea
+              id="about"
+              value={aboutDraft}
+              onChange={(e) => setAboutDraft(e.target.value.slice(0, 300))}
+              placeholder="Пара слов о себе — увидят другие в твоём профиле"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={saveProfile} disabled={savingProfile} className="w-full">
+              {savingProfile ? "Сохраняем…" : "Сохранить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Отзывы обо мне — сразу под плашкой с уровнем, в самом верху */}
       <ReviewsAboutMe userId={user.user_id} />
 
