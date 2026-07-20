@@ -457,16 +457,18 @@ export function WishForm({ onDone, onBack, userLevel }: Props) {
               className="mt-0.5 h-4 w-4 accent-primary"
             />
             <span>
-              <span className="font-medium">🌌 Скрыть желание — «во Вселенную»</span>
+              <span className="font-medium">🔒 Попросить исполнить конкретного человека (по ссылке)</span>
               <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                Никто не увидит его в ленте. Оно останется у тебя в «Моих желаниях» —
-                можно открыть для всех в любой момент одной кнопкой.
+                Желание не появится в общей ленте. После публикации нажми «Поделиться» и
+                отправь ссылку тому, кого просишь — исполнить сможет только он. Пока не
+                поделился — желание остаётся приватным, у тебя в «Моих желаниях» (можно
+                открыть для всех в любой момент одной кнопкой).
               </span>
             </span>
           </label>
 
           <Button onClick={submit} disabled={loading} className="w-full rounded-2xl">
-            {loading ? "Отправляем…" : hidden ? "🌌 Отправить во Вселенную" : "✨ Загадать желание"}
+            {loading ? "Отправляем…" : hidden ? "🔒 Загадать и получить ссылку" : "✨ Загадать желание"}
           </Button>
         </CardContent>
       </Card>

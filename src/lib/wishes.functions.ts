@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyUser } from "@/lib/notify.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 function failOp(code: string, err: unknown): never {
   console.error(`[wishes] ${code}`, err);
@@ -112,6 +113,40 @@ export const setWishHidden = createServerFn({ method: "POST" })
       .in("status", ["open", "hidden"]);
     if (error) failOp("SET_WISH_HIDDEN_FAILED", error);
     return { ok: true, status: next };
+  });
+
+// ---------- Public single wish (для страницы желания по ссылке, без входа) ----------
+export const getPublicWish = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ wish_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const full =
+      "id, title, description, category, image_url, image_urls, status, owner_id, cost, city, is_online, link";
+    let { data: w, error } = await supabaseAdmin
+      .from("wishes")
+      .select(full)
+      .eq("id", data.wish_id)
+      .maybeSingle();
+    if (error)
+      ({ data: w, error } = await supabaseAdmin
+        .from("wishes")
+        .select("id, title, description, category, image_url, status, owner_id")
+        .eq("id", data.wish_id)
+        .maybeSingle());
+    if (error || !w) return null;
+    const ww = w as Record<string, unknown>;
+    let owner_name = "Гость";
+    let owner_level = 1;
+    if (ww.owner_id) {
+      const { data: profs } = await supabaseAdmin.rpc("get_public_profiles", {
+        _user_ids: [ww.owner_id],
+      });
+      const p = ((profs ?? []) as Array<{ display_name: string; level: number }>)[0];
+      if (p) {
+        owner_name = p.display_name || "Гость";
+        owner_level = p.level ?? 1;
+      }
+    }
+    return { ...ww, owner_name, owner_level };
   });
 
 // ---------- List wishes (feed) ----------

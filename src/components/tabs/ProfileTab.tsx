@@ -36,8 +36,8 @@ import {
 import { uploadImage } from "@/lib/upload-image";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes, setWishHidden } from "@/lib/wishes.functions";
-import { INVITE_VARIANTS, giftShareVariants, wishShareVariants } from "@/lib/random-copy";
-import { shareLink, thirdVariant, shareGift } from "@/lib/share";
+import { INVITE_VARIANTS } from "@/lib/random-copy";
+import { shareLink, thirdVariant, shareGift, shareWish } from "@/lib/share";
 import { Journey } from "@/components/Journey";
 import { ItemCard } from "@/components/ItemCard";
 import { CertificateBuilder } from "@/components/CertificateBuilder";
@@ -510,7 +510,6 @@ export function ProfileTab({
                 <MyWishItem
                   key={w.id}
                   w={w}
-                  ownerId={user.user_id}
                   onOpen={onOpenWish}
                   onChanged={(id, status) =>
                     setMyWishes((prev) =>
@@ -924,17 +923,13 @@ function EditableActiveItem({
 
 function MyWishItem({
   w,
-  ownerId,
   onOpen,
   onChanged,
 }: {
   w: MyWish;
-  ownerId: string;
   onOpen?: (wishId: string) => void;
   onChanged?: (id: string, status: string) => void;
 }) {
-  const origin = APP_BASE_URL;
-  const shareUrl = `${origin}/?ref=${ownerId}`;
   const isHidden = w.status === "hidden";
   // Менять видимость можно, пока никто не взялся исполнять.
   const canToggle = isHidden || w.status === "open";
@@ -995,7 +990,7 @@ function MyWishItem({
           haptic("select");
           onOpen?.(w.id);
         }}
-        onShare={isHidden ? undefined : () => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
+        onShare={() => shareWish(w.id, w.title)}
         footer={footer}
       />
     </li>

@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ItemCard } from "@/components/ItemCard";
 
 import { listWishes } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Sparkles } from "lucide-react";
-import { WISH_EXAMPLES, wishShareVariants } from "@/lib/random-copy";
-import { shareLink, thirdVariant } from "@/lib/share";
+import { WISH_EXAMPLES } from "@/lib/random-copy";
+import { shareWish } from "@/lib/share";
 import { CityChips } from "@/components/CityChips";
 import { applyCityFilter } from "@/lib/city-filter";
-import { APP_BASE_URL } from "@/lib/app-url";
 
 type Wish = {
   id: string;
@@ -37,17 +35,7 @@ interface Props {
   hideCreate?: boolean;
 }
 
-function WishCard({
-  w,
-  meId,
-  onOpen,
-}: {
-  w: Wish;
-  meId: string | null;
-  onOpen: (id: string) => void;
-}) {
-  const origin = APP_BASE_URL;
-  const shareUrl = meId ? `${origin}/?ref=${meId}` : `${origin}/`;
+function WishCard({ w, onOpen }: { w: Wish; onOpen: (id: string) => void }) {
   return (
     <li>
       <ItemCard
@@ -66,7 +54,7 @@ function WishCard({
           haptic("select");
           onOpen(w.id);
         }}
-        onShare={() => shareLink(thirdVariant(wishShareVariants(w.title)), shareUrl)}
+        onShare={() => shareWish(w.id, w.title)}
       />
     </li>
   );
@@ -74,7 +62,6 @@ function WishCard({
 
 export function WishesFeed({ onOpen, onCreate, searchQuery, hideCreate }: Props) {
   const [wishes, setWishes] = useState<Wish[] | null>(null);
-  const [meId, setMeId] = useState<string | null>(null);
   const [wishIdx, setWishIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
   // По умолчанию показываем все города (иначе желания без города «исчезают»).
   const [cityFilter, setCityFilter] = useState<string | null>(null);
@@ -84,7 +71,6 @@ export function WishesFeed({ onOpen, onCreate, searchQuery, hideCreate }: Props)
     listFn({ data: {} })
       .then((data) => setWishes(data as Wish[]))
       .catch(() => setWishes([]));
-    supabase.auth.getSession().then(({ data }) => setMeId(data.session?.user?.id ?? null));
   }, [listFn]);
 
   useEffect(() => {
@@ -148,7 +134,7 @@ export function WishesFeed({ onOpen, onCreate, searchQuery, hideCreate }: Props)
       ) : (
         <ul className="space-y-3">
           {list?.map((w) => (
-            <WishCard key={w.id} w={w} meId={meId} onOpen={onOpen} />
+            <WishCard key={w.id} w={w} onOpen={onOpen} />
           ))}
         </ul>
       )}

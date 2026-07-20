@@ -17,10 +17,8 @@ import {
 import { fulfillWish, deleteWish, setWishHidden } from "@/lib/wishes.functions";
 import { haptic } from "@/lib/haptics";
 import { Share2 } from "lucide-react";
-import { shareLink, thirdVariant } from "@/lib/share";
-import { wishShareVariants } from "@/lib/random-copy";
+import { shareWish } from "@/lib/share";
 import { CityBadge } from "@/components/CityBadge";
-import { APP_BASE_URL } from "@/lib/app-url";
 
 type Wish = {
   id: string;
@@ -281,12 +279,7 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
 
             <button
               type="button"
-              onClick={() =>
-                shareLink(
-                  thirdVariant(wishShareVariants(wish.title)),
-                  `${APP_BASE_URL}/${meId ? `?ref=${meId}` : ""}`,
-                )
-              }
+              onClick={() => shareWish(wish.id, wish.title)}
               className="flex w-full items-center justify-center gap-2 rounded-2xl border py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent active:scale-[0.98]"
             >
               <Share2 className="h-4 w-4" /> Поделиться желанием
