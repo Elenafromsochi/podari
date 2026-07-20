@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type PendingHandover = { txId: string; giftId: string; title: string };
+type PendingHandover = { txId: string; giftId: string; title: string; image: string | null };
 
 /**
  * Глобальный слушатель Realtime: когда чужой подарок выбирают, дарителю
@@ -53,16 +53,25 @@ export function GlobalNotifications() {
     (async () => {
       const { data } = await supabase
         .from("transactions")
-        .select("id, gift_id, gift:gifts(title)")
+        .select("id, gift_id, gift:gifts(title, image_url)")
         .eq("sender_id", user.user_id)
         .eq("status", "pending")
         .is("handover_requested_at", null)
         .order("created_at", { ascending: true });
       if (!alive || !data) return;
       setPending(
-        (data as Array<{ id: string; gift_id: string; gift: { title: string } | null }>).map(
-          (row) => ({ txId: row.id, giftId: row.gift_id, title: row.gift?.title ?? "Подарок" }),
-        ),
+        (
+          data as Array<{
+            id: string;
+            gift_id: string;
+            gift: { title: string; image_url: string | null } | null;
+          }>
+        ).map((row) => ({
+          txId: row.id,
+          giftId: row.gift_id,
+          title: row.gift?.title ?? "Подарок",
+          image: row.gift?.image_url ?? null,
+        })),
       );
     })();
     return () => {
@@ -89,7 +98,7 @@ export function GlobalNotifications() {
           const tx = payload.new as { id: string; gift_id: string };
           const { data: gift } = await supabase
             .from("gifts")
-            .select("title")
+            .select("title, image_url")
             .eq("id", tx.gift_id)
             .maybeSingle();
           // Окно с подтверждением передачи появится на любой странице —
@@ -97,7 +106,15 @@ export function GlobalNotifications() {
           setPending((prev) =>
             prev.some((p) => p.txId === tx.id)
               ? prev
-              : [...prev, { txId: tx.id, giftId: tx.gift_id, title: gift?.title ?? "Подарок" }],
+              : [
+                  ...prev,
+                  {
+                    txId: tx.id,
+                    giftId: tx.gift_id,
+                    title: gift?.title ?? "Подарок",
+                    image: gift?.image_url ?? null,
+                  },
+                ],
           );
           // увеличим счётчик «новых событий по подаркам» для бейджа в кабинете
           window.dispatchEvent(new CustomEvent("cozy:gifts-activity"));
@@ -160,10 +177,25 @@ export function GlobalNotifications() {
         <AlertDialogHeader>
           <AlertDialogTitle>Подарок выбрали! 🎁</AlertDialogTitle>
           <AlertDialogDescription>
-            «{current?.title}» забронировали. Когда передашь подарок — подтверди
-            здесь, и сделка сможет завершиться.
+            Когда передашь подарок — подтверди здесь, и сделка сможет завершиться.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {current && (
+          <div className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+            {current.image ? (
+              <img
+                src={current.image}
+                alt={current.title}
+                className="h-14 w-14 shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted text-2xl">
+                🎁
+              </div>
+            )}
+            <span className="min-w-0 truncate text-sm font-semibold">{current.title}</span>
+          </div>
+        )}
         <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
           <AlertDialogAction onClick={confirmHandover} disabled={confirming} className="w-full">
             {confirming ? "Минутку…" : "✅ Подтвердить передачу"}
