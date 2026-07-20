@@ -7,7 +7,6 @@ import {
   Trophy,
   BarChart3,
   Send,
-  Sparkles,
   History,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -1045,8 +1044,6 @@ function InviteRow({
     window.dispatchEvent(new CustomEvent("cozy:tour-event", { detail: "invite-shared" }));
   };
 
-  const wishLocked = level < 3;
-
   // Плитка действия: целиком залита ярким цветом (accent) с читаемым текстом (fg).
   // Три главные кнопки специально ярче и заметнее, чем «Пригласить друга».
   const Tile = ({
@@ -1107,8 +1104,6 @@ function InviteRow({
           label="Загадать желание"
           emoji="💫"
           onClick={onCreateWish}
-          locked={wishLocked}
-          lockHint="Откроется на 3 уровне. Дари и получай — и ты дойдёшь сюда!"
           accent="bg-[#CDB47A]"
           fg="text-[#3A2E0A]"
         />
@@ -1132,65 +1127,5 @@ function InviteRow({
         </p>
       </section>
     </>
-  );
-}
-
-const WISH_EXAMPLES = [
-  "помощь в быту",
-  "новые туфли",
-  "путешествие к морю",
-  "ящик клубники",
-  "знакомство с интересным человеком",
-  "переобуть колёса",
-  "вылечить зуб",
-  "урок игры на гитаре",
-  "букет пионов",
-  "кофе с любимым десертом",
-  "поход в баню",
-  "новая книга",
-  "уборка квартиры",
-  "массаж спины",
-  "билет на концерт",
-];
-
-function WishCtaButton({ level, onCreateWish }: { level: number; onCreateWish?: () => void }) {
-  const [idx, setIdx] = useState(() => Math.floor(Math.random() * WISH_EXAMPLES.length));
-  useEffect(() => {
-    const t = setInterval(() => {
-      setIdx((i) => (i + 1) % WISH_EXAMPLES.length);
-    }, 2200);
-    return () => clearInterval(t);
-  }, []);
-  const locked = level < 3;
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        if (locked) {
-          toast("🔒 Загадать желание", {
-            description: "Откроется на 3 уровне. Дари и получай — и ты дойдёшь сюда!",
-          });
-          return;
-        }
-        haptic("medium");
-        onCreateWish?.();
-      }}
-      className={`mb-3 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left shadow-sm transition active:scale-[0.98] ${
-        locked ? "border bg-card opacity-70" : "bg-mint text-mint-foreground hover:bg-mint/90"
-      }`}
-    >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/60 text-mint-foreground">
-        <Sparkles className="h-4 w-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Загадать желание</span>
-        <span
-          className={`block truncate text-xs transition-opacity duration-300 ${locked ? "text-muted-foreground" : "text-mint-foreground/70"}`}
-        >
-          например: {WISH_EXAMPLES[idx]}
-        </span>
-      </span>
-      {locked && <span className="text-[10px] text-muted-foreground">🔒 ⭐ 3</span>}
-    </button>
   );
 }
