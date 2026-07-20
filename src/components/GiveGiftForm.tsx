@@ -292,7 +292,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
       // «Load failed» / fetch — это сорвавшаяся сеть. Подсказываем повторить.
       setError(
         /load failed|fetch|network|timeout|сет/i.test(msg)
-          ? "Не получилось — пропала связь. Проверь интернет и нажми «Выложить подарок» ещё раз."
+          ? "Не получилось — пропала связь. Проверь интернет и нажми «Подарить подарок» ещё раз."
           : msg,
       );
     } finally {
@@ -697,7 +697,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
             className="w-full"
             size="lg"
           >
-            {loading ? "Готовим..." : "🎁 Выложить подарок"}
+            {loading ? "Готовим..." : "🎁 Подарить подарок"}
           </Button>
         </CardContent>
       </Card>
