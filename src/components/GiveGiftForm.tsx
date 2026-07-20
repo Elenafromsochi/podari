@@ -9,6 +9,7 @@ import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage, enhanceGiftDescription, generateGiftImage } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
+import { GIVE_EXAMPLES, nextExamplePlaceholder } from "@/lib/random-copy";
 
 import { COST_TIERS, hasCondition, type GiftKind } from "@/lib/gift-kinds";
 
@@ -45,11 +46,10 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   // исчезает, когда человек начинает писать: сразу видно, что это образец,
   // а не его текст.
   const [description, setDescription] = useState("");
-  const examplePlaceholder = presetHint
-    ? `Пример: ${presetHint}`
-    : isThing
-      ? "Пример: Книга, которую прочитал и больше не вернусь к ней"
-      : "Пример: Часовая консультация по карьере и резюме";
+  // Пример каждый раз другой — по кругу без повторов (не один и тот же навсегда).
+  const [examplePlaceholder] = useState(() =>
+    presetHint ? `Пример: ${presetHint}` : nextExamplePlaceholder("give", GIVE_EXAMPLES),
+  );
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cost, setCost] = useState<number>(1);
   const [condition, setCondition] = useState<number | null>(null);
