@@ -15,6 +15,8 @@ export interface UserProfile {
   level: number;
   password_set: boolean;
   telegram_username: string | null;
+  avatar_url?: string | null;
+  about?: string | null;
 }
 
 const PROFILE_CACHE_KEY = "cozygift_last_profile";
@@ -50,11 +52,22 @@ export async function loadUser(): Promise<UserProfile | null> {
   const uid = session?.user?.id;
   if (!uid) return null;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("profiles")
-    .select("user_id, display_name, balance, xp, level, password_set, telegram_username")
+    .select(
+      "user_id, display_name, balance, xp, level, password_set, telegram_username, avatar_url, about",
+    )
     .eq("user_id", uid)
     .maybeSingle();
+
+  // avatar_url/about ещё нет в этой базе (миграция не накатана) — читаем без них.
+  if (error) {
+    ({ data, error } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, balance, xp, level, password_set, telegram_username")
+      .eq("user_id", uid)
+      .maybeSingle());
+  }
 
   if (error) {
     // Связь с базой моргнула — НЕ выкидываем из аккаунта: сессия жива,

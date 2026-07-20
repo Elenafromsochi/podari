@@ -4,9 +4,52 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyUser } from "@/lib/notify.server";
+import { tgApi } from "@/lib/telegram-api";
 
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? "Podari_podarki_bot";
 const NONCE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Лучшая попытка подтянуть фото профиля из Telegram при первом входе.
+ * Скачивает самое крупное фото у бота и заливает в Storage — ссылки
+ * файлов Telegram временные, поэтому пересохраняем в свой бакет.
+ * Никогда не бросает исключение — сбой не должен ломать вход.
+ */
+async function importTelegramAvatar(tgId: number, userId: string): Promise<void> {
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) return;
+    const photos = (await tgApi("getUserProfilePhotos", {
+      user_id: tgId,
+      limit: 1,
+    })) as { result?: { photos?: Array<Array<{ file_id: string }>> } };
+    const sizes = photos?.result?.photos?.[0];
+    const fileId = sizes?.[sizes.length - 1]?.file_id;
+    if (!fileId) return;
+    const fileInfo = (await tgApi("getFile", { file_id: fileId })) as {
+      result?: { file_path?: string };
+    };
+    const filePath = fileInfo?.result?.file_path;
+    if (!filePath) return;
+    const res = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+    if (!res.ok) return;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const ext = filePath.split(".").pop() || "jpg";
+    const storagePath = `avatars/${userId}.${ext}`;
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("gift-images")
+      .upload(storagePath, buf, { contentType: "image/jpeg", upsert: true });
+    if (upErr) return;
+    const { data: pub } = supabaseAdmin.storage.from("gift-images").getPublicUrl(storagePath);
+    await supabaseAdmin
+      .from("profiles")
+      .update({ avatar_url: pub.publicUrl })
+      .eq("user_id", userId)
+      .is("avatar_url", null);
+  } catch (e) {
+    console.error("[telegram-auth] AVATAR_IMPORT_FAILED", e);
+  }
+}
 
 function makeNonce() {
   return randomBytes(9).toString("base64url");
@@ -192,6 +235,19 @@ export const completeTelegramLogin = createServerFn({ method: "POST" })
         display_name: displayName,
       })
       .eq("user_id", session.user.id);
+
+    // Фото профиля подтягиваем в фоне — не задерживаем вход. Только если у
+    // человека ещё нет своего (не перетираем то, что он сам загрузил/поменял).
+    {
+      const { data: prof } = await supabaseAdmin
+        .from("profiles")
+        .select("avatar_url")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (prof && !(prof as { avatar_url?: string | null }).avatar_url) {
+        void importTelegramAvatar(tgId, session.user.id);
+      }
+    }
 
     if (isNewUser && referredBy && referredBy !== session.user.id) {
       // Бонус +50 пригласившему и +1 балл новичку начисляет триггер БД

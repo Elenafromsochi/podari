@@ -1,11 +1,17 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicGift, claimGift, reofferGift, deleteGift } from "@/lib/cozy.functions";
 import { shareGift } from "@/lib/share";
+import {
+  startTelegramLogin,
+  pollTelegramLogin,
+  completeTelegramLogin,
+} from "@/lib/telegram-auth.functions";
+import { setTelegramSession } from "@/lib/auth-state";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { CertificateBuilder } from "@/components/CertificateBuilder";
 import { LevelBadge } from "@/components/LevelBadge";
@@ -58,6 +64,7 @@ function GiftPage() {
 
   const [gift, setGift] = useState<PublicGift | null | undefined>(undefined);
   const [authed, setAuthed] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [meId, setMeId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [lightbox, setLightbox] = useState(false);
@@ -67,6 +74,19 @@ function GiftPage() {
   const [reoffering, setReoffering] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
+
+  // Вход через Telegram прямо со страницы подарка — без промежуточного
+  // экрана входа. Ссылку на бота готовим заранее, чтобы первый тап по
+  // «Авторизоваться и получить подарок» сразу открывал Telegram (иначе
+  // Safari блокирует открытие окна после асинхронного запроса).
+  const startTg = useServerFn(startTelegramLogin);
+  const pollTg = useServerFn(pollTelegramLogin);
+  const completeTg = useServerFn(completeTelegramLogin);
+  const [tgPhase, setTgPhase] = useState<"idle" | "waiting" | "signing_in">("idle");
+  const [tgDeepLink, setTgDeepLink] = useState<string | null>(null);
+  const [tgNonce, setTgNonce] = useState<string | null>(null);
+  const [tgStatus, setTgStatus] = useState("");
+  const tgPollingRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Реферал из ссылки — чтобы при входе засчитался пригласившему.
@@ -79,11 +99,124 @@ function GiftPage() {
     supabase.auth.getSession().then(({ data }) => {
       setAuthed(!!data.session?.user);
       setMeId(data.session?.user?.id ?? null);
+      setAuthChecked(true);
     });
     getGift({ data: { gift_id: giftId } })
       .then((g) => setGift(g as PublicGift | null))
       .catch(() => setGift(null));
   }, [giftId, getGift]);
+
+  useEffect(() => {
+    if (!authChecked || authed) return;
+    let alive = true;
+    (async () => {
+      try {
+        const referrer_id = (() => {
+          try {
+            return localStorage.getItem("cozygift_pending_ref");
+          } catch {
+            return null;
+          }
+        })();
+        const res = await startTg({ data: { referrer_id } });
+        if (!alive) return;
+        setTgNonce(res.nonce);
+        setTgDeepLink(res.deep_link);
+      } catch {
+        /* нет связи — кнопка-фолбэк подготовит ссылку по тапу */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authChecked, authed]);
+
+  useEffect(() => {
+    return () => {
+      if (tgPollingRef.current) window.clearInterval(tgPollingRef.current);
+    };
+  }, []);
+
+  const clearTgPolling = () => {
+    if (tgPollingRef.current) {
+      window.clearInterval(tgPollingRef.current);
+      tgPollingRef.current = null;
+    }
+  };
+
+  const startTgPolling = (nonce: string) => {
+    clearTgPolling();
+    const deadline = Date.now() + 5 * 60 * 1000;
+    tgPollingRef.current = window.setInterval(async () => {
+      if (Date.now() > deadline) {
+        clearTgPolling();
+        setTgStatus("Время вышло. Нажми ещё раз.");
+        setTgPhase("idle");
+        return;
+      }
+      try {
+        const r = await pollTg({ data: { nonce } });
+        if (r.status === "approved") {
+          clearTgPolling();
+          await finishTgSignIn(nonce);
+        } else if (r.status === "rejected") {
+          clearTgPolling();
+          setTgStatus("Вход отклонён в боте. Нажми ещё раз.");
+          setTgPhase("idle");
+        } else if (r.status === "expired" || r.status === "not_found") {
+          clearTgPolling();
+          setTgStatus("Ссылка истекла. Нажми ещё раз.");
+          setTgPhase("idle");
+          setTgDeepLink(null);
+          setTgNonce(null);
+        } else if (r.status === "opened") {
+          setTgStatus("Ты открыл бота — теперь нажми ✅ Это я");
+        } else {
+          setTgStatus("Открой бота и нажми Start");
+        }
+      } catch {
+        /* сетевой сбой — пробуем на следующем тике */
+      }
+    }, 1500);
+  };
+
+  const finishTgSignIn = async (nonce: string) => {
+    setTgPhase("signing_in");
+    setTgStatus("Входим…");
+    try {
+      const res = await completeTg({ data: { nonce } });
+      await setTelegramSession(res.access_token, res.refresh_token);
+      const { data } = await supabase.auth.getSession();
+      setAuthed(true);
+      setMeId(data.session?.user?.id ?? null);
+      toast.success(
+        res.is_new ? "Добро пожаловать в «Подари» 💚" : "С возвращением 💚",
+      );
+      setTgPhase("idle");
+      // Раз человек и пришёл за этим подарком — сразу забираем его.
+      await claimNow();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      let text = "Не удалось войти";
+      if (msg.includes("NONCE_EXPIRED")) text = "Ссылка истекла — нажми ещё раз";
+      else if (msg.includes("NONCE_REJECTED")) text = "Вход отклонён в боте";
+      else if (msg.includes("NOT_APPROVED")) text = "Сначала подтверди вход в боте";
+      else if (msg.includes("NONCE_CONSUMED")) text = "Этот вход уже использован — начни заново";
+      toast.error(text, { description: msg });
+      setTgPhase("idle");
+      setTgStatus("");
+      setTgDeepLink(null);
+      setTgNonce(null);
+    }
+  };
+
+  const onTapTelegram = () => {
+    haptic("medium");
+    setTgPhase("waiting");
+    setTgStatus("Открой бота, нажми Start, затем ✅ Это я");
+    if (tgNonce) startTgPolling(tgNonce);
+  };
 
   // Степпер «Подарить снова» по умолчанию = прежний тираж подарка.
   useEffect(() => {
@@ -98,19 +231,8 @@ function GiftPage() {
         ? [gift.image_url]
         : [];
 
-  const onGet = async () => {
+  const claimNow = async () => {
     if (!gift) return;
-    haptic("medium");
-    if (!authed) {
-      // Запоминаем подарок и уходим на вход; после входа вернёмся сюда.
-      try {
-        localStorage.setItem("cozygift_pending_gift", giftId);
-      } catch {
-        /* noop */
-      }
-      navigate({ to: "/" });
-      return;
-    }
     setBusy(true);
     try {
       try {
@@ -137,6 +259,44 @@ function GiftPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onGet = async () => {
+    if (!gift) return;
+    haptic("medium");
+    if (!authed) {
+      // Ссылку на бота уже подготовили заранее — просто открываем её и
+      // ждём подтверждения, без ухода на отдельный экран входа.
+      if (tgDeepLink) {
+        onTapTelegram();
+        return;
+      }
+      // Фолбэк, если ссылка не успела подготовиться (нет сети при загрузке).
+      setTgPhase("waiting");
+      setTgStatus("Готовим ссылку…");
+      try {
+        const referrer_id = (() => {
+          try {
+            return localStorage.getItem("cozygift_pending_ref");
+          } catch {
+            return null;
+          }
+        })();
+        const res = await startTg({ data: { referrer_id } });
+        setTgNonce(res.nonce);
+        setTgDeepLink(res.deep_link);
+        window.open(res.deep_link, "_blank", "noopener,noreferrer");
+        setTgStatus("Открой бота и нажми Start, затем ✅ Это я");
+        startTgPolling(res.nonce);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error("Не удалось начать вход", { description: msg });
+        setTgPhase("idle");
+        setTgStatus("");
+      }
+      return;
+    }
+    await claimNow();
   };
 
   const doReoffer = async () => {
@@ -428,27 +588,54 @@ function GiftPage() {
                     {isOwner ? "" : " по этой ссылке"}. {isOwner ? "Отправь ссылку тому, кому даришь." : "Он для тебя 💚"}
                   </div>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={onGet}
-                  disabled={busy}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90 disabled:opacity-60"
-                >
-                  {busy
-                    ? "Минутку…"
-                    : authed
-                      ? isCertificate
+                {authed ? (
+                  <button
+                    type="button"
+                    onClick={onGet}
+                    disabled={busy}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90 disabled:opacity-60"
+                  >
+                    {busy
+                      ? "Минутку…"
+                      : isCertificate
                         ? `🎟 Активировать за ${gift.cost} ${word(gift.cost)}`
-                        : `🎁 Получить за ${gift.cost} ${word(gift.cost)}`
+                        : `🎁 Получить за ${gift.cost} ${word(gift.cost)}`}
+                  </button>
+                ) : tgDeepLink ? (
+                  <a
+                    href={tgDeepLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onTapTelegram}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90"
+                  >
+                    {tgPhase === "waiting" || tgPhase === "signing_in"
+                      ? "Открыть Telegram ещё раз"
                       : isCertificate
                         ? "Войти и активировать сертификат"
                         : "Авторизоваться и получить подарок"}
-                </button>
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onGet}
+                    disabled={tgPhase !== "idle"}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-mint px-4 py-3.5 text-base font-semibold text-mint-foreground shadow-sm transition active:scale-[0.98] hover:bg-mint/90 disabled:opacity-60"
+                  >
+                    {tgPhase !== "idle"
+                      ? "Минутку…"
+                      : isCertificate
+                        ? "Войти и активировать сертификат"
+                        : "Авторизоваться и получить подарок"}
+                  </button>
+                )}
               </>
             )}
             {!authed && isClaimable && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
-                Вход в один тап через Telegram — и подарок твой 💚
+                {tgPhase === "idle"
+                  ? "Вход в один тап через Telegram — и подарок твой 💚"
+                  : tgStatus}
               </p>
             )}
           </div>

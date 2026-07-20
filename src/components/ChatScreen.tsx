@@ -159,16 +159,27 @@ export function ChatScreen({
       setGift(data as Gift | null);
 
       if (myId) {
-        const { data: chat } = await supabase
-          .from("chats")
-          .select("id")
-          .eq("gift_id", giftId)
-          .or(`user_a.eq.${myId},user_b.eq.${myId}`)
+        // Многоразовый подарок может иметь несколько чатов с одним и тем же
+        // gift_id (по одному на каждого получателя) — ищем чат именно этой
+        // сделки по паре участников, а не «любой чат по этому подарку», иначе
+        // при нескольких одновременных бронях .maybeSingle() падал на
+        // «больше одной строки», и chatId оставался пустым («Чат ещё не готов»).
+        const { data: tx } = await supabase
+          .from("transactions")
+          .select("sender_id, receiver_id")
+          .eq("id", transactionId)
           .maybeSingle();
+        const senderId = (tx as { sender_id: string | null } | null)?.sender_id;
+        const receiverId = (tx as { receiver_id: string | null } | null)?.receiver_id;
+        const chatQuery = supabase.from("chats").select("id").eq("gift_id", giftId);
+        const { data: chat } =
+          senderId && receiverId
+            ? await chatQuery.eq("user_a", senderId).eq("user_b", receiverId).maybeSingle()
+            : await chatQuery.or(`user_a.eq.${myId},user_b.eq.${myId}`).limit(1).maybeSingle();
         if (chat?.id) setChatId(chat.id as string);
       }
     })();
-  }, [giftId]);
+  }, [giftId, transactionId]);
 
   // load partner (other party) id + name
   useEffect(() => {

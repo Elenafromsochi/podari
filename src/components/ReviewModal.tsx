@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, MicOff, Loader2 } from "lucide-react";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
 
 type Role = "receiver" | "giver";
@@ -52,6 +51,18 @@ export function ReviewModal({
   const voice = useVoiceRecorder((text) =>
     setComment((prev) => (prev ? prev.trim() + " " : "") + text),
   );
+  const [recSeconds, setRecSeconds] = useState(0);
+
+  // Таймер записи для отображения «Запись 0:07» — как в форме подарка.
+  useEffect(() => {
+    if (voice.status !== "recording") return;
+    setRecSeconds(0);
+    const id = setInterval(() => setRecSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [voice.status]);
+
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   const handleProofPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -182,30 +193,28 @@ export function ReviewModal({
             type="button"
             onClick={voice.toggle}
             disabled={voice.status === "transcribing"}
-            aria-label="Голосовой ввод"
-            className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border ${
+            aria-label={voice.status === "recording" ? "Остановить запись" : "Голосовой ввод"}
+            className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border text-base transition-all ${
               voice.status === "recording"
-                ? "bg-destructive text-destructive-foreground"
-                : "bg-background"
+                ? "animate-pulse border-destructive bg-destructive text-destructive-foreground shadow-md"
+                : "border-input bg-background hover:bg-accent"
             }`}
           >
-            {voice.status === "transcribing" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : voice.status === "recording" ? (
-              <MicOff className="h-4 w-4" />
-            ) : (
-              <Mic className="h-4 w-4" />
-            )}
+            {voice.status === "recording" ? "⏹" : voice.status === "transcribing" ? "⏳" : "🎙️"}
           </button>
         </div>
-        {voice.status === "recording" && (
-          <p className="text-xs text-muted-foreground">
-            🎙️ Говори, потом нажми кнопку ещё раз — мы распознаем речь.
-          </p>
-        )}
-        {voice.status === "transcribing" && (
-          <p className="text-xs text-muted-foreground">Распознаём речь…</p>
-        )}
+        {voice.status === "recording" ? (
+          <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+            </span>
+            <span className="font-medium">Запись {formatTime(recSeconds)}</span>
+            <span className="ml-auto text-destructive/80">Нажми ⏹, когда закончишь</span>
+          </div>
+        ) : voice.status === "transcribing" ? (
+          <p className="text-xs text-muted-foreground">⏳ Распознаём речь…</p>
+        ) : null}
         {voice.error && <p className="text-xs text-amber-600">{voice.error}</p>}
         {!selected && trimmedComment.length > 0 && trimmedComment.length < 20 && (
           <p className="text-xs text-muted-foreground">

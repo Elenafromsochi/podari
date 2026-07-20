@@ -451,8 +451,8 @@ export const claimGift = createServerFn({ method: "POST" })
     if (g?.owner_id && g.owner_id !== userId) {
       await notifyUser(
         g.owner_id,
-        `🎁 Кто-то забронировал твой подарок «${g.title}»! Загляни в чат — договоритесь о встрече.`,
-        chatPath(data.gift_id),
+        `🎁 Кто-то забронировал твой подарок «${g.title}»! Открой «Подари» — там ждёт подтверждение.`,
+        "/",
       );
       // Для многоразового подарока: подсказываем владельцу, что экземпляры
       // заканчиваются. remaining приходит из claim_gift только после миграции.
@@ -875,6 +875,60 @@ export const reofferGift = createServerFn({ method: "POST" })
       .eq("owner_id", userId);
     if (error) failOp("REOFFER_FAILED", error);
     return { ok: true };
+  });
+
+// ---------- Обновление своего профиля (фото и «о себе») ----------
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        avatar_url: z.string().max(2000).nullable().optional(),
+        about: z.string().max(300).nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const patch: Record<string, unknown> = {};
+    if (data.avatar_url !== undefined) patch.avatar_url = data.avatar_url;
+    if (data.about !== undefined) patch.about = data.about?.trim() || null;
+    if (Object.keys(patch).length === 0) return { ok: true };
+    const { error } = await supabase.from("profiles").update(patch).eq("user_id", userId);
+    if (error) failOp("PROFILE_UPDATE_FAILED", error);
+    return { ok: true };
+  });
+
+// ---------- История баллов (начисления и списания) ----------
+export const getBalanceHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    // Таблицы balance_events может ещё не быть (миграция не накатана) —
+    // тогда просто отдаём пустую историю, ничего не ломаем.
+    const { data, error } = await supabase
+      .from("balance_events")
+      .select("id, delta, reason, created_at, gift:gifts(title), wish:wishes(title)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error || !data) return [];
+    return (
+      data as Array<{
+        id: string;
+        delta: number;
+        reason: string;
+        created_at: string;
+        gift: { title: string } | null;
+        wish: { title: string } | null;
+      }>
+    ).map((r) => ({
+      id: r.id,
+      delta: Number(r.delta),
+      reason: r.reason,
+      created_at: r.created_at,
+      title: r.gift?.title ?? r.wish?.title ?? null,
+    }));
   });
 
 // ---------- Public single gift (для страницы подарка по ссылке, без входа) ----------

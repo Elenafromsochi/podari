@@ -127,10 +127,14 @@ function Index() {
     // чтобы показать выбранную вкладку, а не «застрять» в чате.
     const onNavTab = () => setFlow({ kind: "none" });
     window.addEventListener("cozy:nav-tab", onNavTab);
+    // Профиль поменяли (фото/«о себе») — перечитываем, чтобы шапка и вкладка обновились.
+    const onProfileUpdated = () => refreshUser();
+    window.addEventListener("cozy:profile-updated", onProfileUpdated);
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
       window.removeEventListener("cozy:nav-tab", onNavTab);
+      window.removeEventListener("cozy:profile-updated", onProfileUpdated);
     };
   }, []);
 
