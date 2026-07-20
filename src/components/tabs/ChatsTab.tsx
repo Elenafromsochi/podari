@@ -78,6 +78,22 @@ function TabBadge({ n }: { n: number }) {
   );
 }
 
+// Отдельный, визуально другой значок для «жди отзыв» — в отличие от
+// непрочитанных сообщений, он не должен гаснуть от одного захода на вкладку,
+// поэтому важно не путать его с обычным counter-бейджем.
+function ReviewBadge({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span
+      className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[9.5px] font-bold leading-none text-amber-950"
+      title="Ждут отзыва"
+      aria-label="Ждут отзыва"
+    >
+      ✍️{n > 9 ? "9+" : n}
+    </span>
+  );
+}
+
 export function ChatsTab() {
   const [filter, setFilter] = useState<Filter>("givers");
 
@@ -152,8 +168,7 @@ export function ChatsTab() {
   const unreadByTab: Record<Filter, number> = {
     givers: giversUnread,
     receivers: receiversUnread,
-    // В архиве подсвечиваем и непрочитанные, и неоставленные отзывы.
-    archive: archiveUnread + archiveNeedsReview,
+    archive: archiveUnread,
   };
 
   const base: ChatItem[] = useMemo(() => {
@@ -209,6 +224,7 @@ export function ChatsTab() {
             >
               {label}
               <TabBadge n={unreadByTab[k]} />
+              {k === "archive" && <ReviewBadge n={archiveNeedsReview} />}
             </button>
           );
         })}
