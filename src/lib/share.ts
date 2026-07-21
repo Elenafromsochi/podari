@@ -1,11 +1,16 @@
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 import { APP_BASE_URL } from "@/lib/app-url";
-import { giftShareVariants } from "@/lib/random-copy";
+import { giftShareVariants, wishShareVariants } from "@/lib/random-copy";
 
 /** Каноническая ссылка на страницу подарка. */
 export function giftShareUrl(giftId: string): string {
   return `${APP_BASE_URL}/gift/${giftId}`;
+}
+
+/** Каноническая ссылка на страницу желания. */
+export function wishShareUrl(wishId: string): string {
+  return `${APP_BASE_URL}/wish/${wishId}`;
 }
 
 /**
@@ -105,6 +110,16 @@ export async function shareGift(giftId: string, title?: string): Promise<void> {
   // Тёплая подпись из общих вариантов («Смотри, какой подарок… прямо для тебя»),
   // та же, что и в окне получения подарка — единый формат по всему приложению.
   const text = thirdVariant(giftShareVariants(title ?? ""));
+  await shareLink(text, url);
+}
+
+/**
+ * «Поделиться желанием» — обёртка над shareLink с готовой подписью и
+ * настоящей ссылкой на желание (а не общей реферальной).
+ */
+export async function shareWish(wishId: string, title?: string): Promise<void> {
+  const url = wishShareUrl(wishId);
+  const text = thirdVariant(wishShareVariants(title ?? ""));
   await shareLink(text, url);
 }
 

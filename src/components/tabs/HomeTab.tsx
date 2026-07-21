@@ -651,6 +651,7 @@ function ActiveGiftCard({
 }
 
 function GiftedCard({ gift }: { gift: Gift }) {
+  const navigate = useNavigate();
   const [lightbox, setLightbox] = useState(false);
   if (!gift.owner_id) return null;
   const photos = giftPhotos(gift);
@@ -658,12 +659,14 @@ function GiftedCard({ gift }: { gift: Gift }) {
     <li className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
       {/* Фото — открывает карусель */}
       <GiftThumb gift={gift} onOpen={() => setLightbox(true)} />
-      {/* Контент ведёт на профиль дарителя */}
-      <Link
-        to="/user/$userId"
-        params={{ userId: gift.owner_id }}
-        onClick={() => haptic("light")}
-        className="min-w-0 flex-1 transition active:scale-[0.99]"
+      {/* Контент ведёт на карточку подарка */}
+      <button
+        type="button"
+        onClick={() => {
+          haptic("light");
+          navigate({ to: "/gift/$giftId", params: { giftId: gift.id } });
+        }}
+        className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
       >
         <div className="line-clamp-2 text-sm font-medium leading-tight">{gift.title}</div>
         {gift.condition ? (
@@ -679,16 +682,25 @@ function GiftedCard({ gift }: { gift: Gift }) {
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{gift.description}</p>
         )}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground">
+          {/* Имя дарителя — отдельная ссылка на его профиль, не путается с картой подарка */}
+          <Link
+            to="/user/$userId"
+            params={{ userId: gift.owner_id }}
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic("light");
+            }}
+            className="rounded-lg bg-lavender/70 px-2 py-0.5 text-[12px] font-semibold leading-tight text-lavender-foreground active:scale-95"
+          >
             {gift.owner_name}
-          </span>
+          </Link>
           <LevelBadge level={gift.owner_level ?? 1} />
 
           <span className="ml-auto inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[10px] font-semibold text-mint-foreground">
             💝 подарено
           </span>
         </div>
-      </Link>
+      </button>
 
       {lightbox && <PhotoLightbox photos={photos} onClose={() => setLightbox(false)} />}
     </li>

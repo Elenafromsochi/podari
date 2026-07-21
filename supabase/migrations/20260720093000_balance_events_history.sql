@@ -168,7 +168,6 @@ DECLARE
   _me uuid := auth.uid();
   _tx record;
   _wish_cost integer;
-  _wisher_balance numeric;
 BEGIN
   IF _me IS NULL THEN RAISE EXCEPTION 'UNAUTHENTICATED'; END IF;
   SELECT * INTO _tx FROM wish_transactions WHERE id = _transaction_id FOR UPDATE;
@@ -179,9 +178,12 @@ BEGIN
   SELECT cost INTO _wish_cost FROM wishes WHERE id = _tx.wish_id;
   _wish_cost := COALESCE(_wish_cost, 1);
 
-  SELECT balance INTO _wisher_balance FROM profiles WHERE user_id = _me FOR UPDATE;
-  IF _wisher_balance IS NULL THEN RAISE EXCEPTION 'NO_PROFILE'; END IF;
-  IF _wisher_balance < _wish_cost THEN RAISE EXCEPTION 'INSUFFICIENT_BALANCE'; END IF;
+  -- Баллов может не хватать (дорогое желание, новичок) — но исполнение УЖЕ
+  -- случилось в жизни, подтверждение нельзя блокировать нехваткой баллов.
+  -- Баланс загадавшего может уйти в минус — это долг сообществу, не запрет.
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE user_id = _me FOR UPDATE) THEN
+    RAISE EXCEPTION 'NO_PROFILE';
+  END IF;
 
   UPDATE wish_transactions SET status = 'completed' WHERE id = _transaction_id;
   UPDATE wishes SET status = 'fulfilled', updated_at = now() WHERE id = _tx.wish_id;

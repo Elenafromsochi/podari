@@ -5,32 +5,40 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadUser, type UserProfile } from "@/lib/auth-state";
 import { requestHandover } from "@/lib/cozy.functions";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
-type PendingHandover = { txId: string; giftId: string; title: string; image: string | null };
+const LAST_SEEN_KEY = "cozygift_last_seen_handovers";
+
+function readLastSeen(): string {
+  if (typeof localStorage === "undefined") return new Date(0).toISOString();
+  try {
+    return localStorage.getItem(LAST_SEEN_KEY) ?? new Date(0).toISOString();
+  } catch {
+    return new Date(0).toISOString();
+  }
+}
+
+function writeLastSeen(iso: string) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(LAST_SEEN_KEY, iso);
+  } catch {
+    /* noop */
+  }
+}
 
 /**
- * Глобальный слушатель Realtime: когда чужой подарок выбирают, дарителю
- * на ЛЮБОЙ странице показывается окно с подтверждением передачи — не
- * тост, который можно пропустить. Монтируется один раз в __root.tsx.
+ * Глобальный слушатель: показывает лёгкий тост сверху (с крестиком —
+ * закрывается) для брони подарка — как для тех, что случились прямо
+ * сейчас, так и для тех, что случились, пока человека не было в сервисе
+ * (с прошлого визита). Не копит бесконечный «хвост»: старые/давно
+ * виденные брони тостами не всплывают — их можно разобрать в профиле
+ * («Забронировали у вас»), это по желанию, не навязчиво.
+ * Монтируется один раз в __root.tsx и работает на любом маршруте.
  */
 export function GlobalNotifications() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
-  // Подарки, которые у меня забронировали и я ещё не отметил(а) передачу —
-  // окно с подтверждением висит на ЛЮБОЙ странице, пока не подтвердишь.
-  const [pending, setPending] = useState<PendingHandover[]>([]);
   const requestHandoverFn = useServerFn(requestHandover);
-  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -45,41 +53,98 @@ export function GlobalNotifications() {
     };
   }, []);
 
-  // При входе подтягиваем уже накопившиеся брони без подтверждения передачи —
-  // например, подарок выбрали, пока человек не заходил в приложение.
+  const showClaimedToast = (tx: { id: string; gift_id: string }, title: string, image: string | null) => {
+    const confirm = async (dismiss: () => void) => {
+      try {
+        await requestHandoverFn({ data: { transaction_id: tx.id } });
+        toast.success("Передача отмечена 💚", {
+          description: "Получатель подтвердит — и сделка завершится",
+        });
+        window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
+      } catch (e) {
+        toast.error("Не удалось подтвердить", {
+          description: e instanceof Error ? e.message : String(e),
+        });
+      } finally {
+        dismiss();
+      }
+    };
+
+    toast.custom(
+      (t) => (
+        <div className="flex w-full max-w-sm items-center gap-3 rounded-2xl border bg-card p-3 shadow-lg">
+          {image ? (
+            <img src={image} alt={title} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+              🎁
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">Подарок выбрали!</p>
+            <p className="truncate text-xs text-muted-foreground">{title}</p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => confirm(() => toast.dismiss(t))}
+              className="rounded-lg bg-mint px-2.5 py-1 text-[11px] font-semibold text-mint-foreground active:scale-95"
+            >
+              ✅ Передал
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                toast.dismiss(t);
+                navigate({ to: "/chat/$giftId", params: { giftId: tx.gift_id } });
+              }}
+              className="rounded-lg border px-2.5 py-1 text-[11px] font-medium active:scale-95"
+            >
+              💬 В чат
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: 20000 },
+    );
+
+    window.dispatchEvent(new CustomEvent("cozy:gifts-activity"));
+  };
+
+  // Догоняем то, что случилось, пока человека не было в сервисе — только
+  // события ПОСЛЕ прошлого визита, не весь исторический хвост.
   useEffect(() => {
     if (!user?.user_id) return;
     let alive = true;
     (async () => {
+      const since = readLastSeen();
+      const nowIso = new Date().toISOString();
       const { data } = await supabase
         .from("transactions")
         .select("id, gift_id, gift:gifts(title, image_url)")
         .eq("sender_id", user.user_id)
         .eq("status", "pending")
         .is("handover_requested_at", null)
-        .order("created_at", { ascending: true });
+        .gt("created_at", since)
+        .order("created_at", { ascending: true })
+        .limit(5);
+      writeLastSeen(nowIso);
       if (!alive || !data) return;
-      setPending(
-        (
-          data as Array<{
-            id: string;
-            gift_id: string;
-            gift: { title: string; image_url: string | null } | null;
-          }>
-        ).map((row) => ({
-          txId: row.id,
-          giftId: row.gift_id,
-          title: row.gift?.title ?? "Подарок",
-          image: row.gift?.image_url ?? null,
-        })),
-      );
+      for (const row of data as Array<{
+        id: string;
+        gift_id: string;
+        gift: { title: string; image_url: string | null } | null;
+      }>) {
+        showClaimedToast({ id: row.id, gift_id: row.gift_id }, row.gift?.title ?? "Подарок", row.gift?.image_url ?? null);
+      }
     })();
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.user_id]);
 
-  // Подписки на realtime-события
+  // Подписка на брони в реальном времени, пока человек в приложении.
   useEffect(() => {
     if (!user?.user_id) return;
     const me = user.user_id;
@@ -101,39 +166,8 @@ export function GlobalNotifications() {
             .select("title, image_url")
             .eq("id", tx.gift_id)
             .maybeSingle();
-          // Окно с подтверждением передачи появится на любой странице —
-          // отдельный тост тут больше не нужен, чтобы не дублировать.
-          setPending((prev) =>
-            prev.some((p) => p.txId === tx.id)
-              ? prev
-              : [
-                  ...prev,
-                  {
-                    txId: tx.id,
-                    giftId: tx.gift_id,
-                    title: gift?.title ?? "Подарок",
-                    image: gift?.image_url ?? null,
-                  },
-                ],
-          );
-          // увеличим счётчик «новых событий по подаркам» для бейджа в кабинете
-          window.dispatchEvent(new CustomEvent("cozy:gifts-activity"));
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "transactions",
-          filter: `sender_id=eq.${me}`,
-        },
-        (payload) => {
-          const tx = payload.new as { id: string; status: string; handover_requested_at: string | null };
-          // Передачу отметили (или сделку отменили) — окно больше не нужно.
-          if (tx.handover_requested_at || tx.status !== "pending") {
-            setPending((prev) => prev.filter((p) => p.txId !== tx.id));
-          }
+          showClaimedToast(tx, gift?.title ?? "Подарок", gift?.image_url ?? null);
+          writeLastSeen(new Date().toISOString());
         },
       )
       .subscribe();
@@ -141,70 +175,8 @@ export function GlobalNotifications() {
     return () => {
       supabase.removeChannel(txChannel);
     };
-  }, [user?.user_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.user_id, navigate, requestHandoverFn]);
 
-  const current = pending[0] ?? null;
-
-  const confirmHandover = async () => {
-    if (!current) return;
-    setConfirming(true);
-    try {
-      await requestHandoverFn({ data: { transaction_id: current.txId } });
-      toast.success("Передача отмечена 💚", {
-        description: "Получатель подтвердит — и сделка завершится",
-      });
-      setPending((prev) => prev.filter((p) => p.txId !== current.txId));
-      window.dispatchEvent(new CustomEvent("cozy:chats-changed"));
-    } catch (e) {
-      toast.error("Не удалось подтвердить", {
-        description: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  const goToChat = () => {
-    if (!current) return;
-    const giftId = current.giftId;
-    setPending((prev) => prev.filter((p) => p.txId !== current.txId));
-    navigate({ to: "/chat/$giftId", params: { giftId } });
-  };
-
-  return (
-    <AlertDialog open={!!current} onOpenChange={() => {}}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Подарок выбрали! 🎁</AlertDialogTitle>
-          <AlertDialogDescription>
-            Когда передашь подарок — подтверди здесь, и сделка сможет завершиться.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        {current && (
-          <div className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
-            {current.image ? (
-              <img
-                src={current.image}
-                alt={current.title}
-                className="h-14 w-14 shrink-0 rounded-xl object-cover"
-              />
-            ) : (
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted text-2xl">
-                🎁
-              </div>
-            )}
-            <span className="min-w-0 truncate text-sm font-semibold">{current.title}</span>
-          </div>
-        )}
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-          <AlertDialogAction onClick={confirmHandover} disabled={confirming} className="w-full">
-            {confirming ? "Минутку…" : "✅ Подтвердить передачу"}
-          </AlertDialogAction>
-          <Button variant="outline" className="w-full" onClick={goToChat}>
-            💬 Перейти в чат
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
+  return null;
 }

@@ -5,6 +5,35 @@ export function pickRandom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/**
+ * Следующий пример по кругу БЕЗ повторов — в отличие от pickRandom (может
+ * выпасть тот же вариант два раза подряд), эта функция проходит весь список
+ * по очереди и запоминает место в localStorage. Каждое новое открытие формы
+ * показывает другой пример, а не случайный.
+ */
+export function nextExample(key: string, list: readonly string[]): string {
+  if (list.length === 0) return "";
+  const storeKey = `cozygift_example_cycle_${key}`;
+  if (typeof localStorage === "undefined") return pickRandom(list);
+  try {
+    const raw = localStorage.getItem(storeKey);
+    const prev = raw === null ? null : parseInt(raw, 10);
+    const idx =
+      prev === null || Number.isNaN(prev) ? Math.floor(Math.random() * list.length) : (prev + 1) % list.length;
+    localStorage.setItem(storeKey, String(idx));
+    return list[idx];
+  } catch {
+    return pickRandom(list);
+  }
+}
+
+const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** Пример для плейсхолдера формы: следующий по кругу, с заглавной буквы. */
+export function nextExamplePlaceholder(key: string, list: readonly string[]): string {
+  return capitalize(nextExample(key, list));
+}
+
 // Заголовок тоста после публикации подарка
 export const PUBLISH_THANKS_TITLES = [
   "Подарок улетел в мир ✨",
@@ -118,18 +147,18 @@ export const WISH_FEED_TITLES = [
 ] as const;
 
 export const WISH_EXAMPLES = [
-  "например: винил The Beatles",
-  "например: урок сквоша",
-  "например: кофе в новом месте",
-  "например: помощь с ремонтом",
-  "например: обратная связь по проекту",
-  "например: билет на мастер-класс",
-  "например: прогулка с фотоаппаратом",
-  "например: вкусный домашний обед",
-  "например: книга по дизайну",
-  "например: совет по путешествию",
-  "например: час разговорного языка",
-  "например: уютный вечер с играми",
+  "например: прогулка на яхте по морю",
+  "например: урок сёрфинга",
+  "например: ужин с видом на закат",
+  "например: экскурсия в горы Красной Поляны",
+  "например: массаж после пляжа",
+  "например: билет на концерт у моря",
+  "например: свежие устрицы в ресторане",
+  "например: прокат велосипеда вдоль набережной",
+  "например: полёт на параплане",
+  "например: дегустация вин на винодельне",
+  "например: фотосессия на пляже на закате",
+  "например: билет в дельфинарий",
 ] as const;
 
 // Текст приглашения друга в сервис. Тёплый, дружеский, без ссылки —

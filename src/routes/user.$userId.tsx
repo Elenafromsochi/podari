@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -98,6 +98,11 @@ function ProfileSection({
 function UserProfilePage() {
   const { userId } = Route.useParams();
   const navigate = useNavigate();
+  const router = useRouter();
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
+    else navigate({ to: "/" });
+  };
   const claim = useServerFn(claimGift);
   const [name, setName] = useState<string>("Гость");
   const [level, setLevel] = useState<number>(1);
@@ -204,7 +209,7 @@ function UserProfilePage() {
     <GlobalChrome>
       <div className="mx-auto w-full max-w-md space-y-4 px-5 pb-8 pt-5">
         <button
-          onClick={() => navigate({ to: "/" })}
+          onClick={goBack}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Назад
