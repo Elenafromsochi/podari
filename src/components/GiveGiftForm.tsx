@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { publishGift, checkGiftCost } from "@/lib/cozy.functions";
+import { publishGift, checkGiftCost, getMyContacts } from "@/lib/cozy.functions";
 import { generateGiftMeta, describeGiftImage, enhanceGiftDescription, generateGiftImage } from "@/lib/gift-ai.functions";
 import { uploadImages } from "@/lib/upload-image";
 import { useVoiceRecorder } from "@/lib/use-voice-recorder";
@@ -20,6 +20,14 @@ interface Props {
   giftKind: GiftKind;
   userLevel: number;
 }
+
+type Contact = {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  about: string | null;
+  level: number;
+};
 
 /** Заголовок шага: номер в кружочке + название (+ необязательная подсказка). */
 function StepHead({ n, title, hint }: { n: number; title: string; hint?: string }) {
@@ -63,6 +71,12 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   const [isOnline, setIsOnline] = useState(false);
   // Скрытый подарок — дарим конкретному человеку по ссылке, в общей ленте не виден.
   const [hidden, setHidden] = useState(false);
+  // Получатель можно выбрать из «знакомых» (с кем уже было взаимодействие) —
+  // тогда ссылку слать вручную не нужно, человек получит уведомление сам.
+  const [contacts, setContacts] = useState<Contact[] | null>(null);
+  const [recipientId, setRecipientId] = useState<string | null>(null);
+  const [contactQuery, setContactQuery] = useState("");
+  const contactsFn = useServerFn(getMyContacts);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +135,15 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
   };
   const publishGiftFn = useServerFn(publishGift);
   const checkCostFn = useServerFn(checkGiftCost);
+
+  // Список «знакомых» подгружаем лениво, один раз — как только включили
+  // «Подарить конкретному человеку».
+  useEffect(() => {
+    if (!hidden || contacts !== null) return;
+    contactsFn({})
+      .then((c) => setContacts(c as Contact[]))
+      .catch(() => setContacts([]));
+  }, [hidden, contacts, contactsFn]);
 
   // Таймер записи для отображения «Запись 0:07».
   useEffect(() => {
@@ -277,6 +300,7 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
           city: isOnline ? null : city.trim() || null,
           is_online: isOnline,
           hidden,
+          recipient_id: hidden ? recipientId : null,
         },
       });
       if (!isOnline && city.trim() && typeof localStorage !== "undefined") {
@@ -617,9 +641,78 @@ export function GiveGiftForm({ onDone, onBack, presetHint, giftKind, userLevel }
       </label>
       <p className="pl-6 text-[11px] text-muted-foreground">
         {hidden
-          ? "Подарок не появится в общей ленте. После публикации нажми «Поделиться» и отправь ссылку тому, кому даришь — получить сможет только он (даже если ещё не зарегистрирован)."
+          ? "Подарок не появится в общей ленте. Выбери получателя ниже — он сразу получит уведомление со ссылкой. Или пропусти выбор и после публикации отправь ссылку сам через «Поделиться»."
           : "Обычно подарок виден всем в ленте. Поставь галочку, чтобы он был доступен только по ссылке — для подарка конкретному человеку."}
       </p>
+      {hidden && (
+        <div className="space-y-2 pl-6">
+          {recipientId && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2">
+              <span className="truncate text-sm font-medium">
+                {contacts?.find((c) => c.user_id === recipientId)?.display_name ?? "Выбрано"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setRecipientId(null)}
+                className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:underline"
+              >
+                Убрать
+              </button>
+            </div>
+          )}
+          {!recipientId && (
+            <>
+              <input
+                value={contactQuery}
+                onChange={(e) => setContactQuery(e.target.value)}
+                placeholder="Поиск среди знакомых по имени…"
+                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+              />
+              {contacts === null ? (
+                <p className="text-xs text-muted-foreground">Загружаем список…</p>
+              ) : contacts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Знакомых пока нет — они появляются, когда с кем-то уже была переписка или
+                  приглашение по ссылке. Можно опубликовать без выбора и отправить ссылку вручную.
+                </p>
+              ) : (
+                <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                  {contacts
+                    .filter((c) =>
+                      c.display_name.toLowerCase().includes(contactQuery.trim().toLowerCase()),
+                    )
+                    .map((c) => (
+                      <button
+                        key={c.user_id}
+                        type="button"
+                        onClick={() => setRecipientId(c.user_id)}
+                        className="flex w-full items-center gap-2.5 rounded-xl border bg-card px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-accent"
+                      >
+                        {c.avatar_url ? (
+                          <img
+                            src={c.avatar_url}
+                            alt={c.display_name}
+                            className="h-9 w-9 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-peach text-sm font-semibold text-peach-foreground">
+                            {c.display_name.trim().charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{c.display_name}</p>
+                          {c.about && (
+                            <p className="truncate text-[11px] text-muted-foreground">{c.about}</p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 

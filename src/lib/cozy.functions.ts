@@ -186,6 +186,9 @@ export const publishGift = createServerFn({ method: "POST" })
         // Скрытый подарок — не показывается в общей ленте; получить можно
         // только по прямой ссылке (личный подарок конкретному человеку).
         hidden: z.boolean().default(false),
+        // Если выбран конкретный получатель — уведомляем его напрямую,
+        // не заставляя дарителя вручную слать ссылку.
+        recipient_id: z.string().uuid().nullable().optional(),
       })
       .parse(input),
   )
@@ -268,6 +271,25 @@ export const publishGift = createServerFn({ method: "POST" })
         await supabase.from("profiles").update({ city: giftCity }).eq("user_id", userId);
       } catch {
         /* noop */
+      }
+    }
+
+    // Выбран конкретный получатель — сохраняем и сразу зовём его по ссылке,
+    // не дожидаясь, пока даритель сам поделится.
+    if (data.recipient_id) {
+      try {
+        await supabase
+          .from("gifts")
+          .update({ recipient_id: data.recipient_id })
+          .eq("id", ins.data.id)
+          .eq("owner_id", userId);
+        await notifyUser(
+          data.recipient_id,
+          `🎁 Тебе дарят подарок «${data.title}»! Перейди по ссылке, чтобы получить его.`,
+          giftPath(ins.data.id),
+        );
+      } catch {
+        /* колонка recipient_id может быть ещё не накатана — не роняем публикацию */
       }
     }
 
@@ -899,6 +921,69 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Мои «знакомые» — для выбора получателя личного подарка ----------
+// Знакомые = с кем уже был чат (по подарку или желанию) + с кем связаны
+// рефералкой (кто позвал меня / кого позвал я). Открытого поиска по всем
+// зарегистрированным нет — только те, с кем уже было взаимодействие.
+export const getMyContacts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const ids = new Set<string>();
+
+    const { data: chats } = await supabase
+      .from("chats")
+      .select("user_a, user_b")
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`);
+    for (const c of (chats ?? []) as Array<{ user_a: string; user_b: string }>) {
+      const other = c.user_a === userId ? c.user_b : c.user_a;
+      if (other) ids.add(other);
+    }
+
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("referred_by")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const referredBy = (me as { referred_by?: string | null } | null)?.referred_by;
+    if (referredBy) ids.add(referredBy);
+
+    const { data: invited } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("referred_by", userId);
+    for (const r of (invited ?? []) as Array<{ user_id: string }>) ids.add(r.user_id);
+
+    ids.delete(userId);
+    if (ids.size === 0) return [];
+
+    let { data: profs, error } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, avatar_url, about, level")
+      .in("user_id", Array.from(ids));
+    // avatar_url/about ещё нет в этой базе (миграция не накатана) — без них.
+    if (error) {
+      ({ data: profs, error } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, level")
+        .in("user_id", Array.from(ids)));
+    }
+    if (error) failOp("CONTACTS_LOAD_FAILED", error);
+    return ((profs ?? []) as Array<{
+      user_id: string;
+      display_name: string;
+      avatar_url?: string | null;
+      about?: string | null;
+      level: number;
+    }>).map((p) => ({
+      user_id: p.user_id,
+      display_name: p.display_name || "Гость",
+      avatar_url: p.avatar_url ?? null,
+      about: p.about ?? null,
+      level: p.level ?? 1,
+    }));
+  });
+
 // ---------- История баллов (начисления и списания) ----------
 export const getBalanceHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -936,7 +1021,7 @@ export const getPublicGift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
     const full =
-      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online, quantity, quantity_remaining, is_certificate, cert_expires_at";
+      "id, title, description, category, image_url, image_urls, cost, condition, status, owner_id, gift_kind, city, is_online, quantity, quantity_remaining, is_certificate, cert_expires_at, recipient_id";
     let { data: g, error } = await supabaseAdmin.from("gifts").select(full).eq("id", data.gift_id).maybeSingle();
     if (error)
       ({ data: g, error } = await supabaseAdmin
