@@ -235,6 +235,7 @@ function InsightsPage() {
                   <th className="px-2 py-2 text-right">XP</th>
                   <th className="px-2 py-2 text-right">Баланс</th>
                   <th className="px-2 py-2">Активность</th>
+                  <th className="px-2 py-2 w-8"></th>
                 </tr>
               </thead>
               <tbody>
@@ -254,13 +255,31 @@ function InsightsPage() {
                           }}
                         />
                       </td>
-                      <td className="px-2 py-2 text-zinc-200">{u.display_name ?? "—"}</td>
+                      <td className="px-2 py-2 text-zinc-200">
+                        <Link to="/user/$userId" params={{ userId: u.user_id }} className="hover:underline">
+                          {u.display_name ?? "—"}
+                        </Link>
+                      </td>
                       <td className="px-2 py-2 text-zinc-400 hidden sm:table-cell">{u.telegram_username ? `@${u.telegram_username}` : "—"}</td>
                       <td className="px-2 py-2 text-right text-zinc-300">{u.level}</td>
                       <td className="px-2 py-2 text-right text-zinc-400">{u.xp}</td>
                       <td className="px-2 py-2 text-right text-zinc-300">{Number(u.balance).toFixed(2)}</td>
                       <td className="px-2 py-2 text-zinc-400">
                         {days === null ? "никогда" : days === 0 ? "сегодня" : `${days} д. назад`}
+                      </td>
+                      <td className="px-2 py-2">
+                        {u.telegram_username ? (
+                          <a
+                            href={`https://t.me/${u.telegram_username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`Написать @${u.telegram_username} в Telegram`}
+                            aria-label="Написать в Telegram"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#229ED9]/20 text-[#229ED9] transition hover:bg-[#229ED9]/30"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </a>
+                        ) : null}
                       </td>
                     </tr>
                   );
