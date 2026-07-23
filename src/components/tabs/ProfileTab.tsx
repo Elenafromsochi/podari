@@ -100,7 +100,7 @@ type IncomingItem = {
   gift_image: string | null;
   receiver_name: string;
 };
-type ActivityKey = "posted" | "gifted" | "received" | "booked";
+type ActivityKey = "wishes" | "posted" | "gifted" | "received" | "booked";
 
 type BalanceEvent = {
   id: string;
@@ -494,42 +494,15 @@ export function ProfileTab({
       </section>
 
       <div data-tour="profile-zone">
-        {/* Мои желания */}
-        <section className="mb-5">
-          <h2 className="mb-2 text-lg font-semibold tracking-tight">Мои желания</h2>
-          {!myWishes ? (
-            <Skeleton className="h-16 w-full rounded-2xl" />
-          ) : myWishes.length === 0 ? (
-            <p className="rounded-2xl border bg-card p-4 text-center text-sm text-muted-foreground">
-              Пока нет желаний — загадай через кнопку «Загадать желание» выше ✨
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {myWishes.map((w) => (
-                <MyWishItem
-                  key={w.id}
-                  w={w}
-                  onOpen={onOpenWish}
-                  onChanged={(id, status) =>
-                    setMyWishes((prev) =>
-                      prev ? prev.map((x) => (x.id === id ? { ...x, status } : x)) : prev,
-                    )
-                  }
-                />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* Мои подарки */}
+        {/* Мои желания и подарки — единый ряд вкладок, как на главной */}
         <section>
-          <h2 className="mb-3 text-lg font-semibold tracking-tight">Мои подарки</h2>
           <div
             data-tour="profile-statustabs"
-            className="mb-3 grid grid-cols-4 gap-1 rounded-2xl border bg-muted/60 p-1"
+            className="mb-3 grid grid-cols-5 gap-1 rounded-2xl border bg-muted/60 p-1"
           >
             {(
               [
+                ["wishes", "Желания"],
                 ["posted", "Активные"],
                 ["booked", "Брони"],
                 ["gifted", "Подаренные"],
@@ -537,7 +510,12 @@ export function ProfileTab({
               ] as const
             ).map(([k, label]) => {
               const active = activity === k;
-              const count = k === "booked" ? (incoming?.length ?? 0) + (booked?.length ?? 0) : 0;
+              const count =
+                k === "booked"
+                  ? (incoming?.length ?? 0) + (booked?.length ?? 0)
+                  : k === "wishes"
+                    ? (myWishes?.length ?? 0)
+                    : 0;
               return (
                 <button
                   key={k}
@@ -565,7 +543,33 @@ export function ProfileTab({
             })}
           </div>
 
-          {!loaded ? (
+          {activity === "wishes" ? (
+            !myWishes ? (
+              <div className="space-y-2">
+                <Skeleton className="h-16 w-full rounded-2xl" />
+                <Skeleton className="h-16 w-full rounded-2xl" />
+              </div>
+            ) : myWishes.length === 0 ? (
+              <p className="rounded-2xl border bg-card p-4 text-center text-sm text-muted-foreground">
+                Пока нет желаний — загадай через кнопку «Загадать желание» выше ✨
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {myWishes.map((w) => (
+                  <MyWishItem
+                    key={w.id}
+                    w={w}
+                    onOpen={onOpenWish}
+                    onChanged={(id, status) =>
+                      setMyWishes((prev) =>
+                        prev ? prev.map((x) => (x.id === id ? { ...x, status } : x)) : prev,
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )
+          ) : !loaded ? (
             <div className="space-y-2">
               <Skeleton className="h-16 w-full rounded-2xl" />
               <Skeleton className="h-16 w-full rounded-2xl" />
