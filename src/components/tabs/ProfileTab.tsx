@@ -1125,6 +1125,12 @@ function InviteRow({
         <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
           Другу — 1 балл на старт, тебе +50 XP за каждого
         </p>
+        <Link
+          to="/friends"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-medium text-muted-foreground transition active:scale-[0.98] hover:bg-accent"
+        >
+          👯 Мои люди — друзья, кому дарил(а), кто дарил(а) мне
+        </Link>
       </section>
     </>
   );

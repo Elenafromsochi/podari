@@ -265,7 +265,7 @@ export const completeTelegramLogin = createServerFn({ method: "POST" })
       await notifyUser(
         referredBy,
         `👋 Твой друг ${displayName} присоединился по твоей ссылке! Тебе +50 XP 💚`,
-        "/?tab=profile",
+        "/friends",
       );
     }
 
