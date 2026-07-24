@@ -16,9 +16,15 @@ async function sendTgMessage(chatId: number, text: string) {
 }
 
 async function sendLoginConfirmed(chatId: number) {
+  // Раньше тут был просто текст «возвращайся в приложение» — человеку
+  // приходилось самому догадываться, что это значит переключиться обратно
+  // в браузер. Теперь кнопка сразу открывает сайт — это и есть «приложение».
   await tgApiSafe("sendMessage", {
     chat_id: chatId,
-    text: "✅ Вход подтверждён. Возвращайся в приложение 💚",
+    text: "✅ Вход подтверждён 💚",
+    reply_markup: {
+      inline_keyboard: [[{ text: "Открыть приложение «Подари»", url: APP_URL }]],
+    },
   });
 }
 
