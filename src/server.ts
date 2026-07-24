@@ -3,6 +3,44 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+// Прокси к Supabase через собственный домен: браузер пользователя обращается
+// только к 23podari.ru (у нас на Cloudflare — доступен без VPN), а уже сам
+// Worker внутри ходит к настоящему Supabase напрямую (сервер-сервер, гео-
+// блокировки его не касаются). Так вся работа с данными, авторизацией,
+// картинками и realtime-чатом не требует VPN на стороне пользователя.
+// Прозрачно пробрасывает метод/заголовки/тело/статус, включая апгрейд до
+// WebSocket (для Supabase Realtime) — Cloudflare делает это тем же fetch().
+const DB_PROXY_PREFIX = "/db/";
+
+async function proxySupabaseRequest(request: Request): Promise<Response> {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  if (!supabaseUrl) {
+    console.error("[db-proxy] SUPABASE_URL не задан");
+    return new Response("Bad Gateway", { status: 502 });
+  }
+  const url = new URL(request.url);
+  const targetUrl = supabaseUrl.replace(/\/$/, "") + url.pathname.slice(DB_PROXY_PREFIX.length - 1) + url.search;
+
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+
+  const init: RequestInit = {
+    method: request.method,
+    headers,
+    redirect: "manual",
+  };
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    init.body = request.body;
+  }
+
+  try {
+    return await fetch(targetUrl, init);
+  } catch (error) {
+    console.error("[db-proxy] FAILED", error);
+    return new Response("Bad Gateway", { status: 502 });
+  }
+}
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
@@ -84,6 +122,10 @@ function withFreshHtmlHeaders(response: Response): Response {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith(DB_PROXY_PREFIX)) {
+      return proxySupabaseRequest(request);
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
