@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Inbox, Check, RotateCcw } from "lucide-react";
+import { Inbox, Check, RotateCcw, Send, CornerDownRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { listAdminMessages, setAdminMessageStatus } from "@/lib/admin-messages.functions";
+import { Textarea } from "@/components/ui/textarea";
+import { listAdminMessages, setAdminMessageStatus, replyAdminMessage } from "@/lib/admin-messages.functions";
 
 type Msg = Awaited<ReturnType<typeof listAdminMessages>>[number];
 
@@ -29,6 +30,65 @@ function LinkedText({ text }: { text: string }) {
         ),
       )}
     </p>
+  );
+}
+
+function ReplyBox({ msg, onSent }: { msg: Msg; onSent: (id: string, text: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const replyFn = useServerFn(replyAdminMessage);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setSending(true);
+    try {
+      await replyFn({ data: { id: msg.id, text: text.trim() } });
+      toast.success("Ответ отправлен в Telegram 💌");
+      onSent(msg.id, text.trim());
+      setText("");
+      setOpen(false);
+    } catch (e: any) {
+      const m = e?.message ?? "";
+      if (m.includes("NO_TELEGRAM")) toast.error("У пользователя не привязан Telegram");
+      else toast.error("Не удалось отправить ответ");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setOpen(true)}
+        className="text-indigo-300 hover:bg-white/5 hover:text-indigo-200"
+      >
+        <CornerDownRight className="mr-1 h-3.5 w-3.5" /> Ответить
+      </Button>
+    );
+  }
+
+  return (
+    <div className="mt-2 space-y-2">
+      <Textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Текст ответа — уйдёт человеку в Telegram-бота"
+        rows={3}
+        className="bg-white/5 border-white/10 text-zinc-100 text-sm"
+        autoFocus
+      />
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)} className="text-zinc-400 hover:text-white">
+          Отмена
+        </Button>
+        <Button size="sm" onClick={submit} disabled={sending || !text.trim()} className="bg-indigo-500 hover:bg-indigo-400">
+          {sending ? "Отправка…" : <><Send className="mr-1 h-3.5 w-3.5" /> Отправить</>}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -64,6 +124,14 @@ export function AdminInbox() {
     } catch {
       toast.error("Не удалось обновить");
     }
+  };
+
+  const onReplied = (id: string, text: string) => {
+    setMsgs((prev) =>
+      prev?.map((x) =>
+        x.id === id ? { ...x, status: "read", admin_reply: text, replied_at: new Date().toISOString() } : x,
+      ) ?? prev,
+    );
   };
 
   const unread = (msgs ?? []).filter((m) => m.status === "new").length;
@@ -104,7 +172,21 @@ export function AdminInbox() {
               }`}
             >
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-zinc-300">{m.user_name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-zinc-300">{m.user_name}</span>
+                  {m.telegram_username && (
+                    <a
+                      href={`https://t.me/${m.telegram_username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Написать @${m.telegram_username} в Telegram`}
+                      aria-label="Написать в Telegram"
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#229ED9]/20 text-[#229ED9] transition hover:bg-[#229ED9]/30"
+                    >
+                      <Send className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
                 <span className="text-[10px] text-zinc-500">
                   {new Date(m.created_at).toLocaleString("ru-RU")}
                 </span>
@@ -124,7 +206,18 @@ export function AdminInbox() {
                   />
                 </a>
               )}
-              <div className="mt-2 flex justify-end">
+
+              {m.admin_reply && (
+                <div className="mt-2 rounded-lg border border-emerald-400/20 bg-emerald-500/5 p-2">
+                  <div className="mb-0.5 text-[10px] font-medium text-emerald-300">
+                    Ваш ответ{m.replied_at ? ` · ${new Date(m.replied_at).toLocaleString("ru-RU")}` : ""}
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-xs text-zinc-200">{m.admin_reply}</p>
+                </div>
+              )}
+
+              <div className="mt-2 flex items-center justify-between">
+                <ReplyBox msg={m} onSent={onReplied} />
                 <Button
                   size="sm"
                   variant="ghost"

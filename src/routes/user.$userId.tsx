@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { shareGift } from "@/lib/share";
 import { supabase } from "@/integrations/supabase/client";
 import { ItemCard } from "@/components/ItemCard";
@@ -13,6 +13,7 @@ import { haptic } from "@/lib/haptics";
 import { LevelBadge } from "@/components/LevelBadge";
 import { GlobalChrome } from "@/components/GlobalChrome";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 
 export const Route = createFileRoute("/user/$userId")({
   component: UserProfilePage,
@@ -53,47 +54,6 @@ type Wish = {
 
 const ACTIVE_CHAT_KEY = "cozygift_active_chat_gift";
 const ACTIVE_TX_KEY = "cozygift_active_tx";
-
-/** Сворачиваемый раздел профиля: заголовок + счётчик + стрелочка, список — по тапу. */
-function ProfileSection({
-  title,
-  count,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  count: number | null;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3.5 text-left transition active:bg-accent/50"
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-2 text-[15px] font-semibold">
-          {title}
-          {count !== null && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
-              {count}
-            </span>
-          )}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-      {open && <div className="space-y-3 border-t bg-background/40 p-4">{children}</div>}
-    </section>
-  );
-}
 
 function UserProfilePage() {
   const { userId } = Route.useParams();
@@ -243,7 +203,7 @@ function UserProfilePage() {
         {/* Отзывы — тот же блок, что и в своём профиле (свёрнутый список с оценкой). */}
         <ReviewsAboutMe userId={userId} title="Отзывы" />
 
-        <ProfileSection
+        <CollapsibleSection
           title="Активные подарки"
           count={active?.length ?? null}
           open={openSection === "active"}
@@ -282,9 +242,9 @@ function UserProfilePage() {
               ))}
             </ul>
           )}
-        </ProfileSection>
+        </CollapsibleSection>
 
-        <ProfileSection
+        <CollapsibleSection
           title="Уже подарено"
           count={given?.length ?? null}
           open={openSection === "given"}
@@ -314,9 +274,9 @@ function UserProfilePage() {
               ))}
             </ul>
           )}
-        </ProfileSection>
+        </CollapsibleSection>
 
-        <ProfileSection
+        <CollapsibleSection
           title="Загаданные желания"
           count={wishes?.length ?? null}
           open={openSection === "wishes"}
@@ -348,7 +308,7 @@ function UserProfilePage() {
               ))}
             </ul>
           )}
-        </ProfileSection>
+        </CollapsibleSection>
       </div>
     </GlobalChrome>
   );

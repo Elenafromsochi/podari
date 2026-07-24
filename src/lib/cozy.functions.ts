@@ -1016,6 +1016,87 @@ export const getBalanceHistory = createServerFn({ method: "POST" })
     }));
   });
 
+// ---------- Мои люди: друзья по рефералке + кому дарил(а) + кто дарил(а) мне ----------
+export const getMyNetwork = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    const profilesFor = async (ids: string[]) => {
+      if (!ids.length) return new Map<string, { display_name: string; avatar_url: string | null; level: number }>();
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url, level")
+        .in("user_id", ids);
+      const map = new Map<string, { display_name: string; avatar_url: string | null; level: number }>();
+      for (const p of (data ?? []) as Array<{
+        user_id: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        level: number | null;
+      }>) {
+        map.set(p.user_id, {
+          display_name: p.display_name || "Гость",
+          avatar_url: p.avatar_url ?? null,
+          level: p.level ?? 1,
+        });
+      }
+      return map;
+    };
+
+    const toCards = (
+      ids: string[],
+      map: Map<string, { display_name: string; avatar_url: string | null; level: number }>,
+    ) =>
+      ids.map((id) => ({
+        user_id: id,
+        display_name: map.get(id)?.display_name ?? "Гость",
+        avatar_url: map.get(id)?.avatar_url ?? null,
+        level: map.get(id)?.level ?? 1,
+      }));
+
+    // Друзья, пришедшие по моей реферальной ссылке.
+    let referredIds: string[] = [];
+    {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("referred_by", userId);
+      if (!error) referredIds = ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
+    }
+
+    // Завершённые сделки по подаркам — кому дарил(а) / кто дарил(а) мне.
+    const { data: txs } = await supabase
+      .from("transactions")
+      .select("sender_id, receiver_id, status")
+      .eq("status", "completed")
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+
+    const gaveToIds = Array.from(
+      new Set(
+        ((txs ?? []) as Array<{ sender_id: string | null; receiver_id: string | null }>)
+          .filter((t) => t.sender_id === userId && t.receiver_id)
+          .map((t) => t.receiver_id as string),
+      ),
+    );
+    const gotFromIds = Array.from(
+      new Set(
+        ((txs ?? []) as Array<{ sender_id: string | null; receiver_id: string | null }>)
+          .filter((t) => t.receiver_id === userId && t.sender_id)
+          .map((t) => t.sender_id as string),
+      ),
+    );
+
+    const allIds = Array.from(new Set([...referredIds, ...gaveToIds, ...gotFromIds]));
+    const profileMap = await profilesFor(allIds);
+
+    return {
+      referred: toCards(referredIds, profileMap),
+      gaveTo: toCards(gaveToIds, profileMap),
+      gotFrom: toCards(gotFromIds, profileMap),
+    };
+  });
+
 // ---------- Public single gift (для страницы подарка по ссылке, без входа) ----------
 export const getPublicGift = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ gift_id: z.string().uuid() }).parse(input))

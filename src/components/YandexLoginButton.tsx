@@ -16,7 +16,7 @@ export function isYandexConfigured(): boolean {
   return !!YANDEX_CLIENT_ID;
 }
 
-export function YandexLoginButton() {
+export function YandexLoginButton({ compact = false }: { compact?: boolean } = {}) {
   if (!YANDEX_CLIENT_ID) return null;
 
   const start = () => {
@@ -31,6 +31,22 @@ export function YandexLoginButton() {
     u.searchParams.set("redirect_uri", YANDEX_REDIRECT_URL);
     window.location.href = u.toString();
   };
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={start}
+        aria-label="Войти через Яндекс"
+        className="flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-[#FC3F1D] text-white shadow-sm transition active:scale-[0.98] hover:brightness-105"
+      >
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold leading-none text-[#FC3F1D]">
+          Я
+        </span>
+        <span className="text-[10px] font-medium leading-none">Яндекс</span>
+      </button>
+    );
+  }
 
   return (
     <button

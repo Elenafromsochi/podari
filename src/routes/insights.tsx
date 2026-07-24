@@ -38,6 +38,106 @@ export const Route = createFileRoute("/insights")({
 type Overview = Awaited<ReturnType<typeof getAdminOverview>>;
 type UsersResp = Awaited<ReturnType<typeof getAdminUsers>>;
 
+// ---------- Фильтры аудитории ----------
+type UserFilters = {
+  neverPosted?: boolean;
+  neverGifted?: boolean;
+  neverReceived?: boolean;
+  neverInvited?: boolean;
+  minGiftsGiven?: number;
+  minLevel?: number;
+  maxLevel?: number;
+  minBalance?: number;
+  maxBalance?: number;
+  registeredWithinDays?: number;
+  registeredBeforeDays?: number;
+};
+
+function hasFilters(f: UserFilters): boolean {
+  return Object.values(f).some((v) => v !== undefined && v !== false);
+}
+
+function FilterPanel({ value, onChange }: { value: UserFilters; onChange: (f: UserFilters) => void }) {
+  const set = (patch: Partial<UserFilters>) => onChange({ ...value, ...patch });
+  const toggle = (key: keyof UserFilters) => set({ [key]: !value[key] } as Partial<UserFilters>);
+  const numField = (key: keyof UserFilters, placeholder: string) => (
+    <Input
+      type="number"
+      placeholder={placeholder}
+      value={(value[key] as number | undefined) ?? ""}
+      onChange={(e) =>
+        set({ [key]: e.target.value === "" ? undefined : Number(e.target.value) } as Partial<UserFilters>)
+      }
+      className="h-8 bg-white/5 border-white/10 text-zinc-100 text-xs"
+    />
+  );
+  const toggles: [keyof UserFilters, string][] = [
+    ["neverPosted", "Ни разу не публиковали подарок"],
+    ["neverGifted", "Ни разу не дарили"],
+    ["neverReceived", "Ни разу не получали"],
+    ["neverInvited", "Не приглашали друзей"],
+  ];
+  return (
+    <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="flex flex-wrap gap-2">
+        {toggles.map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => toggle(k)}
+            className={`rounded-full border px-2.5 py-1 text-[11px] transition ${
+              value[k]
+                ? "border-indigo-400 bg-indigo-500/15 text-white"
+                : "border-white/10 bg-white/5 text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div>
+          <Label className="text-[10px] text-zinc-500">Уровень от</Label>
+          {numField("minLevel", "напр. 2")}
+        </div>
+        <div>
+          <Label className="text-[10px] text-zinc-500">Уровень до</Label>
+          {numField("maxLevel", "напр. 5")}
+        </div>
+        <div>
+          <Label className="text-[10px] text-zinc-500">Подарили не меньше</Label>
+          {numField("minGiftsGiven", "напр. 3")}
+        </div>
+        <div>
+          <Label className="text-[10px] text-zinc-500">Баланс от</Label>
+          {numField("minBalance", "")}
+        </div>
+        <div>
+          <Label className="text-[10px] text-zinc-500">Баланс до</Label>
+          {numField("maxBalance", "")}
+        </div>
+        <div>
+          <Label className="text-[10px] text-zinc-500">Новички — регистрация ≤ N дней назад</Label>
+          {numField("registeredWithinDays", "напр. 7")}
+        </div>
+        <div>
+          <Label className="text-[10px] text-zinc-500">Давние — регистрация ≥ N дней назад</Label>
+          {numField("registeredBeforeDays", "напр. 30")}
+        </div>
+      </div>
+      {hasFilters(value) && (
+        <button
+          type="button"
+          onClick={() => onChange({})}
+          className="text-[11px] text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
+        >
+          Сбросить фильтры
+        </button>
+      )}
+    </div>
+  );
+}
+
 function InsightsPage() {
   const navigate = useNavigate();
   const overviewFn = useServerFn(getAdminOverview);
@@ -55,6 +155,8 @@ function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<UserFilters>({});
 
   useEffect(() => {
     loadUser().then((u) => {
@@ -68,7 +170,7 @@ function InsightsPage() {
     try {
       const [o, u] = await Promise.all([
         overviewFn({}),
-        usersFn({ data: { page, pageSize: 50, search: search || undefined, onlySleeping } }),
+        usersFn({ data: { page, pageSize: 50, search: search || undefined, onlySleeping, filters } }),
       ]);
       setOverview(o);
       setUsers(u);
@@ -84,6 +186,8 @@ function InsightsPage() {
     if (authChecked) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authChecked, page, onlySleeping]);
+
+  const applyFilters = () => { setPage(0); reload(); };
 
   const handleSearch = () => { setPage(0); reload(); };
 
@@ -217,12 +321,34 @@ function InsightsPage() {
               />
               Только спящие
             </label>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`border-white/10 bg-white/5 text-zinc-100 hover:bg-white/10 ${hasFilters(filters) ? "border-indigo-400 text-indigo-200" : ""}`}
+            >
+              Фильтры{hasFilters(filters) ? " ✓" : ""}
+            </Button>
             {selected.size > 0 && (
               <Button size="sm" onClick={() => setBroadcastOpen(true)} className="ml-auto bg-indigo-500 hover:bg-indigo-400">
                 <Send className="w-4 h-4 mr-1" /> Пуш выбранным ({selected.size})
               </Button>
             )}
           </div>
+
+          {filtersOpen && (
+            <div className="mb-3 space-y-2">
+              <FilterPanel value={filters} onChange={setFilters} />
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={applyFilters} className="bg-indigo-500 hover:bg-indigo-400">Применить</Button>
+                {!users?.statsAvailable && hasFilters(filters) && (
+                  <span className="text-[11px] text-amber-400">
+                    Счётчики подарков/приглашений появятся после обновления базы данных
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto -mx-1">
             <table className="w-full text-sm">
@@ -234,6 +360,8 @@ function InsightsPage() {
                   <th className="px-2 py-2 text-right">Lvl</th>
                   <th className="px-2 py-2 text-right">XP</th>
                   <th className="px-2 py-2 text-right">Баланс</th>
+                  {users?.statsAvailable && <th className="px-2 py-2 text-right">Дарил</th>}
+                  {users?.statsAvailable && <th className="px-2 py-2 text-right">Получал</th>}
                   <th className="px-2 py-2">Активность</th>
                   <th className="px-2 py-2 w-8"></th>
                 </tr>
@@ -264,6 +392,8 @@ function InsightsPage() {
                       <td className="px-2 py-2 text-right text-zinc-300">{u.level}</td>
                       <td className="px-2 py-2 text-right text-zinc-400">{u.xp}</td>
                       <td className="px-2 py-2 text-right text-zinc-300">{Number(u.balance).toFixed(2)}</td>
+                      {users?.statsAvailable && <td className="px-2 py-2 text-right text-zinc-400">{u.gifts_given ?? 0}</td>}
+                      {users?.statsAvailable && <td className="px-2 py-2 text-right text-zinc-400">{u.gifts_received ?? 0}</td>}
                       <td className="px-2 py-2 text-zinc-400">
                         {days === null ? "никогда" : days === 0 ? "сегодня" : `${days} д. назад`}
                       </td>
@@ -306,6 +436,10 @@ function InsightsPage() {
         selectedIds={Array.from(selected)}
         sleepingCount={overview?.activity.sleeping ?? 0}
         totalCount={overview?.activity.totalUsers ?? 0}
+        onCountFiltered={async (f) => {
+          const r = await usersFn({ data: { page: 0, pageSize: 1, filters: f } });
+          return { count: (r as UsersResp).total, statsAvailable: (r as UsersResp).statsAvailable };
+        }}
         onSend={async (payload) => {
           const res = await broadcastFn({ data: payload });
           toast.success(`Отправлено ${(res as any).sent} из ${(res as any).total}${(res as any).failed ? `, ошибок ${(res as any).failed}` : ""}`);
@@ -374,7 +508,7 @@ function TopList({ title, items }: { title: string; items: { user_id: string; na
 }
 
 function BroadcastDialog({
-  open, onOpenChange, selectedCount, selectedIds, sleepingCount, totalCount, onSend,
+  open, onOpenChange, selectedCount, selectedIds, sleepingCount, totalCount, onCountFiltered, onSend,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -382,20 +516,47 @@ function BroadcastDialog({
   selectedIds: string[];
   sleepingCount: number;
   totalCount: number;
+  onCountFiltered: (f: UserFilters) => Promise<{ count: number; statsAvailable: boolean }>;
   onSend: (payload: any) => Promise<void>;
 }) {
-  const [audience, setAudience] = useState<"sleeping" | "all" | "selected">("sleeping");
+  const [audience, setAudience] = useState<"sleeping" | "all" | "selected" | "filtered">("sleeping");
   const [text, setText] = useState("Привет! Соскучились по тебе в Подари 🎁\nЗайди посмотреть, что нового.");
   const [withButton, setWithButton] = useState(true);
   const [buttonText, setButtonText] = useState("Открыть приложение");
   const [buttonUrl, setButtonUrl] = useState("https://podari.lovable.app");
   const [sending, setSending] = useState(false);
+  const [filters, setFilters] = useState<UserFilters>({});
+  const [filteredCount, setFilteredCount] = useState<number | null>(null);
+  const [filteredStatsAvailable, setFilteredStatsAvailable] = useState(true);
+  const [counting, setCounting] = useState(false);
 
   useEffect(() => {
     if (open && selectedCount > 0) setAudience("selected");
   }, [open, selectedCount]);
 
-  const audienceSize = audience === "sleeping" ? sleepingCount : audience === "all" ? totalCount : selectedCount;
+  useEffect(() => {
+    if (!open || audience !== "filtered") return;
+    let cancelled = false;
+    setCounting(true);
+    const t = setTimeout(() => {
+      onCountFiltered(filters)
+        .then((r) => {
+          if (cancelled) return;
+          setFilteredCount(r.count);
+          setFilteredStatsAvailable(r.statsAvailable || !hasFilters(filters));
+        })
+        .catch(() => { if (!cancelled) setFilteredCount(null); })
+        .finally(() => { if (!cancelled) setCounting(false); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, audience, filters]);
+
+  const audienceSize =
+    audience === "sleeping" ? sleepingCount
+    : audience === "all" ? totalCount
+    : audience === "filtered" ? (filteredCount ?? 0)
+    : selectedCount;
 
   const handleSend = async () => {
     setSending(true);
@@ -403,6 +564,7 @@ function BroadcastDialog({
       await onSend({
         audience,
         userIds: audience === "selected" ? selectedIds : undefined,
+        filters: audience === "filtered" ? filters : undefined,
         text,
         buttonText: withButton ? buttonText : undefined,
         buttonUrl: withButton ? buttonUrl : undefined,
@@ -424,11 +586,12 @@ function BroadcastDialog({
         <div className="space-y-3">
           <div>
             <Label className="text-xs text-zinc-400">Аудитория</Label>
-            <div className="grid grid-cols-3 gap-2 mt-1">
+            <div className="grid grid-cols-2 gap-2 mt-1">
               {[
                 { v: "sleeping", l: `Спящие · ${sleepingCount}` },
                 { v: "selected", l: `Выбранные · ${selectedCount}` },
                 { v: "all", l: `Все · ${totalCount}` },
+                { v: "filtered", l: "По фильтру" },
               ].map((o) => (
                 <button
                   key={o.v}
@@ -442,6 +605,17 @@ function BroadcastDialog({
               ))}
             </div>
           </div>
+          {audience === "filtered" && (
+            <div className="space-y-1.5">
+              <FilterPanel value={filters} onChange={setFilters} />
+              <div className="text-[11px] text-zinc-500">
+                {counting ? "Считаем…" : `Подойдёт: ~${filteredCount ?? 0} чел.`}
+                {!filteredStatsAvailable && (
+                  <span className="text-amber-400"> · фильтры по подаркам недоступны до обновления базы</span>
+                )}
+              </div>
+            </div>
+          )}
           <div>
             <Label className="text-xs text-zinc-400">Текст (поддерживает HTML)</Label>
             <Textarea

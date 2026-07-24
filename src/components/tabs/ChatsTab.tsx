@@ -177,7 +177,12 @@ export function ChatsTab() {
     return [...archiveG, ...archiveR];
   }, [filter, givers, receivers, archiveG, archiveR]);
 
-  const list = base;
+  // Чаты с незавершённой задачей (например, «оставьте отзыв») поднимаем
+  // наверх списка — остальные идут следом в прежнем порядке.
+  const list = useMemo(
+    () => [...base].sort((a, b) => (a.needs_review === b.needs_review ? 0 : a.needs_review ? -1 : 1)),
+    [base],
+  );
 
   const loading =
     (filter === "givers" && !givers) || (filter === "receivers" && !receivers);

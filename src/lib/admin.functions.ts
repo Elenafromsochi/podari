@@ -12,6 +12,54 @@ function daysAgo(n: number) {
   return d.toISOString();
 }
 
+// ---------- Фильтры аудитории (для списка пользователей и рассылки) ----------
+// «Статистические» фильтры (по числу подарков/приглашений) читаются из
+// admin_user_stats — вьюхи, которая появляется только после применения
+// миграции. Остальные (уровень, баланс, дата регистрации) работают всегда,
+// они уже есть прямо в profiles.
+const UserFilterSchema = z
+  .object({
+    neverPosted: z.boolean().optional(),
+    neverGifted: z.boolean().optional(),
+    neverReceived: z.boolean().optional(),
+    neverInvited: z.boolean().optional(),
+    minGiftsGiven: z.number().int().min(0).optional(),
+    minLevel: z.number().int().min(1).optional(),
+    maxLevel: z.number().int().min(1).optional(),
+    minBalance: z.number().optional(),
+    maxBalance: z.number().optional(),
+    registeredWithinDays: z.number().int().min(1).optional(),
+    registeredBeforeDays: z.number().int().min(1).optional(),
+  })
+  .optional();
+type UserFilters = z.infer<typeof UserFilterSchema>;
+
+function needsStatsView(f?: UserFilters): boolean {
+  if (!f) return false;
+  return !!(f.neverPosted || f.neverGifted || f.neverReceived || f.neverInvited || f.minGiftsGiven != null);
+}
+
+function applyBaseFilters(q: any, f?: UserFilters) {
+  if (!f) return q;
+  if (f.minLevel != null) q = q.gte("level", f.minLevel);
+  if (f.maxLevel != null) q = q.lte("level", f.maxLevel);
+  if (f.minBalance != null) q = q.gte("balance", f.minBalance);
+  if (f.maxBalance != null) q = q.lte("balance", f.maxBalance);
+  if (f.registeredWithinDays != null) q = q.gte("created_at", daysAgo(f.registeredWithinDays));
+  if (f.registeredBeforeDays != null) q = q.lte("created_at", daysAgo(f.registeredBeforeDays));
+  return q;
+}
+
+function applyStatsFilters(q: any, f?: UserFilters) {
+  if (!f) return q;
+  if (f.neverPosted) q = q.eq("gifts_posted", 0);
+  if (f.neverGifted) q = q.eq("gifts_given", 0);
+  if (f.neverReceived) q = q.eq("gifts_received", 0);
+  if (f.neverInvited) q = q.eq("referrals_count", 0);
+  if (f.minGiftsGiven != null) q = q.gte("gifts_given", f.minGiftsGiven);
+  return q;
+}
+
 // ---------- Overview ----------
 export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
@@ -173,25 +221,46 @@ export const getAdminUsers = createServerFn({ method: "GET" })
     pageSize: z.number().int().min(1).max(200).default(50),
     search: z.string().max(100).optional(),
     onlySleeping: z.boolean().default(false),
+    filters: UserFilterSchema,
   }).parse(d))
   .handler(async ({ data }) => {
     const from = data.page * data.pageSize;
     const to = from + data.pageSize - 1;
-    let q = supabaseAdmin
-      .from("profiles")
-      .select("user_id, display_name, telegram_username, telegram_id, level, xp, balance, last_seen_at, created_at", { count: "exact" })
-      .order("last_seen_at", { ascending: false, nullsFirst: false })
-      .range(from, to);
-    if (data.search && data.search.trim()) {
-      const s = data.search.trim().replace(/[%_]/g, "");
-      q = q.or(`display_name.ilike.%${s}%,telegram_username.ilike.%${s}%`);
+    const wantsStats = needsStatsView(data.filters);
+    const statsCols =
+      "user_id, display_name, telegram_username, telegram_id, level, xp, balance, last_seen_at, created_at, gifts_posted, gifts_given, gifts_received, referrals_count";
+    const plainCols = "user_id, display_name, telegram_username, telegram_id, level, xp, balance, last_seen_at, created_at";
+
+    const build = (table: "profiles" | "admin_user_stats", cols: string) => {
+      let q = (supabaseAdmin.from(table as any) as any)
+        .select(cols, { count: "exact" })
+        .order("last_seen_at", { ascending: false, nullsFirst: false })
+        .range(from, to);
+      if (data.search && data.search.trim()) {
+        const s = data.search.trim().replace(/[%_]/g, "");
+        q = q.or(`display_name.ilike.%${s}%,telegram_username.ilike.%${s}%`);
+      }
+      if (data.onlySleeping) {
+        q = q.or(`last_seen_at.lt.${daysAgo(SLEEP_DAYS)},last_seen_at.is.null`);
+      }
+      q = applyBaseFilters(q, data.filters);
+      if (table === "admin_user_stats") q = applyStatsFilters(q, data.filters);
+      return q;
+    };
+
+    let statsAvailable = false;
+    let rows, count, error;
+    if (wantsStats) {
+      ({ data: rows, count, error } = await build("admin_user_stats", statsCols));
+      statsAvailable = !error;
     }
-    if (data.onlySleeping) {
-      q = q.or(`last_seen_at.lt.${daysAgo(SLEEP_DAYS)},last_seen_at.is.null`);
+    // Без запрошенных стат-фильтров, либо вьюха ещё не накатана — обычный запрос
+    // к profiles (без счётчиков подарков/приглашений).
+    if (!wantsStats || error) {
+      ({ data: rows, count, error } = await build("profiles", plainCols));
     }
-    const { data: rows, count, error } = await q;
     if (error) throw new Error(error.message);
-    return { rows: rows ?? [], total: count ?? 0 };
+    return { rows: rows ?? [], total: count ?? 0, statsAvailable };
   });
 
 // ---------- Sleeping export ----------
@@ -237,8 +306,9 @@ export const exportSleepingCsv = createServerFn({ method: "GET" })
 
 // ---------- Telegram broadcast ----------
 const BroadcastSchema = z.object({
-  audience: z.enum(["sleeping", "all", "selected"]),
+  audience: z.enum(["sleeping", "all", "selected", "filtered"]),
   userIds: z.array(z.string().uuid()).max(2000).optional(),
+  filters: UserFilterSchema,
   text: z.string().min(1).max(4000),
   buttonText: z.string().min(1).max(60).optional(),
   buttonUrl: z.string().url().max(500).optional(),
@@ -266,17 +336,46 @@ export const sendTelegramBroadcast = createServerFn({ method: "POST" })
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       throw new Error("Telegram не подключён");
     }
-    let q = supabaseAdmin
-      .from("profiles")
-      .select("user_id, telegram_id")
-      .not("telegram_id", "is", null);
-    if (data.audience === "sleeping") {
-      q = q.or(`last_seen_at.lt.${daysAgo(SLEEP_DAYS)},last_seen_at.is.null`);
-    } else if (data.audience === "selected") {
-      if (!data.userIds?.length) throw new Error("Не выбраны получатели");
-      q = q.in("user_id", data.userIds);
+    let rows: { user_id: string; telegram_id: number | null }[] | null = null;
+    let error: { message: string } | null = null;
+
+    if (data.audience === "filtered") {
+      const wantsStats = needsStatsView(data.filters);
+      if (wantsStats) {
+        let q = (supabaseAdmin.from("admin_user_stats" as any) as any)
+          .select("user_id, telegram_id")
+          .not("telegram_id", "is", null);
+        q = applyBaseFilters(q, data.filters);
+        q = applyStatsFilters(q, data.filters);
+        const res = await q.limit(2000);
+        if (res.error) {
+          throw new Error(
+            "Фильтры по подаркам/приглашениям пока недоступны — нужно применить обновление базы данных",
+          );
+        }
+        rows = res.data as any;
+      } else {
+        let q = supabaseAdmin.from("profiles").select("user_id, telegram_id").not("telegram_id", "is", null);
+        q = applyBaseFilters(q, data.filters);
+        const res = await q.limit(2000);
+        rows = res.data as any;
+        error = res.error;
+      }
+    } else {
+      let q = supabaseAdmin
+        .from("profiles")
+        .select("user_id, telegram_id")
+        .not("telegram_id", "is", null);
+      if (data.audience === "sleeping") {
+        q = q.or(`last_seen_at.lt.${daysAgo(SLEEP_DAYS)},last_seen_at.is.null`);
+      } else if (data.audience === "selected") {
+        if (!data.userIds?.length) throw new Error("Не выбраны получатели");
+        q = q.in("user_id", data.userIds);
+      }
+      const res = await q.limit(2000);
+      rows = res.data as any;
+      error = res.error;
     }
-    const { data: rows, error } = await q.limit(2000);
     if (error) throw new Error(error.message);
 
     const button = data.buttonText && data.buttonUrl ? { text: data.buttonText, url: data.buttonUrl } : undefined;
