@@ -496,31 +496,6 @@ export function ChatScreen({
             );
           })()}
 
-          {/* Справа: небольшая приглушённо-красная кнопка отказа (для получателя) */}
-          {!isOwner && !cancelled && !handedOver && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  data-tour="chat-decline"
-                  className="shrink-0 rounded-full border border-red-300/70 px-2.5 py-1 text-[11px] font-medium text-red-500/90 transition hover:bg-red-50 active:scale-95"
-                >
-                  Отказаться
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Отказаться от подарка?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Замороженные баллы вернутся вам, а подарок снова станет доступным другим.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Отмена</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleCancel}>Отказаться</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
         </div>
 
         {gift?.image_urls && gift.image_urls.length > 1 && (
@@ -544,7 +519,7 @@ export function ChatScreen({
         )}
 
 
-        {/* Кнопки действия дарителя (у получателя «Отказаться» — в шапке справа) */}
+        {/* Кнопки действия дарителя */}
         {isOwner && !cancelled && !handedOver && (
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
@@ -576,6 +551,36 @@ export function ChatScreen({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Отмена</AlertDialogCancel>
                   <AlertDialogAction onClick={handleCancelBySender}>Подтвердить</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
+        {/* Кнопка действия получателя — отказаться от брони (баллы вернутся) */}
+        {!isOwner && !cancelled && !handedOver && (
+          <div className="mt-3">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  data-tour="chat-decline"
+                  size="sm"
+                  variant="destructive"
+                  className="h-9 w-full rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
+                >
+                  <X className="mr-1 h-4 w-4" /> Отказаться от подарка
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Отказаться от подарка?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Замороженные баллы вернутся вам, а подарок снова станет доступным другим.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCancel}>Отказаться</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
