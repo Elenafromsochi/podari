@@ -31,7 +31,6 @@ export function AppShell({
 }: Props) {
   const [tab, setTab] = useState<AppTab>(initialTab);
   const [unreadChats, setUnreadChats] = useState(0);
-  const [achievementsBadge, setAchievementsBadge] = useState(0);
   const unreadFn = useServerFn(getUnreadCounts);
   const touchFn = useServerFn(touchLastSeen);
   // Пока человек на вкладке «Чаты» — бейдж всегда 0, даже если запрос, начатый
@@ -103,7 +102,6 @@ export function AppShell({
         {tab === "profile" && (
           <ProfileTab
             user={user}
-            onUnreadAchievements={setAchievementsBadge}
             onCreateWish={onCreateWish}
             onOpenWish={onOpenWish}
             onGive={onGive}
@@ -118,7 +116,6 @@ export function AppShell({
         active={tab}
         onChange={setTab}
         unreadChats={unreadChats}
-        achievementsBadge={achievementsBadge}
       />
     </div>
   );
