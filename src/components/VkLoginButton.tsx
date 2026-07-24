@@ -168,7 +168,13 @@ export function VkLoginButton({ onToken, compact = false }: Props) {
           {compact ? "VK…" : "Загружаем VK ID…"}
         </div>
       )}
-      <div ref={containerRef} className={`flex w-full justify-center ${loading ? "hidden" : ""}`} />
+      {/* overflow-hidden подрезает виджет VK ID под наше скругление — сам SDK
+          не всегда точно слушается переданного borderRadius. */}
+      <div
+        className={`w-full overflow-hidden rounded-xl ${loading ? "hidden" : ""}`}
+      >
+        <div ref={containerRef} className="flex w-full justify-center" />
+      </div>
       {error && (
         <p className={`text-center text-destructive ${compact ? "text-[10px]" : "text-xs"}`}>
           {compact ? "VK недоступен" : error}
