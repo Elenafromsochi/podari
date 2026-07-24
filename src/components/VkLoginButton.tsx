@@ -75,13 +75,16 @@ function loadVkidSdk(): Promise<VkidSdk> {
 interface Props {
   // Получает VK access_token, должен выдать сессию (см. loginWithVk).
   onToken: (accessToken: string) => Promise<void>;
+  // Компактный режим — виджет высотой 48px, чтобы встать в один ряд
+  // с кнопками Telegram/Яндекс (вместо полноширинного варианта по умолчанию).
+  compact?: boolean;
 }
 
 /**
  * Кнопка «Войти через VK» (One Tap). Рендерит виджет VK ID, после авторизации
  * меняет code на access_token (PKCE внутри SDK) и отдаёт токен наружу.
  */
-export function VkLoginButton({ onToken }: Props) {
+export function VkLoginButton({ onToken, compact = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,7 +111,8 @@ export function VkLoginButton({ onToken }: Props) {
             container: containerRef.current,
             showAlternativeLogin: false,
             // Скругление 12px — как у кнопки «Войти через Telegram» (rounded-xl).
-            styles: { borderRadius: 12 },
+            // В компактном режиме высота 48px — вровень с соседними кнопками в ряду.
+            styles: compact ? { borderRadius: 12, height: 48 } : { borderRadius: 12 },
           })
           .on(VKID.WidgetEvents.ERROR, (e: unknown) => {
             console.error("[vk-auth] WIDGET_ERROR", e);
@@ -154,13 +158,22 @@ export function VkLoginButton({ onToken }: Props) {
 
   return (
     <div className="w-full">
-      <div ref={containerRef} className="flex w-full justify-center" />
       {loading && !error && (
-        <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Загружаем VK ID…
+        <div
+          className={`flex w-full items-center justify-center gap-1.5 rounded-xl border text-muted-foreground ${
+            compact ? "h-12 text-[10px]" : "h-11 text-xs"
+          }`}
+        >
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+          {compact ? "VK…" : "Загружаем VK ID…"}
+        </div>
+      )}
+      <div ref={containerRef} className={`flex w-full justify-center ${loading ? "hidden" : ""}`} />
+      {error && (
+        <p className={`text-center text-destructive ${compact ? "text-[10px]" : "text-xs"}`}>
+          {compact ? "VK недоступен" : error}
         </p>
       )}
-      {error && <p className="text-center text-xs text-destructive">{error}</p>}
     </div>
   );
 }

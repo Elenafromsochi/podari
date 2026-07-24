@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { ShieldCheck, Loader2, Gift } from "lucide-react";
+import { ShieldCheck, Loader2, Gift, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { loadUser, setTelegramSession, type UserProfile } from "@/lib/auth-state";
 import {
@@ -588,60 +588,73 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
             </form>
           )}
 
-          {/* Кнопка входа через Telegram — это НАСТОЯЩАЯ ссылка на бота,
-              поэтому один тап сразу открывает бота (Safari не блокирует).
-              Кнопка видна и во время ожидания: если бот вдруг не открылся,
-              можно просто нажать ещё раз — без пугающего второго экрана. */}
+          {/* Вход: во время ожидания подтверждения в боте — одна крупная кнопка
+              «Открыть Telegram ещё раз». В остальное время — три равных
+              кнопки в один ряд (Telegram, VK, Яндекс) под подписью «Войти
+              с помощью», без предпочтения одному способу над другими. */}
           {pwMode !== "code" && (phase === "idle" || phase === "waiting") && (
             <>
-              {deepLink ? (
-                <Button
-                  asChild
-                  size="lg"
-                  className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
-                >
-                  <a
-                    href={deepLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={onTapBotLink}
-                  >
-                    {phase === "waiting"
-                      ? "Открыть Telegram ещё раз"
-                      : pwMode === "form"
-                        ? "Войти через Telegram"
-                        : "Авторизоваться через Телеграм"}
-                  </a>
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
-                  onClick={startLogin}
-                >
-                  {pwMode === "form"
-                    ? "Войти через Telegram"
-                    : "Авторизоваться через Телеграм"}
-                </Button>
-              )}
-
-              {phase === "waiting" && (
-                <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Подтверди вход в боте (Start → ✅ Это я) и вернись сюда 💚
-                </p>
-              )}
-
-              {/* Вход через VK ID — работает без VPN, рядом с Telegram. */}
-              {phase === "idle" && (
+              {phase === "waiting" ? (
                 <>
-                  <div className="flex w-full items-center gap-3 py-1 text-[11px] text-muted-foreground">
-                    <span className="h-px flex-1 bg-border" />
-                    или
-                    <span className="h-px flex-1 bg-border" />
+                  {deepLink ? (
+                    <Button
+                      asChild
+                      size="lg"
+                      className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
+                    >
+                      <a
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={onTapBotLink}
+                      >
+                        Открыть Telegram ещё раз
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
+                      onClick={startLogin}
+                    >
+                      Авторизоваться через Телеграм
+                    </Button>
+                  )}
+                  <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Подтверди вход в боте (Start → ✅ Это я) и вернись сюда 💚
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-center text-xs font-medium text-muted-foreground">
+                    Войти с помощью
+                  </p>
+                  <div className="grid w-full grid-cols-3 gap-2">
+                    {deepLink ? (
+                      <a
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={onTapBotLink}
+                        className="flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-[#229ED9] text-white shadow-sm transition active:scale-[0.98] hover:brightness-105"
+                      >
+                        <Send className="h-4 w-4" />
+                        <span className="text-[10px] font-medium leading-none">Telegram</span>
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={startLogin}
+                        className="flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-[#229ED9] text-white shadow-sm transition active:scale-[0.98] hover:brightness-105"
+                      >
+                        <Send className="h-4 w-4" />
+                        <span className="text-[10px] font-medium leading-none">Telegram</span>
+                      </button>
+                    )}
+                    <VkLoginButton compact onToken={handleVkToken} />
+                    <YandexLoginButton compact />
                   </div>
-                  <VkLoginButton onToken={handleVkToken} />
-                  <YandexLoginButton />
                 </>
               )}
             </>
