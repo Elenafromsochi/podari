@@ -7,7 +7,6 @@ interface Props {
   active: AppTab | null;
   onChange: (t: AppTab) => void;
   unreadChats?: number;
-  achievementsBadge?: number;
 }
 
 const TABS: { id: AppTab; label: string; Icon: typeof Home }[] = [
@@ -16,7 +15,7 @@ const TABS: { id: AppTab; label: string; Icon: typeof Home }[] = [
   { id: "chats", label: "Чаты", Icon: MessageCircle },
 ];
 
-export function BottomNav({ active, onChange, unreadChats = 0, achievementsBadge = 0 }: Props) {
+export function BottomNav({ active, onChange, unreadChats = 0 }: Props) {
   return (
     <nav
       data-tour="bottom-nav"
@@ -26,8 +25,7 @@ export function BottomNav({ active, onChange, unreadChats = 0, achievementsBadge
       <ul className="mx-auto flex max-w-md items-stretch justify-around px-2 pt-1.5">
         {TABS.map(({ id, label, Icon }) => {
           const isActive = active === id;
-          const badge =
-            id === "chats" ? unreadChats : id === "profile" ? achievementsBadge : 0;
+          const badge = id === "chats" ? unreadChats : 0;
           return (
             <li key={id} className="flex-1">
               <button

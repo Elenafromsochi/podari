@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronDown,
   LogOut,
@@ -131,7 +131,6 @@ function formatBalanceEvent(e: BalanceEvent): { text: string; emoji: string } {
 
 interface Props {
   user: UserProfile;
-  onUnreadAchievements?: (n: number) => void;
   onCreateWish?: () => void;
   onOpenWish?: (wishId: string) => void;
   onGive?: () => void;
@@ -150,7 +149,6 @@ type MyWish = {
 
 export function ProfileTab({
   user,
-  onUnreadAchievements,
   onCreateWish,
   onOpenWish,
   onGive,
@@ -203,20 +201,6 @@ export function ProfileTab({
   }, [rolesFn]);
 
   const { items: achievements, stats: journeyStats } = useAchievements();
-  // «Новые» = открытые, которые пользователь ещё не видел
-  const seenKey = "cozy_seen_achievements";
-  const [seenVersion, setSeenVersion] = useState(0);
-  const unreadAch = useMemo(() => {
-    if (typeof window === "undefined") return 0;
-    const seen = new Set<string>(JSON.parse(localStorage.getItem(seenKey) || "[]"));
-    return achievements.filter((a) => a.unlocked && !seen.has(a.code)).length;
-    // seenVersion в зависимостях — чтобы счётчик пересчитался после «просмотрено»
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [achievements, seenVersion]);
-
-  useEffect(() => {
-    onUnreadAchievements?.(unreadAch);
-  }, [unreadAch, onUnreadAchievements]);
 
   useEffect(() => {
     (async () => {
@@ -241,16 +225,7 @@ export function ProfileTab({
 
   const toggleAch = () => {
     haptic("select");
-    setAchOpen((v) => {
-      const next = !v;
-      if (next && typeof window !== "undefined") {
-        const codes = achievements.filter((a) => a.unlocked).map((a) => a.code);
-        localStorage.setItem(seenKey, JSON.stringify(codes));
-        setSeenVersion((x) => x + 1);
-        onUnreadAchievements?.(0);
-      }
-      return next;
-    });
+    setAchOpen((v) => !v);
   };
 
   const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -407,11 +382,6 @@ export function ProfileTab({
           <span className="flex items-center gap-2 text-[15px] font-semibold">
             <Trophy className="h-4 w-4 text-primary" />
             Мои достижения
-            {unreadAch > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow">
-                {unreadAch}
-              </span>
-            )}
           </span>
           <ChevronDown
             className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${
