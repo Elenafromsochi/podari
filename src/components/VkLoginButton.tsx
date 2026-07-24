@@ -9,6 +9,16 @@ const VK_REDIRECT_URL = "https://23podari.ru";
 // VK ID SDK грузим с CDN только в браузере (SSR-safe). Один экземпляр на вкладку.
 const VK_SDK_SRC = "https://unpkg.com/@vkid/sdk@2.6.0/dist-sdk/umd/index.js";
 
+// Раньше вход шёл через новую вкладку + «callback»-режим (SDK сам сообщал
+// результат основной странице через постороннюю коммуникацию между вкладками).
+// Именно это ненадёжно работало в части браузеров (особенно Safari с его
+// защитой от межвкладочного слежения) — окно зависало после «Разрешить».
+// Теперь используем ConfigAuthMode.Redirect: переход происходит в ТОЙ ЖЕ
+// вкладке (как у входа через Яндекс), без всплывающих окон и постороннего
+// обмена сообщениями — такой способ одинаково работает в любом браузере.
+const PKCE_VERIFIER_KEY = "cozygift_vk_pkce_verifier";
+const PKCE_STATE_KEY = "cozygift_vk_pkce_state";
+
 // SDK грузится с CDN (npm-пакет не ставим), поэтому типизируем по месту —
 // только то, что реально используем из window.VKIDSDK.
 type VkOneTap = {
@@ -26,15 +36,16 @@ type VkidSdk = {
     init: (opts: {
       app: number;
       redirectUrl: string;
-      responseMode: unknown;
-      source: unknown;
+      mode?: unknown;
+      codeVerifier?: string;
+      state?: string;
+      source?: unknown;
     }) => void;
   };
-  ConfigResponseMode: { Callback: unknown };
+  ConfigAuthMode: { Redirect: unknown; InNewWindow: unknown };
   ConfigSource: { LOWCODE: unknown };
   OneTap: new () => VkOneTap;
   WidgetEvents: { ERROR: unknown };
-  OneTapInternalEvents: { LOGIN_SUCCESS: unknown };
   Auth: {
     exchangeCode: (
       code: string,
@@ -72,6 +83,43 @@ function loadVkidSdk(): Promise<VkidSdk> {
   return sdkPromise;
 }
 
+// Случайная строка для PKCE code_verifier/state — только разрешённые символы.
+function randomPkceString(length: number): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+/** Разбирает query-параметры, которые VK ID кладёт при возврате из Redirect-режима. */
+function readVkReturnParams(): { code: string; deviceId: string } | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const deviceId = params.get("device_id");
+  const state = params.get("state");
+  if (!code || !deviceId) return null;
+  const savedState = localStorage.getItem(PKCE_STATE_KEY);
+  if (savedState && state !== savedState) {
+    // Пришло что-то постороннее — не наш обмен, игнорируем молча.
+    return null;
+  }
+  return { code, deviceId };
+}
+
+function clearVkReturnParams() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("code");
+    url.searchParams.delete("state");
+    url.searchParams.delete("device_id");
+    url.searchParams.delete("type");
+    window.history.replaceState({}, "", url.toString());
+  } catch {
+    /* noop */
+  }
+}
+
 interface Props {
   // Получает VK access_token, должен выдать сессию (см. loginWithVk).
   onToken: (accessToken: string) => Promise<void>;
@@ -81,26 +129,70 @@ interface Props {
 }
 
 /**
- * Кнопка «Войти через VK» (One Tap). Рендерит виджет VK ID, после авторизации
- * меняет code на access_token (PKCE внутри SDK) и отдаёт токен наружу.
+ * Кнопка «Войти через VK» (One Tap). Переход на страницу VK и обратно в той
+ * же вкладке (без попапов), после возврата меняет code на access_token.
  */
 export function VkLoginButton({ onToken, compact = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const onTokenRef = useRef(onToken);
+  onTokenRef.current = onToken;
 
   useEffect(() => {
     let cancelled = false;
     let oneTap: { close?: () => void } | null = null;
 
+    // Сначала проверяем: может, мы только что вернулись из VK ID (Redirect-
+    // режим) — тогда сразу меняем code на токен, без отрисовки виджета.
+    const pending = readVkReturnParams();
+
     loadVkidSdk()
-      .then((VKID) => {
-        if (cancelled || !containerRef.current) return;
+      .then(async (VKID) => {
+        if (cancelled) return;
+
+        if (pending) {
+          // Чистим URL и localStorage сразу — иначе перезагрузка страницы после
+          // ошибки повторно триггерит тот же (уже недействительный) код.
+          const codeVerifier = localStorage.getItem(PKCE_VERIFIER_KEY);
+          localStorage.removeItem(PKCE_VERIFIER_KEY);
+          localStorage.removeItem(PKCE_STATE_KEY);
+          clearVkReturnParams();
+          if (!codeVerifier) {
+            setError("Сессия входа истекла — попробуйте ещё раз");
+            setLoading(false);
+            return;
+          }
+          VKID.Config.init({
+            app: VK_APP_ID,
+            redirectUrl: VK_REDIRECT_URL,
+            codeVerifier,
+          });
+          try {
+            const tokens = await VKID.Auth.exchangeCode(pending.code, pending.deviceId);
+            await onTokenRef.current(tokens.access_token);
+          } catch (err) {
+            console.error("[vk-auth] EXCHANGE_FAILED", err);
+            setError("Не удалось войти через VK");
+          } finally {
+            if (!cancelled) setLoading(false);
+          }
+          return;
+        }
+
+        if (!containerRef.current) return;
+
+        const codeVerifier = randomPkceString(64);
+        const state = randomPkceString(32);
+        localStorage.setItem(PKCE_VERIFIER_KEY, codeVerifier);
+        localStorage.setItem(PKCE_STATE_KEY, state);
 
         VKID.Config.init({
           app: VK_APP_ID,
           redirectUrl: VK_REDIRECT_URL,
-          responseMode: VKID.ConfigResponseMode.Callback,
+          mode: VKID.ConfigAuthMode.Redirect,
+          codeVerifier,
+          state,
           source: VKID.ConfigSource.LOWCODE,
         });
 
@@ -117,25 +209,7 @@ export function VkLoginButton({ onToken, compact = false }: Props) {
           .on(VKID.WidgetEvents.ERROR, (e: unknown) => {
             console.error("[vk-auth] WIDGET_ERROR", e);
             setError("Не удалось войти через VK");
-          })
-          .on(
-            VKID.OneTapInternalEvents.LOGIN_SUCCESS,
-            async (data: { code: string; device_id: string }) => {
-              try {
-                setLoading(true);
-                const tokens = await VKID.Auth.exchangeCode(
-                  data.code,
-                  data.device_id,
-                );
-                await onToken(tokens.access_token);
-              } catch (err) {
-                console.error("[vk-auth] EXCHANGE_FAILED", err);
-                setError("Не удалось войти через VK");
-              } finally {
-                setLoading(false);
-              }
-            },
-          );
+          });
 
         setLoading(false);
       })
