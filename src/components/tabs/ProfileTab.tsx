@@ -4,7 +4,6 @@ import {
   LogOut,
   Pencil,
   Trash2,
-  Trophy,
   BarChart3,
   Send,
   History,
@@ -155,7 +154,6 @@ export function ProfileTab({
   onReceive,
 }: Props) {
   const navigate = useNavigate();
-  const [achOpen, setAchOpen] = useState(false);
   const [activity, setActivity] = useState<ActivityKey>("posted");
   const [posted, setPosted] = useState<Gift[] | null>(null);
   const [gifted, setGifted] = useState<TxRow[] | null>(null);
@@ -200,7 +198,7 @@ export function ProfileTab({
       .catch(() => {});
   }, [rolesFn]);
 
-  const { items: achievements, stats: journeyStats } = useAchievements();
+  const { stats: journeyStats } = useAchievements();
 
   useEffect(() => {
     (async () => {
@@ -222,11 +220,6 @@ export function ProfileTab({
       setIncoming((inc as IncomingItem[]) ?? []);
     })();
   }, [postedFn, giftedFn, receivedFn, myWishesFn, chatsFn, incomingFn]);
-
-  const toggleAch = () => {
-    haptic("select");
-    setAchOpen((v) => !v);
-  };
 
   const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -356,8 +349,13 @@ export function ProfileTab({
       {/* Отзывы обо мне — сразу под плашкой с уровнем, в самом верху */}
       <ReviewsAboutMe userId={user.user_id} />
 
-      {/* Единое окно прогресса: ступени пути (первые шаги → активный даритель → …) */}
-      <Journey stats={journeyStats} />
+      {/* Единое окно прогресса: ступени пути (первые шаги → активный даритель → …)
+          и достижения — теперь один раздел, сворачиваются и разворачиваются вместе. */}
+      <Journey stats={journeyStats}>
+        <div className="achievements-list">
+          <Achievements variant="full" />
+        </div>
+      </Journey>
 
       {/* Пригласить друга + быстрые действия */}
       <InviteRow
@@ -370,31 +368,6 @@ export function ProfileTab({
 
       {/* Подписка Global временно скрыта — премиум пока не настроен. */}
       {/* <GlobalPremiumCard /> */}
-
-      {/* Achievements accordion */}
-      <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">
-        <button
-          type="button"
-          onClick={toggleAch}
-          className="flex w-full items-center justify-between px-4 py-3.5 text-left transition active:bg-accent/50"
-          aria-expanded={achOpen}
-        >
-          <span className="flex items-center gap-2 text-[15px] font-semibold">
-            <Trophy className="h-4 w-4 text-primary" />
-            Мои достижения
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${
-              achOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-        {achOpen && (
-          <div className="achievements-list border-t bg-background/40 p-4">
-            <Achievements variant="full" />
-          </div>
-        )}
-      </section>
 
       {/* История баллов: начисления и списания одним списком */}
       <section className="mb-4 overflow-hidden rounded-3xl border bg-card shadow-sm">

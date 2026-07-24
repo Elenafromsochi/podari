@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, ChevronDown, Lock } from "lucide-react";
@@ -115,8 +115,16 @@ export function buildStages(
 export const isStageDone = (s: Stage) => s.tasks.every((t) => t.done);
 
 /** Единое окно прогресса: ступени открываются одна за другой.
- *  Первая — «Твои первые шаги», затем «Активный даритель», «Душа сообщества». */
-export function Journey({ stats }: { stats: JourneyStats | null }) {
+ *  Первая — «Твои первые шаги», затем «Активный даритель», «Душа сообщества».
+ *  children (обычно список достижений) — часть того же раздела «Мой путь»,
+ *  сворачивается/разворачивается вместе со ступенями, не отдельным блоком. */
+export function Journey({
+  stats,
+  children,
+}: {
+  stats: JourneyStats | null;
+  children?: ReactNode;
+}) {
   const navigate = useNavigate();
   const stepsFn = useServerFn(getOnboardingSteps);
   const [db, setDb] = useState<DbSteps | null>(null);
@@ -355,6 +363,13 @@ export function Journey({ stats }: { stats: JourneyStats | null }) {
 
             return null;
           })}
+
+          {children && (
+            <div className="mt-4 border-t border-mint/30 pt-4">
+              <h3 className="mb-2.5 text-sm font-semibold">🏆 Достижения</h3>
+              {children}
+            </div>
+          )}
         </div>
       )}
     </section>
