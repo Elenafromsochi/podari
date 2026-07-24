@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { tgApi } from "@/lib/telegram-api";
+import { toProxiedStorageUrl } from "@/lib/proxied-storage-url.server";
 
 // Отправка сообщения админу (от пользователя)
 export const sendAdminMessage = createServerFn({ method: "POST" })
@@ -75,7 +76,7 @@ export const listAdminMessages = createServerFn({ method: "GET" })
           const { data: signed } = await supabaseAdmin.storage
             .from("admin-uploads")
             .createSignedUrl(r.image_path, 60 * 60);
-          image_url = signed?.signedUrl ?? null;
+          image_url = signed?.signedUrl ? toProxiedStorageUrl(signed.signedUrl) : null;
         }
         return {
           id: r.id,

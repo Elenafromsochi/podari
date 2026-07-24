@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyUser } from "@/lib/notify.server";
 import { tgApi } from "@/lib/telegram-api";
+import { toProxiedStorageUrl } from "@/lib/proxied-storage-url.server";
 
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? "Podari_podarki_bot";
 const NONCE_TTL_MS = 5 * 60 * 1000;
@@ -43,7 +44,7 @@ async function importTelegramAvatar(tgId: number, userId: string): Promise<void>
     const { data: pub } = supabaseAdmin.storage.from("gift-images").getPublicUrl(storagePath);
     await supabaseAdmin
       .from("profiles")
-      .update({ avatar_url: pub.publicUrl })
+      .update({ avatar_url: toProxiedStorageUrl(pub.publicUrl) })
       .eq("user_id", userId)
       .is("avatar_url", null);
   } catch (e) {
