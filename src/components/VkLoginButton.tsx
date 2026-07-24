@@ -142,6 +142,7 @@ export function VkLoginButton({ onToken, compact = false }: Props) {
   useEffect(() => {
     let cancelled = false;
     let oneTap: { close?: () => void } | null = null;
+    let observer: MutationObserver | null = null;
 
     // Сначала проверяем: может, мы только что вернулись из VK ID (Redirect-
     // режим) — тогда сразу меняем code на токен, без отрисовки виджета.
@@ -211,6 +212,23 @@ export function VkLoginButton({ onToken, compact = false }: Props) {
             setError("Не удалось войти через VK");
           });
 
+        // Сам виджет VK не растягивается на всю ширину родителя — рисует
+        // только маленький квадратный значок и не занимает выделенное ему
+        // место. Принудительно растягиваем то, что он вставил в контейнер
+        // (и продолжаем следить — иногда содержимое подменяется чуть позже).
+        if (containerRef.current) {
+          const stretch = () => {
+            const el = containerRef.current;
+            if (!el) return;
+            for (const child of Array.from(el.children)) {
+              (child as HTMLElement).style.width = "100%";
+            }
+          };
+          stretch();
+          observer = new MutationObserver(stretch);
+          observer.observe(containerRef.current, { childList: true, subtree: true });
+        }
+
         setLoading(false);
       })
       .catch((e) => {
@@ -221,6 +239,7 @@ export function VkLoginButton({ onToken, compact = false }: Props) {
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
       try {
         oneTap?.close?.();
       } catch {
