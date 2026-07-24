@@ -35,7 +35,31 @@ export const Route = createFileRoute("/api/public/telegram/setup")({
           },
         );
         const data = await res.json().catch(() => ({}));
-        return Response.json({ webhook_url: webhookUrl, telegram: data });
+
+        // Кнопка меню бота (рядом с полем ввода, слева от скрепки) — в
+        // отличие от кнопки под конкретным сообщением, она не «убегает»
+        // вверх при прокрутке чата и всегда под рукой у пользователя.
+        const menuRes = await fetch(
+          `https://api.telegram.org/bot${token}/setChatMenuButton`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              menu_button: {
+                type: "web_app",
+                text: "Открыть Подари",
+                web_app: { url: appUrl },
+              },
+            }),
+          },
+        );
+        const menuData = await menuRes.json().catch(() => ({}));
+
+        return Response.json({
+          webhook_url: webhookUrl,
+          telegram: data,
+          menu_button: menuData,
+        });
       },
     },
   },
