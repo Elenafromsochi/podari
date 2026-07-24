@@ -948,7 +948,9 @@ export const getMyContacts = createServerFn({ method: "GET" })
     const referredBy = (me as { referred_by?: string | null } | null)?.referred_by;
     if (referredBy) ids.add(referredBy);
 
-    const { data: invited } = await supabase
+    // RLS на profiles разрешает читать только свою строку — список тех, кого
+    // пригласил(а), и их имена/фото тянем через supabaseAdmin.
+    const { data: invited } = await supabaseAdmin
       .from("profiles")
       .select("user_id")
       .eq("referred_by", userId);
@@ -957,13 +959,13 @@ export const getMyContacts = createServerFn({ method: "GET" })
     ids.delete(userId);
     if (ids.size === 0) return [];
 
-    let { data: profs, error } = await supabase
+    let { data: profs, error } = await supabaseAdmin
       .from("profiles")
       .select("user_id, display_name, avatar_url, about, level")
       .in("user_id", Array.from(ids));
     // avatar_url/about ещё нет в этой базе (миграция не накатана) — без них.
     if (error) {
-      ({ data: profs, error } = await supabase
+      ({ data: profs, error } = await supabaseAdmin
         .from("profiles")
         .select("user_id, display_name, level")
         .in("user_id", Array.from(ids)));
@@ -1024,7 +1026,10 @@ export const getMyNetwork = createServerFn({ method: "GET" })
 
     const profilesFor = async (ids: string[]) => {
       if (!ids.length) return new Map<string, { display_name: string; avatar_url: string | null; level: number }>();
-      const { data } = await supabase
+      // RLS на profiles разрешает читать только свою строку — имена и фото
+      // остальных участников тянем через supabaseAdmin (только публичные
+      // поля: имя, фото, уровень — как и в get_public_profiles).
+      const { data } = await supabaseAdmin
         .from("profiles")
         .select("user_id, display_name, avatar_url, level")
         .in("user_id", ids);
@@ -1055,10 +1060,11 @@ export const getMyNetwork = createServerFn({ method: "GET" })
         level: map.get(id)?.level ?? 1,
       }));
 
-    // Друзья, пришедшие по моей реферальной ссылке.
+    // Друзья, пришедшие по моей реферальной ссылке. RLS на profiles разрешает
+    // читать только свою строку — иначе список всегда был бы пустым.
     let referredIds: string[] = [];
     {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("user_id")
         .eq("referred_by", userId);
@@ -1510,7 +1516,9 @@ export const getOnboardingSteps = createServerFn({ method: "GET" })
         cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("receiver_id", userId)),
         cnt(supabase.from("messages").select("id", { count: "exact", head: true }).eq("sender_id", userId)),
         cnt(supabase.from("gifts").select("id", { count: "exact", head: true }).eq("owner_id", userId)),
-        cnt(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", userId)),
+        // RLS на profiles разрешает читать только свою строку — считаем
+        // рефералов через supabaseAdmin, иначе всегда 0.
+        cnt(supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", userId)),
         cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("receiver_id", userId).eq("status", "completed")),
         cnt(supabase.from("reviews").select("id", { count: "exact", head: true }).eq("author_id", userId)),
         cnt(supabase.from("transactions").select("id", { count: "exact", head: true }).eq("sender_id", userId).eq("status", "completed")),
@@ -1661,7 +1669,10 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
           .from("reviews")
           .select("id", { count: "exact", head: true })
           .eq("author_id", userId),
-        supabase
+        // RLS на profiles разрешает читать только свою строку — считаем
+        // рефералов через supabaseAdmin, иначе всегда получаем 0, сколько бы
+        // друзей ни присоединилось.
+        supabaseAdmin
           .from("profiles")
           .select("id", { count: "exact", head: true })
           .eq("referred_by", userId),
