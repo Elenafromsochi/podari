@@ -23,7 +23,10 @@ async function sendLoginConfirmed(chatId: number) {
     chat_id: chatId,
     text: "✅ Вход подтверждён 💚",
     reply_markup: {
-      inline_keyboard: [[{ text: "Открыть приложение «Подари»", url: APP_URL }]],
+      // web_app (не просто url) — открывает как Telegram Web App, тогда
+      // страница получает подписанные данные пользователя и логинит
+      // мгновенно сама, без повторного «здравствуй, вот пароль».
+      inline_keyboard: [[{ text: "Открыть приложение «Подари»", web_app: { url: APP_URL } }]],
     },
   });
 }
