@@ -8,6 +8,7 @@ import {
   startTelegramLogin,
   pollTelegramLogin,
   completeTelegramLogin,
+  loginWithTelegramWebApp,
 } from "@/lib/telegram-auth.functions";
 import {
   loginWithPassword,
@@ -27,6 +28,19 @@ import { plural } from "@/lib/plural";
 interface Props {
   onAuthed: (user: UserProfile, isNew: boolean) => void;
   initialNonce?: string | null;
+}
+
+// SDK грузится с CDN по требованию (см. эффект ниже) — типизируем по месту
+// только то, что реально используем из window.Telegram.WebApp.
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initData?: string;
+        ready?: () => void;
+      };
+    };
+  }
 }
 
 type Phase = "idle" | "waiting" | "approved" | "signing_in";
@@ -78,6 +92,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const startFn = useServerFn(startTelegramLogin);
   const pollFn = useServerFn(pollTelegramLogin);
   const completeFn = useServerFn(completeTelegramLogin);
+  const webAppLoginFn = useServerFn(loginWithTelegramWebApp);
 
   const statsFn = useServerFn(getPlatformStats);
   const [stats, setStats] = useState<{ gifts: number; wishes: number } | null>(null);
@@ -205,6 +220,63 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   useEffect(() => {
     const token = readYandexReturnToken();
     if (token) handleYandexToken(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Открыто как Telegram Web App (кнопка меню бота, ссылки со startapp и
+  // т.п.) — Telegram сам передаёт подписанные данные пользователя на
+  // странице. Не нужно ни диплинка на бота, ни ожидания подтверждения —
+  // входим сразу, автоматически, тем же человеком, что уже писал боту.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    const run = async () => {
+      if (!window.Telegram?.WebApp) {
+        await new Promise<void>((resolve) => {
+          const script = document.createElement("script");
+          script.src = "https://telegram.org/js/telegram-web-app.js";
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => resolve();
+          document.head.appendChild(script);
+        });
+      }
+      if (cancelled) return;
+      const tg = window.Telegram?.WebApp;
+      const initData = tg?.initData;
+      tg?.ready?.();
+      if (!initData) return;
+
+      setPhase("signing_in");
+      setStatusText("Входим…");
+      try {
+        const res = await webAppLoginFn({ data: { init_data: initData } });
+        await setTelegramSession(res.access_token, res.refresh_token);
+        const profile = await loadUser();
+        if (!profile) throw new Error("Профиль не загружен");
+        confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
+        toast.success(
+          res.is_new
+            ? `Добро пожаловать, ${profile.display_name} 💚`
+            : `С возвращением, ${profile.display_name} 💚`,
+        );
+        onAuthed(profile, res.is_new);
+      } catch (e) {
+        // Тихий откат: человек ничего не нажимал, поэтому пугать ошибкой не
+        // нужно — просто показываем обычный экран входа как раньше.
+        console.error("[AuthFlow] TelegramWebApp auto-login failed:", e);
+        if (!cancelled) {
+          setPhase("idle");
+          setStatusText("");
+        }
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
