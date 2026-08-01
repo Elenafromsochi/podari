@@ -283,6 +283,15 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError(null);
+    // Бывает, что автозаполнение браузера показывает текст в полях, но не
+    // синхронизирует его с состоянием React (особенно Safari на iPhone) —
+    // кнопка при этом выглядела «мёртвой». Теперь она всегда нажимаема и
+    // просто явно проверяет заполненность, вместо того чтобы молча ничего
+    // не делать.
+    if (!pwUsername.trim() || !pwPassword) {
+      setPwError("Заполни имя и пароль");
+      return;
+    }
     setPwBusy(true);
     try {
       const res = await loginPwdFn({
@@ -606,6 +615,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                 autoComplete="username"
                 value={pwUsername}
                 onChange={(e) => setPwUsername(e.target.value.replace(/^@/, ""))}
+                onInput={(e) =>
+                  setPwUsername((e.target as HTMLInputElement).value.replace(/^@/, ""))
+                }
                 placeholder="username"
               />
               <Label htmlFor="pw-pass" className="text-xs text-muted-foreground">
@@ -618,14 +630,11 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                 autoComplete="current-password"
                 value={pwPassword}
                 onChange={(e) => setPwPassword(e.target.value)}
+                onInput={(e) => setPwPassword((e.target as HTMLInputElement).value)}
                 placeholder="••••••••"
               />
               {pwError && <p className="text-xs text-destructive">{pwError}</p>}
-              <Button
-                type="submit"
-                className="mt-1 w-full"
-                disabled={pwBusy || !pwUsername || !pwPassword}
-              >
+              <Button type="submit" className="mt-1 w-full" disabled={pwBusy}>
                 {pwBusy ? "Входим…" : "Войти"}
               </Button>
             </form>
