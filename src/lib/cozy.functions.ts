@@ -1,21 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { notifyUser, chatPath, giftPath } from "@/lib/notify.server";
+import { notifyUser, notifyAdmins, chatPath, giftPath } from "@/lib/notify.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-
-/** Уведомляет всех модераторов (role='admin') в Telegram. */
-async function notifyAdmins(text: string, path = "/") {
-  try {
-    const { data } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
-    const ids = Array.from(
-      new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id).filter(Boolean)),
-    );
-    await Promise.all(ids.map((id) => notifyUser(id, text, path)));
-  } catch {
-    /* уведомление админам не критично — не роняем действие */
-  }
-}
 
 const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
 

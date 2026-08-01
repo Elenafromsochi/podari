@@ -68,6 +68,19 @@ export async function notifyUser(
   }
 }
 
+/** Уведомляет всех модераторов (role='admin') в Telegram. */
+export async function notifyAdmins(text: string, path = "/") {
+  try {
+    const { data } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+    const ids = Array.from(
+      new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id).filter(Boolean)),
+    );
+    await Promise.all(ids.map((id) => notifyUser(id, text, path)));
+  } catch {
+    /* уведомление админам не критично — не роняем действие */
+  }
+}
+
 /** Короткий путь к чату по подарку (или к вкладке чатов, если подарка нет). */
 export function chatPath(giftId?: string | null): string {
   return giftId ? `/chat/${giftId}` : "/?tab=chats";
