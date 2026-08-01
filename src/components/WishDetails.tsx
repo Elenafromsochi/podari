@@ -201,6 +201,13 @@ export function WishDetails({ wishId, onBack, onFulfilled, onDeleted }: Props) {
               href={wish.link}
               target="_blank"
               rel="noopener noreferrer"
+              // На некоторых мобильных браузерах обычный переход по href в новой
+              // вкладке не срабатывает (тап «проваливается»). Явный window.open
+              // по клику — более надёжный запасной путь, независимо от причины.
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(wish.link!.trim(), "_blank", "noopener,noreferrer");
+              }}
               className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-xl border bg-card px-3 py-2 text-sm font-medium text-primary shadow-sm transition hover:bg-accent active:scale-[0.98]"
             >
               🔗 Пример подарка (ссылка)
