@@ -68,7 +68,19 @@ function Index() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [pendingLoginNonce, setPendingLoginNonce] = useState<string | null>(null);
-  const [flow, setFlow] = useState<Flow>({ kind: "none" });
+  // Стек экранов вместо одного состояния: «Назад» должен возвращать на
+  // предыдущий экран (откуда именно пришли — из дома, из «Получить» и т.п.),
+  // а не всегда скидывать на главную.
+  const [flowStack, setFlowStack] = useState<Flow[]>([{ kind: "none" }]);
+  const flow = flowStack[flowStack.length - 1];
+  // Открыть новый экран поверх текущего — «Назад» с него вернётся сюда.
+  const pushFlow = (f: Flow) => setFlowStack((s) => [...s, f]);
+  // Заменить текущий экран (например, форма → результат) — так «Назад» не
+  // возвращает на уже отправленную форму, а идёт к тому, что было ДО неё.
+  const replaceFlow = (f: Flow) => setFlowStack((s) => [...s.slice(0, -1), f]);
+  // Полный сброс — на главную, без промежуточных экранов в истории.
+  const resetFlow = (f: Flow = { kind: "none" }) => setFlowStack([f]);
+  const goBack = () => setFlowStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
   const [insufficientOpen, setInsufficientOpen] = useState(false);
 
   const claim = useServerFn(claimGift);
@@ -125,7 +137,7 @@ function Index() {
     });
     // Нижняя навигация из внутреннего экрана (чат/форма): сбрасываем flow,
     // чтобы показать выбранную вкладку, а не «застрять» в чате.
-    const onNavTab = () => setFlow({ kind: "none" });
+    const onNavTab = () => resetFlow();
     window.addEventListener("cozy:nav-tab", onNavTab);
     // Профиль поменяли (фото/«о себе») — перечитываем, чтобы шапка и вкладка обновились.
     const onProfileUpdated = () => refreshUser();
@@ -195,7 +207,7 @@ function Index() {
       toast.success(`Заморожено ${cost} ${word} • Безопасная сделка 🔒`, {
         description: "Открываем чат с дарителем",
       });
-      setFlow({ kind: "chat", giftId, txId: res.transaction_id });
+      pushFlow({ kind: "chat", giftId, txId: res.transaction_id });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("INSUFFICIENT_BALANCE")) setInsufficientOpen(true);
@@ -213,11 +225,11 @@ function Index() {
       {flow.kind === "none" && (
         <AppShell
           user={user}
-          onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_choice" }); }}
-          onReceive={(query) => setFlow({ kind: "receive", query })}
+          onGive={() => { emitTour("give-opened"); pushFlow({ kind: "give_choice" }); }}
+          onReceive={(query) => pushFlow({ kind: "receive", query })}
           onPickGift={handlePickGift}
-          onCreateWish={() => setFlow({ kind: "wish_form" })}
-          onOpenWish={(wishId) => setFlow({ kind: "wish_details", wishId })}
+          onCreateWish={() => pushFlow({ kind: "wish_form" })}
+          onOpenWish={(wishId) => pushFlow({ kind: "wish_details", wishId })}
           initialTab={
             typeof window !== "undefined"
               ? (() => {
@@ -232,7 +244,7 @@ function Index() {
       {flow.kind === "wish_form" && (
         <GlobalChrome>
         <WishForm
-          onBack={() => setFlow({ kind: "none" })}
+          onBack={goBack}
           userLevel={user.level}
           onDone={async (id, hidden) => {
             burstConfetti();
@@ -248,7 +260,7 @@ function Index() {
               });
             }
             await refreshUser();
-            setFlow({ kind: "wish_details", wishId: id });
+            replaceFlow({ kind: "wish_details", wishId: id });
           }}
         />
         </GlobalChrome>
@@ -258,11 +270,11 @@ function Index() {
         <GlobalChrome>
         <WishDetails
           wishId={flow.wishId}
-          onBack={() => setFlow({ kind: "none" })}
+          onBack={goBack}
           onFulfilled={(txId, _chatId, wishId) =>
-            setFlow({ kind: "wish_chat", wishId, txId })
+            pushFlow({ kind: "wish_chat", wishId, txId })
           }
-          onDeleted={() => setFlow({ kind: "none" })}
+          onDeleted={() => resetFlow()}
         />
         </GlobalChrome>
       )}
@@ -272,12 +284,12 @@ function Index() {
         <WishChatScreen
           wishId={flow.wishId}
           transactionId={flow.txId}
-          onBack={() => setFlow({ kind: "none" })}
+          onBack={goBack}
           onCompleted={async () => {
             burstConfetti();
             haptic("success");
             await refreshUser();
-            setFlow({ kind: "none" });
+            resetFlow();
           }}
         />
         </GlobalChrome>
@@ -286,9 +298,9 @@ function Index() {
       {flow.kind === "give_choice" && (
         <GlobalChrome>
         <GiveChoice
-          onBack={() => setFlow({ kind: "none" })}
-          onPickOwn={() => setFlow({ kind: "give_chip" })}
-          onPickWish={() => setFlow({ kind: "give_wishes" })}
+          onBack={goBack}
+          onPickOwn={() => pushFlow({ kind: "give_chip" })}
+          onPickWish={() => pushFlow({ kind: "give_wishes" })}
         />
         </GlobalChrome>
       )}
@@ -296,8 +308,8 @@ function Index() {
       {flow.kind === "give_wishes" && (
         <GlobalChrome>
         <GiveWishes
-          onBack={() => setFlow({ kind: "give_choice" })}
-          onOpen={(wishId) => setFlow({ kind: "wish_details", wishId })}
+          onBack={goBack}
+          onOpen={(wishId) => pushFlow({ kind: "wish_details", wishId })}
         />
         </GlobalChrome>
       )}
@@ -305,7 +317,7 @@ function Index() {
       {flow.kind === "give_chip" && (
         <GlobalChrome>
         <GiveGiftChips
-          onBack={() => setFlow({ kind: "give_choice" })}
+          onBack={goBack}
           userLevel={user.level}
           onPick={(kind, label) => {
             try {
@@ -314,7 +326,7 @@ function Index() {
               /* noop */
             }
             emitTour("give-kind-picked");
-            setFlow({ kind: "give_form", presetHint: label, giftKind: kind });
+            pushFlow({ kind: "give_form", presetHint: label, giftKind: kind });
           }}
         />
         </GlobalChrome>
@@ -323,7 +335,7 @@ function Index() {
       {flow.kind === "give_form" && (
         <GlobalChrome>
         <GiveGiftForm
-          onBack={() => setFlow({ kind: "give_chip" })}
+          onBack={goBack}
           presetHint={flow.presetHint}
           giftKind={flow.giftKind}
           userLevel={user.level}
@@ -335,7 +347,7 @@ function Index() {
             });
             emitTour("gift-published");
             await refreshUser();
-            setFlow({ kind: "publish_success", giftId: id });
+            replaceFlow({ kind: "publish_success", giftId: id });
           }}
         />
         </GlobalChrome>
@@ -346,9 +358,9 @@ function Index() {
         <PublishSuccess
           balance={Number(user.balance)}
           giftId={flow.giftId}
-          onGiveAnother={() => setFlow({ kind: "give_chip" })}
-          onReceive={() => setFlow({ kind: "receive" })}
-          onHome={() => setFlow({ kind: "none" })}
+          onGiveAnother={() => replaceFlow({ kind: "give_chip" })}
+          onReceive={() => replaceFlow({ kind: "receive" })}
+          onHome={() => resetFlow()}
         />
         </GlobalChrome>
       )}
@@ -356,13 +368,13 @@ function Index() {
       {flow.kind === "receive" && (
         <GlobalChrome>
         <ReceiveGiftFlow
-          onBack={() => setFlow({ kind: "none" })}
+          onBack={goBack}
           userLevel={user.level}
           userXp={Number(user.xp) || 0}
           initialQuery={flow.query}
           onPick={handlePickGift}
-          onCreateWish={() => setFlow({ kind: "wish_form" })}
-          onGive={() => { emitTour("give-opened"); setFlow({ kind: "give_choice" }); }}
+          onCreateWish={() => pushFlow({ kind: "wish_form" })}
+          onGive={() => { emitTour("give-opened"); pushFlow({ kind: "give_choice" }); }}
         />
         </GlobalChrome>
       )}
@@ -375,7 +387,7 @@ function Index() {
           onBack={() => {
             localStorage.removeItem(ACTIVE_CHAT_KEY);
             localStorage.removeItem(ACTIVE_TX_KEY);
-            setFlow({ kind: "none" });
+            goBack();
           }}
           onHandover={async () => {
             await refreshUser();
@@ -387,7 +399,7 @@ function Index() {
             await refreshUser();
             localStorage.removeItem(ACTIVE_CHAT_KEY);
             localStorage.removeItem(ACTIVE_TX_KEY);
-            setFlow({ kind: "none" });
+            resetFlow();
           }}
         />
         </GlobalChrome>
@@ -410,7 +422,7 @@ function Index() {
             <button
               onClick={() => {
                 setInsufficientOpen(false);
-                setFlow({ kind: "give_chip" });
+                pushFlow({ kind: "give_chip" });
               }}
               className="w-full rounded-2xl bg-mint px-5 py-3 text-base font-semibold text-mint-foreground transition hover:bg-mint/90"
             >
