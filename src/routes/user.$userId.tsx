@@ -78,22 +78,23 @@ function UserProfilePage() {
 
   useEffect(() => {
     (async () => {
+      // Профиль profiles доступен через RLS только своему владельцу, поэтому
+      // чужие данные (в т.ч. фото и «о себе») читаем через безопасную
+      // SECURITY DEFINER функцию get_public_profiles, а не напрямую из таблицы.
       const { data: profs } = await supabase.rpc("get_public_profiles", { _user_ids: [userId] });
-      const p = (profs ?? [])[0] as { display_name?: string; level?: number } | undefined;
+      const p = (profs ?? [])[0] as
+        | {
+            display_name?: string;
+            level?: number;
+            avatar_url?: string | null;
+            about?: string | null;
+          }
+        | undefined;
       if (p) {
         setName(p.display_name || "Гость");
         setLevel(p.level ?? 1);
-      }
-      // Фото и «о себе» — публично читаемые поля профиля (могут отсутствовать,
-      // если миграция avatar_url/about ещё не накатана).
-      const { data: extra } = await supabase
-        .from("profiles")
-        .select("avatar_url, about")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (extra) {
-        setAvatarUrl((extra as { avatar_url?: string | null }).avatar_url ?? null);
-        setAbout((extra as { about?: string | null }).about ?? null);
+        setAvatarUrl(p.avatar_url ?? null);
+        setAbout(p.about ?? null);
       }
       const giftQ = (cols: string) =>
         supabase
