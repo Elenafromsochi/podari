@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { tgApiSafe } from "@/lib/telegram-api";
+import { notifyAdmins } from "@/lib/notify.server";
 
 const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
 
@@ -222,6 +223,31 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return Response.json({ ok: true });
         }
 
+
+        // Свободное сообщение (не команда) от уже зарегистрированного
+        // пользователя — считаем его продолжением переписки с админом
+        // (например, ответом на «💌 Ответ от команды «Подари»»). Так
+        // человеку не нужно возвращаться в приложение, чтобы дописать.
+        if (text.trim() && !text.startsWith("/")) {
+          const { data: prof } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id")
+            .eq("telegram_id", from.id)
+            .maybeSingle();
+          const userId = (prof as { user_id?: string } | null)?.user_id;
+          if (userId) {
+            const { error: insErr } = await supabaseAdmin.from("admin_messages").insert({
+              user_id: userId,
+              content: text,
+              status: "new",
+            });
+            if (!insErr) {
+              await sendTgMessage(chatId, "Передано команде «Подари» 💚 Ответим здесь же.");
+              await notifyAdmins("✉️ Новое сообщение от пользователя в Telegram", "/insights");
+              return Response.json({ ok: true });
+            }
+          }
+        }
 
         await sendTgMessage(
           chatId,
