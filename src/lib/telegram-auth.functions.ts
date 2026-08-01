@@ -293,7 +293,6 @@ export const pollTelegramLogin = createServerFn({ method: "POST" })
     if (new Date(row.expires_at).getTime() < Date.now())
       return { status: "expired" as const };
     if (row.approved_at) return { status: "approved" as const };
-    if (row.telegram_id) return { status: "opened" as const };
     return { status: "waiting" as const };
   });
 

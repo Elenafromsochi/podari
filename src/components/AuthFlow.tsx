@@ -413,8 +413,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
           clearPendingLogin();
           setStatusText("Ссылка истекла. Попробуй ещё раз.");
           setPhase("idle");
-        } else if (r.status === "opened") {
-          setStatusText("Ты открыл бота — теперь нажми ✅ Это я");
         } else {
           setStatusText("Открой бота и нажми Start");
         }
@@ -445,7 +443,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   // нам остаётся показать ожидание и слушать подтверждение.
   const onTapBotLink = () => {
     setPhase("waiting");
-    setStatusText("Открой бота, нажми Start, затем ✅ Это я");
+    setStatusText("Открой бота и нажми Start");
     if (nonce) {
       // запоминаем код входа, чтобы пережить перезагрузку вкладки после Telegram
       savePendingLogin(nonce, deepLink);
@@ -467,7 +465,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setDeepLink(res.deep_link);
       savePendingLogin(res.nonce, res.deep_link);
       window.open(res.deep_link, "_blank", "noopener,noreferrer");
-      setStatusText("Открой бота и нажми Start, затем ✅ Это я");
+      setStatusText("Открой бота и нажми Start");
       startPolling(res.nonce);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -703,7 +701,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                   )}
                   <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Подтверди вход в боте (Start → ✅ Это я) и вернись сюда 💚
+                    Нажми Start в боте — вернёшься сюда автоматически 💚
                   </p>
                 </>
               ) : (
@@ -762,7 +760,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Жмёшь кнопку → в боте «Start» и «✅ Это я» → ты уже в «Подари» 💚
+          Жмёшь кнопку → «Start» в боте → ты уже в «Подари» 💚
         </p>
 
         <p className="mt-auto flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
