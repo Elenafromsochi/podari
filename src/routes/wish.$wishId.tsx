@@ -352,6 +352,12 @@ function WishPage() {
               href={wish.link}
               target="_blank"
               rel="noopener noreferrer"
+              // Запасной путь на случай, если обычный переход по href в новой
+              // вкладке не срабатывает на каком-то мобильном браузере.
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(wish.link!.trim(), "_blank", "noopener,noreferrer");
+              }}
               className="mt-2 inline-block text-sm text-primary underline-offset-4 hover:underline"
             >
               🔗 Ссылка на пример
