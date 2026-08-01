@@ -3,7 +3,11 @@
 -- profiles через обычный клиент, а RLS-политика profiles_select_own
 -- разрешает читать только свою же строку. В итоге у любого другого
 -- пользователя фото и описание молча не показывались.
-CREATE OR REPLACE FUNCTION public.get_public_profiles(_user_ids uuid[])
+-- Меняем набор возвращаемых колонок — CREATE OR REPLACE этого не позволяет
+-- (42P13: cannot change return type of existing function), нужно сначала удалить.
+DROP FUNCTION IF EXISTS public.get_public_profiles(uuid[]);
+
+CREATE FUNCTION public.get_public_profiles(_user_ids uuid[])
 RETURNS TABLE (
   user_id uuid,
   display_name text,
