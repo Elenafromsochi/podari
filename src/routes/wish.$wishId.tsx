@@ -150,8 +150,6 @@ function WishPage() {
           setTgPhase("idle");
           setTgDeepLink(null);
           setTgNonce(null);
-        } else if (r.status === "opened") {
-          setTgStatus("Ты открыл бота — теперь нажми ✅ Это я");
         } else {
           setTgStatus("Открой бота и нажми Start");
         }
@@ -192,7 +190,7 @@ function WishPage() {
   const onTapTelegram = () => {
     haptic("medium");
     setTgPhase("waiting");
-    setTgStatus("Открой бота, нажми Start, затем ✅ Это я");
+    setTgStatus("Открой бота и нажми Start");
     if (tgNonce) startTgPolling(tgNonce);
   };
 
@@ -246,7 +244,7 @@ function WishPage() {
         setTgNonce(res.nonce);
         setTgDeepLink(res.deep_link);
         window.open(res.deep_link, "_blank", "noopener,noreferrer");
-        setTgStatus("Открой бота и нажми Start, затем ✅ Это я");
+        setTgStatus("Открой бота и нажми Start");
         startTgPolling(res.nonce);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
