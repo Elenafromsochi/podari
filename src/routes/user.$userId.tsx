@@ -265,6 +265,7 @@ function UserProfilePage() {
                     description={g.description}
                     city={g.city}
                     isOnline={g.is_online}
+                    onOpen={() => navigate({ to: "/gift/$giftId", params: { giftId: g.id } })}
                     badge={
                       <span className="inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[11px] font-semibold text-mint-foreground">
                         🎁 подарено
@@ -299,6 +300,7 @@ function UserProfilePage() {
                     city={w.city}
                     isOnline={w.is_online}
                     emptyEmoji="✨"
+                    onOpen={() => navigate({ to: "/wish/$wishId", params: { wishId: w.id } })}
                     badge={
                       <span className="inline-flex items-center rounded-full bg-peach/60 px-2 py-0.5 text-[11px] font-semibold text-peach-foreground">
                         ✨ загадано
