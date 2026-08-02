@@ -50,7 +50,6 @@ type Flow =
   | { kind: "receive"; query?: string }
   | { kind: "chat"; giftId: string; txId: string }
   | { kind: "wish_form" }
-  | { kind: "wish_details"; wishId: string }
   | { kind: "wish_chat"; wishId: string; txId: string };
 
 const burstConfetti = () => {
@@ -81,6 +80,10 @@ function Index() {
   // Полный сброс — на главную, без промежуточных экранов в истории.
   const resetFlow = (f: Flow = { kind: "none" }) => setFlowStack([f]);
   const goBack = () => setFlowStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+  // Карточка желания — отдельный, независимый от flow оверлей (как модалка
+  // подарка): открывается ПОВЕРХ текущего экрана (ленты и т.п.), закрытие
+  // просто убирает её, экран под ней остаётся ровно таким, каким был.
+  const [wishDetailId, setWishDetailId] = useState<string | null>(null);
   const [insufficientOpen, setInsufficientOpen] = useState(false);
 
   const claim = useServerFn(claimGift);
@@ -229,7 +232,7 @@ function Index() {
           onReceive={(query) => pushFlow({ kind: "receive", query })}
           onPickGift={handlePickGift}
           onCreateWish={() => pushFlow({ kind: "wish_form" })}
-          onOpenWish={(wishId) => pushFlow({ kind: "wish_details", wishId })}
+          onOpenWish={setWishDetailId}
           initialTab={
             typeof window !== "undefined"
               ? (() => {
@@ -260,21 +263,9 @@ function Index() {
               });
             }
             await refreshUser();
-            replaceFlow({ kind: "wish_details", wishId: id });
+            goBack();
+            setWishDetailId(id);
           }}
-        />
-        </GlobalChrome>
-      )}
-
-      {flow.kind === "wish_details" && (
-        <GlobalChrome>
-        <WishDetails
-          wishId={flow.wishId}
-          onBack={goBack}
-          onFulfilled={(txId, _chatId, wishId) =>
-            pushFlow({ kind: "wish_chat", wishId, txId })
-          }
-          onDeleted={() => resetFlow()}
         />
         </GlobalChrome>
       )}
@@ -309,7 +300,7 @@ function Index() {
         <GlobalChrome>
         <GiveWishes
           onBack={goBack}
-          onOpen={(wishId) => pushFlow({ kind: "wish_details", wishId })}
+          onOpen={setWishDetailId}
         />
         </GlobalChrome>
       )}
@@ -403,6 +394,21 @@ function Index() {
           }}
         />
         </GlobalChrome>
+      )}
+
+      {/* Карточка желания — независимый оверлей поверх текущего экрана (ленты,
+          «Подарить желание» и т.п.), а не отдельная страница: закрытие просто
+          убирает её, экран под ней остаётся ровно таким, каким был. */}
+      {wishDetailId && (
+        <WishDetails
+          wishId={wishDetailId}
+          onBack={() => setWishDetailId(null)}
+          onFulfilled={(txId, _chatId, wId) => {
+            setWishDetailId(null);
+            pushFlow({ kind: "wish_chat", wishId: wId, txId });
+          }}
+          onDeleted={() => setWishDetailId(null)}
+        />
       )}
 
       <Dialog open={insufficientOpen} onOpenChange={setInsufficientOpen}>
