@@ -277,9 +277,14 @@ export function ProfileTab({
       {/* Фото и имя уже видны в шапке выше — тут только «о себе» (целиком,
           без обрезки) и маленькая кнопка входа в редактирование. */}
       <div className="mb-4 flex items-start justify-between gap-3">
-        <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-muted-foreground">
-          {user.about || "Добавь пару слов о себе"}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            О себе
+          </p>
+          <p className="mt-0.5 whitespace-pre-wrap text-sm text-muted-foreground">
+            {user.about || "Добавь пару слов о себе"}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => {
