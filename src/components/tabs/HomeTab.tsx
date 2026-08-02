@@ -22,6 +22,8 @@ import { Stars } from "@/components/ui/stars";
 import { WishesFeed } from "@/components/WishesFeed";
 import { LevelBadge } from "@/components/LevelBadge";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { GiftDetailModal, type ModalGift } from "@/components/GiftDetailModal";
+import type { GiftKind } from "@/lib/gift-kinds";
 import { getHomeStats, deleteGift } from "@/lib/cozy.functions";
 
 import { pickRandom, HOME_TAGLINES } from "@/lib/random-copy";
@@ -42,12 +44,15 @@ type Gift = {
   created_at?: string;
   owner_name?: string;
   owner_level?: number;
+  gift_kind?: GiftKind;
+  status?: string;
 };
 
 type FeedTab = "active" | "wishes" | "gifted";
 
 interface Props {
   userName: string;
+  userLevel: number;
   onGive: () => void;
   onReceive: (query?: string) => void;
   onPickGift: (giftId: string) => void;
@@ -61,6 +66,7 @@ type Stats = { active_gifts: number; gifted_total: number; wishes_open: number }
 
 export function HomeTab({
   userName,
+  userLevel,
   onGive,
   onReceive,
   onPickGift,
@@ -75,6 +81,9 @@ export function HomeTab({
   const [feedTab, setFeedTab] = useState<FeedTab>(initialFeedTab);
   const [stats, setStats] = useState<Stats | null>(null);
   const [query, setQuery] = useState("");
+  // Карточка подарка «Уже подарено» — оверлей поверх ленты (как желание),
+  // а не переход на отдельную страницу.
+  const [detailGift, setDetailGift] = useState<ModalGift | null>(null);
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
@@ -90,16 +99,22 @@ export function HomeTab({
   // Лента уже подаренных подарков
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("gifts")
-        .select(
+      const giftedQ = (cols: string) =>
+        supabase
+          .from("gifts")
+          .select(cols)
+          .eq("status", "gifted")
+          .not("owner_id", "is", null)
+          .order("updated_at", { ascending: false })
+          .limit(60);
+      let res = await giftedQ(
+        "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at,gift_kind",
+      );
+      if (res.error)
+        res = await giftedQ(
           "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at",
-        )
-        .eq("status", "gifted")
-        .not("owner_id", "is", null)
-        .order("updated_at", { ascending: false })
-        .limit(60);
-      const rows = (data as Gift[]) ?? [];
+        );
+      const rows = (res.data as unknown as Gift[]) ?? [];
       const ids = Array.from(new Set(rows.map((g) => g.owner_id).filter((v): v is string => !!v)));
       const nameMap = new Map<string, string>();
       const levelMap = new Map<string, number>();
@@ -117,6 +132,7 @@ export function HomeTab({
       setGifted(
         rows.map((g) => ({
           ...g,
+          status: "gifted",
           owner_name: g.owner_id ? (nameMap.get(g.owner_id) ?? "Гость") : "Гость",
           owner_level: g.owner_id ? (levelMap.get(g.owner_id) ?? 1) : 1,
         })),
@@ -416,14 +432,33 @@ export function HomeTab({
           ) : (
             <ul className="space-y-3">
               {filteredGifted?.map((g) => (
-                <GiftedCard key={g.id} gift={g} />
+                <GiftedCard key={g.id} gift={g} onOpen={(gg) => setDetailGift(toModalGift(gg))} />
               ))}
             </ul>
           )}
         </section>
       )}
+
+      {detailGift && (
+        <GiftDetailModal
+          gift={detailGift}
+          meId={meId}
+          userLevel={userLevel}
+          onPick={() => {}}
+          onLocked={() => {}}
+          onClose={() => setDetailGift(null)}
+        />
+      )}
     </div>
   );
+}
+
+function toModalGift(g: Gift): ModalGift {
+  return {
+    ...g,
+    condition: g.condition ?? null,
+    gift_kind: g.gift_kind ?? "used_item",
+  };
 }
 
 function giftPhotos(gift: Gift): string[] {
@@ -650,8 +685,7 @@ function ActiveGiftCard({
   );
 }
 
-function GiftedCard({ gift }: { gift: Gift }) {
-  const navigate = useNavigate();
+function GiftedCard({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) {
   const [lightbox, setLightbox] = useState(false);
   if (!gift.owner_id) return null;
   const photos = giftPhotos(gift);
@@ -659,12 +693,12 @@ function GiftedCard({ gift }: { gift: Gift }) {
     <li className="relative flex gap-3 rounded-2xl border bg-card p-3 shadow-sm">
       {/* Фото — открывает карусель */}
       <GiftThumb gift={gift} onOpen={() => setLightbox(true)} />
-      {/* Контент ведёт на карточку подарка */}
+      {/* Контент открывает карточку подарка поверх ленты */}
       <button
         type="button"
         onClick={() => {
           haptic("light");
-          navigate({ to: "/gift/$giftId", params: { giftId: gift.id } });
+          onOpen(gift);
         }}
         className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
       >

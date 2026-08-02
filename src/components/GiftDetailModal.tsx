@@ -27,6 +27,8 @@ export type ModalGift = {
   owner_level?: number;
   city?: string | null;
   is_online?: boolean | null;
+  /** Если подарок уже вручён — кнопку «Получить» не показываем. */
+  status?: string;
 };
 
 function ballWord(n: number) {
@@ -78,8 +80,9 @@ export function GiftDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos.length]);
 
+  const isGifted = gift.status === "gifted";
   const reqLevel = giftRequiredLevel(getKindMeta(gift.gift_kind)?.minLevel, gift.cost);
-  const lockedByLevel = userLevel < reqLevel;
+  const lockedByLevel = !isGifted && userLevel < reqLevel;
   const shareUrl = `${APP_BASE_URL}/gift/${gift.id}${meId ? `?ref=${meId}` : ""}`;
 
   if (typeof document === "undefined") return null;
@@ -198,7 +201,11 @@ export function GiftDetailModal({
 
           {/* Действия — закреплены снизу */}
           <div className="space-y-2 border-t bg-background p-4">
-            {lockedByLevel ? (
+            {isGifted ? (
+              <p className="w-full rounded-xl bg-mint/60 px-3 py-2.5 text-center text-sm font-semibold text-mint-foreground">
+                💝 Уже подарено
+              </p>
+            ) : lockedByLevel ? (
               <Button
                 onClick={() => {
                   onClose();

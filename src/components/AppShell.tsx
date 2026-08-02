@@ -91,6 +91,7 @@ export function AppShell({
         {tab === "home" && (
           <HomeTab
             userName={user.display_name}
+            userLevel={user.level}
             onGive={onGive}
             onReceive={onReceive}
             onPickGift={onPickGift}
