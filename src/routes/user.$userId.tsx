@@ -14,6 +14,10 @@ import { LevelBadge } from "@/components/LevelBadge";
 import { GlobalChrome } from "@/components/GlobalChrome";
 import { ReviewsAboutMe } from "@/components/ReviewsAboutMe";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { GiftDetailModal, type ModalGift } from "@/components/GiftDetailModal";
+import { WishDetails } from "@/components/WishDetails";
+import type { GiftKind } from "@/lib/gift-kinds";
+import { loadUser } from "@/lib/auth-state";
 
 export const Route = createFileRoute("/user/$userId")({
   component: UserProfilePage,
@@ -40,6 +44,7 @@ type Gift = {
   quantity_remaining?: number | null;
   city?: string | null;
   is_online?: boolean | null;
+  gift_kind?: GiftKind;
 };
 
 type Wish = {
@@ -75,6 +80,33 @@ function UserProfilePage() {
   const [given, setGiven] = useState<Gift[] | null>(null);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
+  const [myLevel, setMyLevel] = useState(1);
+  useEffect(() => {
+    loadUser().then((u) => {
+      setMeId(u?.user_id ?? null);
+      setMyLevel(u?.level ?? 1);
+    });
+  }, []);
+  // Карточки подарка/желания — оверлей поверх этого экрана (как везде в
+  // приложении), а не переход на отдельную страницу.
+  const [detailGift, setDetailGift] = useState<ModalGift | null>(null);
+  const [wishDetailId, setWishDetailId] = useState<string | null>(null);
+  const toModalGift = (g: Gift, status?: string): ModalGift => ({
+    id: g.id,
+    title: g.title,
+    description: g.description,
+    image_url: g.image_url,
+    cost: g.cost,
+    condition: g.condition,
+    owner_id: userId,
+    gift_kind: g.gift_kind ?? "used_item",
+    owner_name: name,
+    owner_level: level,
+    city: g.city,
+    is_online: g.is_online,
+    status: status ?? g.status,
+  });
 
   useEffect(() => {
     (async () => {
@@ -104,7 +136,7 @@ function UserProfilePage() {
           .in("status", ["available", "gifted"])
           .order("created_at", { ascending: false });
       let gRes = await giftQ(
-        "id,title,description,image_url,cost,condition,status,city,is_online,quantity,quantity_remaining",
+        "id,title,description,image_url,cost,condition,status,city,is_online,quantity,quantity_remaining,gift_kind",
       );
       if (gRes.error) gRes = await giftQ("id,title,description,image_url,cost,condition,status");
       const rows = (gRes.data as unknown as Gift[]) ?? [];
@@ -226,7 +258,7 @@ function UserProfilePage() {
                     condition={g.condition}
                     city={g.city}
                     isOnline={g.is_online}
-                    onOpen={() => navigate({ to: "/gift/$giftId", params: { giftId: g.id } })}
+                    onOpen={() => setDetailGift(toModalGift(g))}
                     onShare={() => shareGift(g.id, g.title)}
                     footer={
                       <Button
@@ -265,7 +297,7 @@ function UserProfilePage() {
                     description={g.description}
                     city={g.city}
                     isOnline={g.is_online}
-                    onOpen={() => navigate({ to: "/gift/$giftId", params: { giftId: g.id } })}
+                    onOpen={() => setDetailGift(toModalGift(g, "gifted"))}
                     badge={
                       <span className="inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[11px] font-semibold text-mint-foreground">
                         🎁 подарено
@@ -300,7 +332,7 @@ function UserProfilePage() {
                     city={w.city}
                     isOnline={w.is_online}
                     emptyEmoji="✨"
-                    onOpen={() => navigate({ to: "/wish/$wishId", params: { wishId: w.id } })}
+                    onOpen={() => setWishDetailId(w.id)}
                     badge={
                       <span className="inline-flex items-center rounded-full bg-peach/60 px-2 py-0.5 text-[11px] font-semibold text-peach-foreground">
                         ✨ загадано
@@ -313,6 +345,33 @@ function UserProfilePage() {
           )}
         </CollapsibleSection>
       </div>
+
+      {detailGift && (
+        <GiftDetailModal
+          gift={detailGift}
+          meId={meId}
+          userLevel={myLevel}
+          onPick={(id) => {
+            setDetailGift(null);
+            handleClaim(id);
+          }}
+          onLocked={() => {}}
+          onClose={() => setDetailGift(null)}
+        />
+      )}
+
+      {wishDetailId && (
+        <WishDetails
+          wishId={wishDetailId}
+          onBack={() => setWishDetailId(null)}
+          onFulfilled={() => {
+            setWishDetailId(null);
+            toast.success("Чат с пожелателем открыт 💚");
+            navigate({ to: "/", search: { tab: "chats" } as never });
+          }}
+          onDeleted={() => setWishDetailId(null)}
+        />
+      )}
     </GlobalChrome>
   );
 }

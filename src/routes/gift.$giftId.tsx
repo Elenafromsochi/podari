@@ -15,6 +15,7 @@ import { setTelegramSession } from "@/lib/auth-state";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { CertificateBuilder } from "@/components/CertificateBuilder";
 import { LevelBadge } from "@/components/LevelBadge";
+import { CityBadge } from "@/components/CityBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stars } from "@/components/ui/stars";
 import { haptic } from "@/lib/haptics";
@@ -52,6 +53,8 @@ type PublicGift = {
   owner_level: number;
   is_certificate?: boolean | null;
   cert_expires_at?: string | null;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 function GiftPage() {
@@ -436,6 +439,12 @@ function GiftPage() {
               {gift.cost} {word(gift.cost)}
             </span>
           </div>
+
+          {(gift.city || gift.is_online) && (
+            <div className="mt-1.5">
+              <CityBadge city={gift.city} isOnline={gift.is_online} />
+            </div>
+          )}
 
           {gift.condition ? (
             <div
