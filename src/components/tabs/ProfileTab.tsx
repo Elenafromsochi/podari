@@ -274,25 +274,12 @@ export function ProfileTab({
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
-      {/* Фото профиля + «о себе» + вход в редактирование */}
-      <div className="mb-4 flex items-center gap-3">
-        {user.avatar_url ? (
-          <img
-            src={user.avatar_url}
-            alt={user.display_name}
-            className="h-14 w-14 shrink-0 rounded-full object-cover shadow-sm"
-          />
-        ) : (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-peach text-xl font-semibold text-peach-foreground shadow-sm">
-            {(user.display_name || "?").trim().charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold">{user.display_name}</div>
-          {user.about ? (
-            <p className="truncate text-xs text-muted-foreground">{user.about}</p>
-          ) : null}
-        </div>
+      {/* Фото и имя уже видны в шапке выше — тут только «о себе» (целиком,
+          без обрезки) и маленькая кнопка входа в редактирование. */}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-muted-foreground">
+          {user.about || "Добавь пару слов о себе"}
+        </p>
         <button
           type="button"
           onClick={() => {
@@ -300,9 +287,10 @@ export function ProfileTab({
             setAboutDraft(user.about ?? "");
             setEditOpen(true);
           }}
-          className="flex shrink-0 items-center gap-1 rounded-xl border bg-card px-3 py-1.5 text-xs font-medium shadow-sm transition active:scale-[0.98] hover:bg-accent"
+          aria-label="Редактировать профиль"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition active:scale-[0.95] hover:bg-accent hover:text-foreground"
         >
-          <Pencil className="h-3.5 w-3.5" /> Редактировать
+          <Pencil className="h-3.5 w-3.5" />
         </button>
       </div>
 
