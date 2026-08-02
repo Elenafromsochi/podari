@@ -547,7 +547,7 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
                       setActivity(k);
                     }
                   }}
-                  className={`flex items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] leading-tight transition-all duration-300 ${
+                  className={`flex min-w-0 items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] leading-tight transition-all duration-300 ${
                     hasUnread
                       ? "font-bold text-primary"
                       : active
@@ -555,10 +555,10 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
                         : "font-medium text-muted-foreground hover:text-foreground"
                   } ${active ? "bg-background shadow-sm" : ""}`}
                 >
-                  {label}
+                  <span className="truncate">{label}</span>
                   {count > 0 && (
                     <span
-                      className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${
+                      className={`inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${
                         hasUnread
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted-foreground/15 text-muted-foreground"
