@@ -16,6 +16,39 @@ async function sendTgMessage(chatId: number, text: string) {
   await tgApiSafe("sendMessage", { chat_id: chatId, text });
 }
 
+// Когда ссылка входа не найдена / устарела / уже использована — не бросаем
+// человека в тупик («попробуй ещё раз в приложении», хотя там всё то же
+// самое). Мы уже знаем, кто пишет (from.id из апдейта), поэтому сразу
+// выпускаем новую, заранее подтверждённую ссылку входа прямо в чате —
+// тот же приём, что и в ветке ref_-приглашений ниже.
+async function sendFreshLoginLink(
+  chatId: number,
+  from: { id: number; username?: string; first_name?: string },
+): Promise<void> {
+  const { randomBytes } = await import("crypto");
+  const nonce = randomBytes(9).toString("base64url");
+  const { error } = await supabaseAdmin.from("auth_nonces").insert({
+    nonce,
+    expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    telegram_id: from.id,
+    telegram_username: from.username ?? null,
+    telegram_first_name: from.first_name ?? null,
+    approved_at: new Date().toISOString(),
+  });
+  if (error) {
+    await sendTgMessage(
+      chatId,
+      `Не получилось выпустить новую ссылку входа. Попробуй открыть ${APP_URL}/ ещё раз.`,
+    );
+    return;
+  }
+  await sendTgMessage(
+    chatId,
+    `Прежняя ссылка входа устарела — вот новая, ты уже вошёл:\n${APP_URL}/?login=${nonce}`,
+  );
+  await sendLoginConfirmed(chatId);
+}
+
 async function sendLoginConfirmed(chatId: number) {
   // Раньше тут был просто текст «возвращайся в приложение» — человеку
   // приходилось самому догадываться, что это значит переключиться обратно
@@ -190,22 +223,14 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             .eq("nonce", nonce)
             .maybeSingle();
 
-          if (!row) {
-            await sendTgMessage(
-              chatId,
-              `Ссылка не найдена. Открой кнопку «Войти через Telegram» в приложении ещё раз.`,
-            );
-            return Response.json({ ok: true });
-          }
-          if (row.consumed_at || row.approved_at || row.rejected_at) {
-            await sendTgMessage(chatId, `Эта ссылка уже использована.`);
-            return Response.json({ ok: true });
-          }
-          if (new Date(row.expires_at).getTime() < Date.now()) {
-            await sendTgMessage(
-              chatId,
-              `Срок ссылки истёк. Запроси новый вход в приложении.`,
-            );
+          if (
+            !row ||
+            row.consumed_at ||
+            row.approved_at ||
+            row.rejected_at ||
+            new Date(row.expires_at).getTime() < Date.now()
+          ) {
+            await sendFreshLoginLink(chatId, from);
             return Response.json({ ok: true });
           }
 
