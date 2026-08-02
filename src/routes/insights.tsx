@@ -11,6 +11,7 @@ import {
   getRetentionCohorts,
 } from "@/lib/admin.functions";
 import { loadUser } from "@/lib/auth-state";
+import { APP_BASE_URL } from "@/lib/app-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -593,7 +594,7 @@ function BroadcastDialog({
   const [text, setText] = useState("Привет! Соскучились по тебе в Подари 🎁\nЗайди посмотреть, что нового.");
   const [withButton, setWithButton] = useState(true);
   const [buttonText, setButtonText] = useState("Открыть приложение");
-  const [buttonUrl, setButtonUrl] = useState("https://podari.lovable.app");
+  const [buttonUrl, setButtonUrl] = useState(APP_BASE_URL);
   const [sending, setSending] = useState(false);
   const [filters, setFilters] = useState<UserFilters>({});
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
