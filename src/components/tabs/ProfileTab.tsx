@@ -1,13 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ChevronDown,
-  LogOut,
-  Pencil,
-  Trash2,
-  BarChart3,
-  Send,
-  History,
-} from "lucide-react";
+import { ChevronDown, LogOut, Pencil, Trash2, BarChart3, Send, History } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -22,7 +14,6 @@ import {
   getMyPostedGifts,
   getMyReceivedGifts,
   getMyGiftedGifts,
-  getMyIncomingBookings,
   getMyChats,
   updateGift,
   deleteGift,
@@ -31,6 +22,7 @@ import {
   updateMyProfile,
   getBalanceHistory,
 } from "@/lib/cozy.functions";
+import { readSeenChats, writeSeenChats, isChatUnread } from "@/lib/chat-unread";
 import { uploadImage } from "@/lib/upload-image";
 import { COST_TIERS } from "@/lib/gift-kinds";
 import { getMyWishes, setWishHidden } from "@/lib/wishes.functions";
@@ -83,14 +75,21 @@ type Gift = {
   quantity?: number | null;
   quantity_remaining?: number | null;
 };
-type TxRow = { id: string; status: string; gift: Gift | null };
+// Признаки чата по сделке — приходят из getMyChats(), нужны, чтобы подсветить
+// брони/подаренное/полученное с новыми сообщениями (см. lib/chat-unread.ts).
+type ChatMeta = {
+  last_message_at: string | null;
+  last_incoming: boolean;
+  needs_review: boolean;
+};
+type TxRow = { id: string; status: string; gift: Gift | null } & Partial<ChatMeta>;
 type BookedItem = {
   transaction_id: string;
   gift_id: string;
   gift_title: string;
   gift_image: string | null;
   other_name: string;
-};
+} & ChatMeta;
 // Входящая бронь: кто-то выбрал МОЙ подарок, ждём передачи.
 type IncomingItem = {
   transaction_id: string;
@@ -98,7 +97,7 @@ type IncomingItem = {
   gift_title: string;
   gift_image: string | null;
   receiver_name: string;
-};
+} & ChatMeta;
 type ActivityKey = "wishes" | "posted" | "gifted" | "received" | "booked";
 
 type BalanceEvent = {
@@ -110,15 +109,19 @@ type BalanceEvent = {
 };
 
 // Подпись и эмодзи для каждой причины изменения баланса — единое место для текста.
-const BALANCE_REASONS: Record<string, { label: (title: string | null) => string; emoji: string }> = {
-  welcome_bonus: { label: () => "Приветственный балл", emoji: "🎉" },
-  gift_published: { label: (t) => `Опубликовал(а) подарок «${t ?? "подарок"}»`, emoji: "🎁" },
-  gift_claimed: { label: (t) => `Забрал(а) подарок «${t ?? "подарок"}»`, emoji: "🛍" },
-  gift_handed_over: { label: (t) => `Вручил(а) подарок «${t ?? "подарок"}»`, emoji: "💚" },
-  gift_claim_cancelled: { label: (t) => `Отменена бронь «${t ?? "подарок"}» — баллы вернулись`, emoji: "↩️" },
-  wish_paid: { label: (t) => `Исполнили желание «${t ?? "желание"}»`, emoji: "✨" },
-  wish_fulfilled: { label: (t) => `Исполнил(а) желание «${t ?? "желание"}»`, emoji: "🌟" },
-};
+const BALANCE_REASONS: Record<string, { label: (title: string | null) => string; emoji: string }> =
+  {
+    welcome_bonus: { label: () => "Приветственный балл", emoji: "🎉" },
+    gift_published: { label: (t) => `Опубликовал(а) подарок «${t ?? "подарок"}»`, emoji: "🎁" },
+    gift_claimed: { label: (t) => `Забрал(а) подарок «${t ?? "подарок"}»`, emoji: "🛍" },
+    gift_handed_over: { label: (t) => `Вручил(а) подарок «${t ?? "подарок"}»`, emoji: "💚" },
+    gift_claim_cancelled: {
+      label: (t) => `Отменена бронь «${t ?? "подарок"}» — баллы вернулись`,
+      emoji: "↩️",
+    },
+    wish_paid: { label: (t) => `Исполнили желание «${t ?? "желание"}»`, emoji: "✨" },
+    wish_fulfilled: { label: (t) => `Исполнил(а) желание «${t ?? "желание"}»`, emoji: "🌟" },
+  };
 
 function formatBalanceEvent(e: BalanceEvent): { text: string; emoji: string } {
   const known = BALANCE_REASONS[e.reason];
@@ -146,13 +149,7 @@ type MyWish = {
   is_online?: boolean | null;
 };
 
-export function ProfileTab({
-  user,
-  onCreateWish,
-  onOpenWish,
-  onGive,
-  onReceive,
-}: Props) {
+export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }: Props) {
   const navigate = useNavigate();
   const [activity, setActivity] = useState<ActivityKey>("posted");
   const [posted, setPosted] = useState<Gift[] | null>(null);
@@ -161,6 +158,17 @@ export function ProfileTab({
   const [booked, setBooked] = useState<BookedItem[] | null>(null);
   const [incoming, setIncoming] = useState<IncomingItem[] | null>(null);
   const [myWishes, setMyWishes] = useState<MyWish[] | null>(null);
+  // Тот же журнал «прочитано», что и на вкладке «Чаты» — см. lib/chat-unread.ts.
+  const [seenChats, setSeenChats] = useState<Record<string, string>>(() => readSeenChats());
+  const markChatSeen = (item: { transaction_id: string; last_message_at: string | null }) => {
+    if (!item.last_message_at) return;
+    setSeenChats((prev) => {
+      if ((prev[item.transaction_id] ?? "") >= item.last_message_at!) return prev;
+      const next = { ...prev, [item.transaction_id]: item.last_message_at! };
+      writeSeenChats(next);
+      return next;
+    });
+  };
 
   // Редактирование профиля: фото и «о себе».
   const [editOpen, setEditOpen] = useState(false);
@@ -178,7 +186,9 @@ export function ProfileTab({
     setHistoryOpen((v) => {
       const next = !v;
       if (next && history === null) {
-        historyFn({}).then((h) => setHistory(h as BalanceEvent[])).catch(() => setHistory([]));
+        historyFn({})
+          .then((h) => setHistory(h as BalanceEvent[]))
+          .catch(() => setHistory([]));
       }
       return next;
     });
@@ -187,7 +197,6 @@ export function ProfileTab({
   const postedFn = useServerFn(getMyPostedGifts);
   const giftedFn = useServerFn(getMyGiftedGifts);
   const receivedFn = useServerFn(getMyReceivedGifts);
-  const incomingFn = useServerFn(getMyIncomingBookings);
   const chatsFn = useServerFn(getMyChats);
   const myWishesFn = useServerFn(getMyWishes);
   const rolesFn = useServerFn(getMyRoles);
@@ -202,24 +211,65 @@ export function ProfileTab({
 
   useEffect(() => {
     (async () => {
-      const [p, g, r, w, c, inc] = await Promise.all([
+      const [p, g, r, w, c] = await Promise.all([
         postedFn(),
         giftedFn(),
         receivedFn(),
         myWishesFn(),
         chatsFn(),
-        incomingFn(),
       ]);
+      // Форма элемента ровно как её строит getMyChats() на сервере.
+      type RawDeal = {
+        transaction_id: string;
+        gift_id: string;
+        gift_title: string;
+        gift_image: string | null;
+        other_name: string;
+      } & ChatMeta;
+      const chats = c as {
+        with_givers?: RawDeal[];
+        with_receivers?: RawDeal[];
+        archive_with_givers?: RawDeal[];
+        archive_with_receivers?: RawDeal[];
+      };
+      // Признаки чата (новое сообщение / ждёт отзыва) по всем сделкам сразу —
+      // чтобы подсветить подаренное/полученное там, где что-то новое.
+      const metaByTx = new Map<string, ChatMeta>();
+      [
+        ...(chats.with_givers ?? []),
+        ...(chats.with_receivers ?? []),
+        ...(chats.archive_with_givers ?? []),
+        ...(chats.archive_with_receivers ?? []),
+      ].forEach((item) => {
+        metaByTx.set(item.transaction_id, {
+          last_message_at: item.last_message_at ?? null,
+          last_incoming: !!item.last_incoming,
+          needs_review: !!item.needs_review,
+        });
+      });
+
       setPosted((p as unknown as Gift[]) ?? []);
-      setGifted((g as TxRow[]) ?? []);
-      setReceived((r as TxRow[]) ?? []);
+      setGifted(((g as TxRow[]) ?? []).map((t) => ({ ...t, ...metaByTx.get(t.id) })));
+      setReceived(((r as TxRow[]) ?? []).map((t) => ({ ...t, ...metaByTx.get(t.id) })));
       setMyWishes((w as unknown as MyWish[]) ?? []);
       // «Вы забронировали» = активные сделки, где я получатель (чаты с дарителями)
-      setBooked(((c as { with_givers?: BookedItem[] })?.with_givers ?? []) as BookedItem[]);
-      // «Забронировали у вас» = ожидающие сделки, где я даритель
-      setIncoming((inc as IncomingItem[]) ?? []);
+      setBooked(chats.with_givers ?? []);
+      // «Забронировали у вас» = ожидающие сделки, где я даритель — та же
+      // getMyChats(), а не отдельный запрос: заодно достаём данные о сообщениях.
+      setIncoming(
+        (chats.with_receivers ?? []).map((it) => ({
+          transaction_id: it.transaction_id,
+          gift_id: it.gift_id,
+          gift_title: it.gift_title,
+          gift_image: it.gift_image,
+          receiver_name: it.other_name,
+          last_message_at: it.last_message_at,
+          last_incoming: it.last_incoming,
+          needs_review: it.needs_review,
+        })),
+      );
     })();
-  }, [postedFn, giftedFn, receivedFn, myWishesFn, chatsFn, incomingFn]);
+  }, [postedFn, giftedFn, receivedFn, myWishesFn, chatsFn]);
 
   const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -264,13 +314,10 @@ export function ProfileTab({
     }
   };
 
-  const giftsFor = (k: ActivityKey): Gift[] => {
-    if (k === "posted") return (posted ?? []).filter((g) => g.status !== "gifted");
-    if (k === "gifted") return (gifted ?? []).map((t) => t.gift).filter((g): g is Gift => !!g);
-    return (received ?? []).map((t) => t.gift).filter((g): g is Gift => !!g);
-  };
   const loaded = posted && gifted && received && booked && incoming;
-  const list = giftsFor(activity);
+  // «Подаренные»/«Полученные» рендерятся отдельно (нужны transaction_id и
+  // признаки чата) — этот список нужен только для «Активные».
+  const list = (posted ?? []).filter((g) => g.status !== "gifted");
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
@@ -446,10 +493,50 @@ export function ProfileTab({
               ] as const
             ).map(([k, label]) => {
               const active = activity === k;
-              // Значок-кружок только у «Брони» — там он значит «нужно среагировать».
-              // На остальных вкладках (в т.ч. «Желания») это был бы просто счётчик
-              // «сколько всего», а не уведомление — убрали, чтобы не путать с ним.
-              const count = k === "booked" ? (incoming?.length ?? 0) + (booked?.length ?? 0) : 0;
+              // Счётчик — просто «сколько всего» на каждой вкладке. А подсветка
+              // (цвет текста и кружка) — отдельно, только если там реально есть
+              // новое сообщение, которое стоит увидеть.
+              const count =
+                k === "wishes"
+                  ? (myWishes?.length ?? 0)
+                  : k === "posted"
+                    ? (posted ?? []).filter((g) => g.status !== "gifted").length
+                    : k === "booked"
+                      ? (incoming?.length ?? 0) + (booked?.length ?? 0)
+                      : k === "gifted"
+                        ? (gifted?.length ?? 0)
+                        : (received?.length ?? 0);
+              const hasUnread =
+                k === "booked"
+                  ? (incoming ?? []).some((it) => isChatUnread(it, seenChats)) ||
+                    (booked ?? []).some((it) => isChatUnread(it, seenChats))
+                  : k === "gifted"
+                    ? (gifted ?? []).some(
+                        (t) =>
+                          t.id &&
+                          isChatUnread(
+                            {
+                              transaction_id: t.id,
+                              last_message_at: t.last_message_at ?? null,
+                              last_incoming: !!t.last_incoming,
+                            },
+                            seenChats,
+                          ),
+                      )
+                    : k === "received"
+                      ? (received ?? []).some(
+                          (t) =>
+                            t.id &&
+                            isChatUnread(
+                              {
+                                transaction_id: t.id,
+                                last_message_at: t.last_message_at ?? null,
+                                last_incoming: !!t.last_incoming,
+                              },
+                              seenChats,
+                            ),
+                        )
+                      : false;
               return (
                 <button
                   key={k}
@@ -460,15 +547,23 @@ export function ProfileTab({
                       setActivity(k);
                     }
                   }}
-                  className={`flex items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-all duration-300 ${
-                    active
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`flex items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] leading-tight transition-all duration-300 ${
+                    hasUnread
+                      ? "font-bold text-primary"
+                      : active
+                        ? "font-medium text-foreground"
+                        : "font-medium text-muted-foreground hover:text-foreground"
+                  } ${active ? "bg-background shadow-sm" : ""}`}
                 >
                   {label}
                   {count > 0 && (
-                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground">
+                    <span
+                      className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${
+                        hasUnread
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted-foreground/15 text-muted-foreground"
+                      }`}
+                    >
                       {count}
                     </span>
                   )}
@@ -524,37 +619,52 @@ export function ProfileTab({
                       <span className="text-xs">({(incoming ?? []).length})</span>
                     </h3>
                     <ul className="achievements-list space-y-2">
-                      {(incoming ?? []).map((b) => (
-                        <li key={b.transaction_id}>
-                          <Link
-                            to="/chat/$giftId"
-                            params={{ giftId: b.gift_id }}
-                            onClick={() => haptic("select")}
-                            className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
-                          >
-                            {b.gift_image ? (
-                              <img
-                                src={b.gift_image}
-                                alt={b.gift_title}
-                                className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                                🎁
+                      {(incoming ?? []).map((b) => {
+                        const unread = isChatUnread(b, seenChats);
+                        return (
+                          <li key={b.transaction_id}>
+                            <Link
+                              to="/chat/$giftId"
+                              params={{ giftId: b.gift_id }}
+                              onClick={() => {
+                                haptic("select");
+                                markChatSeen(b);
+                              }}
+                              className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm transition active:scale-[0.98] ${
+                                unread
+                                  ? "border-primary bg-primary/10"
+                                  : "border-primary/40 bg-primary/5"
+                              }`}
+                            >
+                              {b.gift_image ? (
+                                <img
+                                  src={b.gift_image}
+                                  alt={b.gift_title}
+                                  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                                  🎁
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`truncate text-sm ${unread ? "font-bold" : "font-medium"}`}
+                                >
+                                  {b.gift_title}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {unread ? "● Новое сообщение — " : ""}забронировал(а){" "}
+                                  {b.receiver_name}
+                                </p>
                               </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium">{b.gift_title}</p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                забронировал(а) {b.receiver_name}
-                              </p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white">
-                              Открыть чат
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
+                              <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white">
+                                Открыть чат
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -567,88 +677,149 @@ export function ProfileTab({
                       <span className="text-xs">({(booked ?? []).length})</span>
                     </h3>
                     <ul className="achievements-list space-y-2">
-                      {(booked ?? []).map((b) => (
-                        <li key={b.transaction_id}>
-                          <Link
-                            to="/chat/$giftId"
-                            params={{ giftId: b.gift_id }}
-                            onClick={() => haptic("select")}
-                            className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 shadow-sm transition active:scale-[0.98]"
-                          >
-                            {b.gift_image ? (
-                              <img
-                                src={b.gift_image}
-                                alt={b.gift_title}
-                                className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                                🎁
+                      {(booked ?? []).map((b) => {
+                        const unread = isChatUnread(b, seenChats);
+                        return (
+                          <li key={b.transaction_id}>
+                            <Link
+                              to="/chat/$giftId"
+                              params={{ giftId: b.gift_id }}
+                              onClick={() => {
+                                haptic("select");
+                                markChatSeen(b);
+                              }}
+                              className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm transition active:scale-[0.98] ${
+                                unread
+                                  ? "border-primary bg-primary/10"
+                                  : "border-primary/30 bg-primary/5"
+                              }`}
+                            >
+                              {b.gift_image ? (
+                                <img
+                                  src={b.gift_image}
+                                  alt={b.gift_title}
+                                  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                                  🎁
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`truncate text-sm ${unread ? "font-bold" : "font-medium"}`}
+                                >
+                                  {b.gift_title}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {unread ? "● Новое сообщение — " : ""}от {b.other_name}
+                                </p>
                               </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium">{b.gift_title}</p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                от {b.other_name}
-                              </p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white">
-                              Открыть чат
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
+                              <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white">
+                                Открыть чат
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
               </div>
             )
+          ) : activity === "gifted" || activity === "received" ? (
+            (() => {
+              const txList = (activity === "gifted" ? gifted : received) ?? [];
+              if (txList.length === 0) {
+                return (
+                  <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
+                    {activity === "gifted"
+                      ? "Пока никому не передали подарок"
+                      : "Вы пока ничего не получили"}
+                  </div>
+                );
+              }
+              return (
+                <ul key={activity} className="achievements-list space-y-2">
+                  {txList.map((t) => {
+                    const g = t.gift;
+                    if (!g) return null;
+                    const meta = {
+                      transaction_id: t.id,
+                      last_message_at: t.last_message_at ?? null,
+                      last_incoming: !!t.last_incoming,
+                    };
+                    const unread = isChatUnread(meta, seenChats);
+                    return (
+                      <li key={t.id}>
+                        <Link
+                          to="/chat/$giftId"
+                          params={{ giftId: g.id }}
+                          onClick={() => {
+                            haptic("select");
+                            markChatSeen(meta);
+                          }}
+                          className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm transition active:scale-[0.98] ${
+                            unread ? "border-primary bg-primary/10" : "bg-card"
+                          }`}
+                        >
+                          {g.image_url ? (
+                            <img
+                              src={g.image_url}
+                              alt={g.title}
+                              className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                              🎁
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`line-clamp-2 text-sm ${unread ? "font-bold" : "font-medium"}`}
+                            >
+                              {g.title}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {unread ? "● Новое сообщение" : g.category}
+                            </p>
+                          </div>
+                          {t.needs_review && (
+                            <span
+                              className="shrink-0 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700 dark:text-amber-300"
+                              title="Ждёт отзыва"
+                            >
+                              ✍️
+                            </span>
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              );
+            })()
           ) : list.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              {activity === "posted" && "Вы пока не публиковали подарков"}
-              {activity === "gifted" && "Пока никому не передали подарок"}
-              {activity === "received" && "Вы пока ничего не получили"}
+              Вы пока не публиковали подарков
             </div>
           ) : (
             <ul key={activity} className="achievements-list space-y-2">
-              {list.map((g) =>
-                activity === "posted" ? (
-                  <EditableActiveItem
-                    key={g.id}
-                    gift={g}
-                    ownerId={user.user_id}
-                    userLevel={user.level}
-                    myName={user.display_name}
-                    onUpdated={(patch) =>
-                      setPosted((prev) =>
-                        (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)),
-                      )
-                    }
-                    onDeleted={() => setPosted((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
-                  />
-                ) : (
-                  <li
-                    key={g.id}
-                    className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm"
-                  >
-                    {g.image_url ? (
-                      <img
-                        src={g.image_url}
-                        alt={g.title}
-                        className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-                        🎁
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-sm font-medium">{g.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{g.category}</p>
-                    </div>
-                  </li>
-                ),
-              )}
+              {list.map((g) => (
+                <EditableActiveItem
+                  key={g.id}
+                  gift={g}
+                  ownerId={user.user_id}
+                  userLevel={user.level}
+                  myName={user.display_name}
+                  onUpdated={(patch) =>
+                    setPosted((prev) =>
+                      (prev ?? []).map((x) => (x.id === g.id ? { ...x, ...patch } : x)),
+                    )
+                  }
+                  onDeleted={() => setPosted((prev) => (prev ?? []).filter((x) => x.id !== g.id))}
+                />
+              ))}
             </ul>
           )}
         </section>

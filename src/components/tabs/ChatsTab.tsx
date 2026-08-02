@@ -5,6 +5,7 @@ import { getMyChats } from "@/lib/cozy.functions";
 import { haptic } from "@/lib/haptics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WriteToAdminButton } from "@/components/WriteToAdminDialog";
+import { readSeenChats, writeSeenChats, isChatUnread } from "@/lib/chat-unread";
 
 
 type ChatItem = {
@@ -21,26 +22,6 @@ type ChatItem = {
 };
 
 type Filter = "givers" | "receivers" | "archive";
-
-const SEEN_KEY = "cozy_chat_seen";
-
-function readSeen(): Record<string, string> {
-  if (typeof localStorage === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}") as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
-
-function writeSeen(m: Record<string, string>) {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify(m));
-  } catch {
-    /* noop */
-  }
-}
 
 function timeAgo(iso?: string | null) {
   if (!iso) return "";
@@ -101,7 +82,7 @@ export function ChatsTab() {
   const [receivers, setReceivers] = useState<ChatItem[] | null>(null);
   const [archiveG, setArchiveG] = useState<ChatItem[]>([]);
   const [archiveR, setArchiveR] = useState<ChatItem[]>([]);
-  const [seen, setSeen] = useState<Record<string, string>>(() => readSeen());
+  const [seen, setSeen] = useState<Record<string, string>>(() => readSeenChats());
   const chatsFn = useServerFn(getMyChats);
 
   useEffect(() => {
@@ -139,19 +120,14 @@ export function ChatsTab() {
     };
   }, [chatsFn]);
 
-  // Непрочитанный = последнее сообщение от собеседника и пришло позже,
-  // чем мы в последний раз открывали этот чат.
-  const isUnread = (c: ChatItem) =>
-    !!c.last_incoming &&
-    !!c.last_message_at &&
-    (seen[c.transaction_id] ?? "") < c.last_message_at;
+  const isUnread = (c: ChatItem) => isChatUnread(c, seen);
 
   const markSeen = (c: ChatItem) => {
     if (!c.last_message_at) return;
     setSeen((prev) => {
       if ((prev[c.transaction_id] ?? "") >= c.last_message_at!) return prev;
       const next = { ...prev, [c.transaction_id]: c.last_message_at! };
-      writeSeen(next);
+      writeSeenChats(next);
       return next;
     });
   };
