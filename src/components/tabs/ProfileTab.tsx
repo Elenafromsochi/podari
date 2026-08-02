@@ -446,12 +446,10 @@ export function ProfileTab({
               ] as const
             ).map(([k, label]) => {
               const active = activity === k;
-              const count =
-                k === "booked"
-                  ? (incoming?.length ?? 0) + (booked?.length ?? 0)
-                  : k === "wishes"
-                    ? (myWishes?.length ?? 0)
-                    : 0;
+              // Значок-кружок только у «Брони» — там он значит «нужно среагировать».
+              // На остальных вкладках (в т.ч. «Желания») это был бы просто счётчик
+              // «сколько всего», а не уведомление — убрали, чтобы не путать с ним.
+              const count = k === "booked" ? (incoming?.length ?? 0) + (booked?.length ?? 0) : 0;
               return (
                 <button
                   key={k}
