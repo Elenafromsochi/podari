@@ -486,7 +486,7 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
             {(
               [
                 ["wishes", "Желания"],
-                ["posted", "Активные"],
+                ["posted", "Подарки"],
                 ["booked", "Брони"],
                 ["gifted", "Подаренные"],
                 ["received", "Полученные"],
