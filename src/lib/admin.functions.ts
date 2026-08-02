@@ -36,7 +36,13 @@ type UserFilters = z.infer<typeof UserFilterSchema>;
 
 function needsStatsView(f?: UserFilters): boolean {
   if (!f) return false;
-  return !!(f.neverPosted || f.neverGifted || f.neverReceived || f.neverInvited || f.minGiftsGiven != null);
+  return !!(
+    f.neverPosted ||
+    f.neverGifted ||
+    f.neverReceived ||
+    f.neverInvited ||
+    f.minGiftsGiven != null
+  );
 }
 
 function applyBaseFilters(q: any, f?: UserFilters) {
@@ -71,6 +77,8 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     const day14 = daysAgo(14);
     const day30 = daysAgo(30);
 
+    const day2 = daysAgo(2);
+
     const [
       pendingTx,
       giftsCount,
@@ -82,7 +90,9 @@ export const getAdminOverview = createServerFn({ method: "GET" })
       txCancelled7,
       txCompletedTimes,
       dau,
+      dauPrev,
       wau,
+      wauPrev,
       mau,
       sleepingCount,
       newUsers14,
@@ -94,37 +104,106 @@ export const getAdminOverview = createServerFn({ method: "GET" })
       topGivers,
       topReceivers,
       topReferrers,
+      referred7,
+      referred30,
     ] = await Promise.all([
       supabaseAdmin.from("transactions").select("amount").eq("status", "pending"),
       supabaseAdmin.from("gifts").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("gifts").select("cost").eq("status", "available"),
-      supabaseAdmin.from("gifts").select("id", { count: "exact", head: true }).eq("status", "available"),
-      supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("status", "completed"),
-      supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("status", "completed").gte("created_at", day7),
-      supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("status", "completed").gte("created_at", day30),
-      supabaseAdmin.from("transactions").select("id", { count: "exact", head: true }).eq("status", "cancelled").gte("created_at", day7),
-      supabaseAdmin.from("transactions").select("created_at, handover_requested_at").eq("status", "completed").not("handover_requested_at", "is", null).limit(500),
-      supabaseAdmin.from("profiles").select("user_id", { count: "exact", head: true }).gte("last_seen_at", day1),
-      supabaseAdmin.from("profiles").select("user_id", { count: "exact", head: true }).gte("last_seen_at", day7),
-      supabaseAdmin.from("profiles").select("user_id", { count: "exact", head: true }).gte("last_seen_at", day30),
-      supabaseAdmin.from("profiles").select("user_id", { count: "exact", head: true }).or(`last_seen_at.lt.${day3},last_seen_at.is.null`),
+      supabaseAdmin
+        .from("gifts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "available"),
+      supabaseAdmin
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "completed"),
+      supabaseAdmin
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "completed")
+        .gte("created_at", day7),
+      supabaseAdmin
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "completed")
+        .gte("created_at", day30),
+      supabaseAdmin
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "cancelled")
+        .gte("created_at", day7),
+      supabaseAdmin
+        .from("transactions")
+        .select("created_at, handover_requested_at")
+        .eq("status", "completed")
+        .not("handover_requested_at", "is", null)
+        .limit(500),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("last_seen_at", day1),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("last_seen_at", day2)
+        .lt("last_seen_at", day1),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("last_seen_at", day7),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("last_seen_at", day14)
+        .lt("last_seen_at", day7),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("last_seen_at", day30),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .or(`last_seen_at.lt.${day3},last_seen_at.is.null`),
       supabaseAdmin.from("profiles").select("created_at").gte("created_at", day14),
-      supabaseAdmin.from("profiles").select("user_id", { count: "exact", head: true }).gte("created_at", day7),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("created_at", day7),
       supabaseAdmin.from("profiles").select("user_id", { count: "exact", head: true }),
       supabaseAdmin.from("gifts").select("owner_id"),
       supabaseAdmin.from("transactions").select("receiver_id").eq("status", "completed"),
       supabaseAdmin.from("transactions").select("sender_id").eq("status", "completed"),
-      supabaseAdmin.from("transactions").select("sender_id").eq("status", "completed").gte("created_at", day30),
-      supabaseAdmin.from("transactions").select("receiver_id").eq("status", "completed").gte("created_at", day30),
+      supabaseAdmin
+        .from("transactions")
+        .select("sender_id")
+        .eq("status", "completed")
+        .gte("created_at", day30),
+      supabaseAdmin
+        .from("transactions")
+        .select("receiver_id")
+        .eq("status", "completed")
+        .gte("created_at", day30),
       supabaseAdmin.from("profiles").select("referred_by").not("referred_by", "is", null),
+      supabaseAdmin
+        .from("profiles")
+        .select("referred_by")
+        .not("referred_by", "is", null)
+        .gte("created_at", day7),
+      supabaseAdmin
+        .from("profiles")
+        .select("referred_by")
+        .not("referred_by", "is", null)
+        .gte("created_at", day30),
     ]);
 
     const escrow = (pendingTx.data ?? []).reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const giftsTotal = giftsCount.count ?? 0;
     const emission = giftsTotal * 0.2;
-    const avgCostVal = (avgCost.data?.length ?? 0)
-      ? (avgCost.data!.reduce((s, r) => s + Number(r.cost ?? 0), 0) / avgCost.data!.length)
-      : 0;
+    const avgCostVal =
+      (avgCost.data?.length ?? 0)
+        ? avgCost.data!.reduce((s, r) => s + Number(r.cost ?? 0), 0) / avgCost.data!.length
+        : 0;
 
     const completionTimesMs = (txCompletedTimes.data ?? [])
       .map((r) => {
@@ -159,24 +238,62 @@ export const getAdminOverview = createServerFn({ method: "GET" })
       return m;
     }
 
-    const givers30 = Array.from(tally(topGivers.data as any[], "sender_id")).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const receivers30 = Array.from(tally(topReceivers.data as any[], "receiver_id")).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const referrers = Array.from(tally(topReferrers.data as any[], "referred_by")).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const givers30 = Array.from(tally(topGivers.data as any[], "sender_id"))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    const receivers30 = Array.from(tally(topReceivers.data as any[], "receiver_id"))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    const referrers = Array.from(tally(topReferrers.data as any[], "referred_by"))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
 
-    const userIdsToFetch = Array.from(new Set([...givers30.map(([id]) => id), ...receivers30.map(([id]) => id), ...referrers.map(([id]) => id)]));
+    const userIdsToFetch = Array.from(
+      new Set([
+        ...givers30.map(([id]) => id),
+        ...receivers30.map(([id]) => id),
+        ...referrers.map(([id]) => id),
+      ]),
+    );
     const namesMap = new Map<string, string>();
     if (userIdsToFetch.length) {
-      const { data } = await supabaseAdmin.from("profiles").select("user_id, display_name, telegram_username").in("user_id", userIdsToFetch);
+      const { data } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, display_name, telegram_username")
+        .in("user_id", userIdsToFetch);
       (data ?? []).forEach((p) => {
-        namesMap.set(p.user_id!, p.telegram_username ? `@${p.telegram_username}` : (p.display_name ?? "—"));
+        namesMap.set(
+          p.user_id!,
+          p.telegram_username ? `@${p.telegram_username}` : (p.display_name ?? "—"),
+        );
       });
     }
-    const enrich = (rows: [string, number][]) => rows.map(([id, n]) => ({ user_id: id, name: namesMap.get(id) ?? "—", count: n }));
+    const enrich = (rows: [string, number][]) =>
+      rows.map(([id, n]) => ({ user_id: id, name: namesMap.get(id) ?? "—", count: n }));
 
     // funnel
-    const ownersSet = new Set((usersWithGift.data ?? []).map((r) => r.owner_id).filter(Boolean) as string[]);
-    const receiversSet = new Set((usersReceived.data ?? []).map((r) => r.receiver_id).filter(Boolean) as string[]);
-    const sendersSet = new Set((usersGifted.data ?? []).map((r) => r.sender_id).filter(Boolean) as string[]);
+    const ownersSet = new Set(
+      (usersWithGift.data ?? []).map((r) => r.owner_id).filter(Boolean) as string[],
+    );
+    const receiversSet = new Set(
+      (usersReceived.data ?? []).map((r) => r.receiver_id).filter(Boolean) as string[],
+    );
+    const sendersSet = new Set(
+      (usersGifted.data ?? []).map((r) => r.sender_id).filter(Boolean) as string[],
+    );
+
+    // Виральный коэффициент: сколько в среднем приглашённых даёт один зовущий
+    // за период (приглашённые за период ÷ число уникальных рефереров за период).
+    const viralCoefficient = (rows: { referred_by: string | null }[] | null) => {
+      const list = (rows ?? []).filter((r) => r.referred_by);
+      if (!list.length) return { referred: 0, referrers: 0, coefficient: 0 };
+      const referrers = new Set(list.map((r) => r.referred_by)).size;
+      return {
+        referred: list.length,
+        referrers,
+        coefficient: referrers ? Number((list.length / referrers).toFixed(2)) : 0,
+      };
+    };
 
     return {
       economy: {
@@ -192,7 +309,9 @@ export const getAdminOverview = createServerFn({ method: "GET" })
       },
       activity: {
         dau: dau.count ?? 0,
+        dauPrev: dauPrev.count ?? 0,
         wau: wau.count ?? 0,
+        wauPrev: wauPrev.count ?? 0,
         mau: mau.count ?? 0,
         sleeping: sleepingCount.count ?? 0,
         newUsers7: newUsers7.count ?? 0,
@@ -205,6 +324,10 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         received: receiversSet.size,
         gifted: sendersSet.size,
       },
+      virality: {
+        d7: viralCoefficient(referred7.data as { referred_by: string | null }[] | null),
+        d30: viralCoefficient(referred30.data as { referred_by: string | null }[] | null),
+      },
       tops: {
         givers: enrich(givers30),
         receivers: enrich(receivers30),
@@ -213,23 +336,107 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     };
   });
 
+// ---------- Retention: недельные когорты ----------
+// Активность = что-то реально делал в сервисе (событие в balance_events,
+// кроме приветственного бонуса при регистрации — он начисляется всем сразу
+// и не говорит об активности). Таблица balance_events пишется с 20 июля —
+// для недель до этой даты честно возвращаем null («нет данных»), а не 0%.
+const BALANCE_EVENTS_SINCE = new Date("2026-07-20T00:00:00.000Z");
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const COHORT_WEEKS_BACK = 8;
+const RETENTION_OFFSETS = 4;
+
+export const getRetentionCohorts = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .handler(async () => {
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - COHORT_WEEKS_BACK * WEEK_MS);
+
+    const [{ data: profs, error: profsErr }, { data: events, error: eventsErr }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("profiles")
+          .select("user_id, created_at")
+          .gte("created_at", windowStart.toISOString()),
+        // balance_events нет в сгенерированных типах supabase-js — та же обёртка
+        // "as any", что и у admin_user_stats выше в этом файле.
+        (supabaseAdmin.from("balance_events" as any) as any)
+          .select("user_id, created_at")
+          .neq("reason", "welcome_bonus")
+          .gte("created_at", windowStart.toISOString())
+          .limit(20000) as Promise<{
+          data: { user_id: string; created_at: string }[] | null;
+          error: { message: string } | null;
+        }>,
+      ]);
+    if (profsErr) return { cohorts: [], dataSince: BALANCE_EVENTS_SINCE.toISOString() };
+
+    const weekOf = (d: Date) => Math.floor(d.getTime() / WEEK_MS);
+    const weekStartDate = (w: number) => new Date(w * WEEK_MS);
+
+    const activeByWeek = new Map<number, Set<string>>();
+    (eventsErr ? [] : (events ?? [])).forEach((e) => {
+      const w = weekOf(new Date(e.created_at));
+      let set = activeByWeek.get(w);
+      if (!set) activeByWeek.set(w, (set = new Set()));
+      set.add(e.user_id);
+    });
+
+    const cohortUsers = new Map<number, string[]>();
+    (profs ?? []).forEach((p) => {
+      const w = weekOf(new Date(p.created_at as string));
+      let arr = cohortUsers.get(w);
+      if (!arr) cohortUsers.set(w, (arr = []));
+      arr.push(p.user_id as string);
+    });
+
+    const nowWeek = weekOf(now);
+    const cohorts = Array.from(cohortUsers.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([w, users]) => {
+        const retention: (number | null)[] = [];
+        for (let offset = 0; offset <= RETENTION_OFFSETS; offset++) {
+          const targetWeek = w + offset;
+          if (targetWeek > nowWeek || weekStartDate(targetWeek) < BALANCE_EVENTS_SINCE) {
+            retention.push(null);
+            continue;
+          }
+          const activeSet = activeByWeek.get(targetWeek);
+          const activeCount = activeSet ? users.filter((u) => activeSet.has(u)).length : 0;
+          retention.push(Math.round((activeCount / users.length) * 100));
+        }
+        return {
+          weekStart: weekStartDate(w).toISOString().slice(0, 10),
+          size: users.length,
+          retention,
+        };
+      });
+
+    return { cohorts, dataSince: BALANCE_EVENTS_SINCE.toISOString() };
+  });
+
 // ---------- Users list ----------
 export const getAdminUsers = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
-  .inputValidator((d) => z.object({
-    page: z.number().int().min(0).default(0),
-    pageSize: z.number().int().min(1).max(200).default(50),
-    search: z.string().max(100).optional(),
-    onlySleeping: z.boolean().default(false),
-    filters: UserFilterSchema,
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        page: z.number().int().min(0).default(0),
+        pageSize: z.number().int().min(1).max(200).default(50),
+        search: z.string().max(100).optional(),
+        onlySleeping: z.boolean().default(false),
+        filters: UserFilterSchema,
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const from = data.page * data.pageSize;
     const to = from + data.pageSize - 1;
     const wantsStats = needsStatsView(data.filters);
     const statsCols =
       "user_id, display_name, telegram_username, telegram_id, level, xp, balance, last_seen_at, created_at, gifts_posted, gifts_given, gifts_received, referrals_count";
-    const plainCols = "user_id, display_name, telegram_username, telegram_id, level, xp, balance, last_seen_at, created_at";
+    const plainCols =
+      "user_id, display_name, telegram_username, telegram_id, level, xp, balance, last_seen_at, created_at";
 
     const build = (table: "profiles" | "admin_user_stats", cols: string) => {
       let q = (supabaseAdmin.from(table as any) as any)
@@ -298,8 +505,18 @@ export const exportSleepingCsv = createServerFn({ method: "GET" })
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const lines = (data ?? []).map((r) => {
-      const days = r.last_seen_at ? Math.floor((now - new Date(r.last_seen_at).getTime()) / 86400000) : "";
-      return [r.telegram_id ?? "", r.telegram_username ?? "", r.display_name ?? "", days, r.last_seen_at ?? ""].map(esc).join(",");
+      const days = r.last_seen_at
+        ? Math.floor((now - new Date(r.last_seen_at).getTime()) / 86400000)
+        : "";
+      return [
+        r.telegram_id ?? "",
+        r.telegram_username ?? "",
+        r.display_name ?? "",
+        days,
+        r.last_seen_at ?? "",
+      ]
+        .map(esc)
+        .join(",");
     });
     return [header, ...lines].join("\n");
   });
@@ -355,7 +572,10 @@ export const sendTelegramBroadcast = createServerFn({ method: "POST" })
         }
         rows = res.data as any;
       } else {
-        let q = supabaseAdmin.from("profiles").select("user_id, telegram_id").not("telegram_id", "is", null);
+        let q = supabaseAdmin
+          .from("profiles")
+          .select("user_id, telegram_id")
+          .not("telegram_id", "is", null);
         q = applyBaseFilters(q, data.filters);
         const res = await q.limit(2000);
         rows = res.data as any;
@@ -378,7 +598,10 @@ export const sendTelegramBroadcast = createServerFn({ method: "POST" })
     }
     if (error) throw new Error(error.message);
 
-    const button = data.buttonText && data.buttonUrl ? { text: data.buttonText, url: data.buttonUrl } : undefined;
+    const button =
+      data.buttonText && data.buttonUrl
+        ? { text: data.buttonText, url: data.buttonUrl }
+        : undefined;
     let sent = 0;
     let failed = 0;
     const errors: string[] = [];

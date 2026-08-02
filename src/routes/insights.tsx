@@ -8,6 +8,7 @@ import {
   getSleepingUsers,
   exportSleepingCsv,
   sendTelegramBroadcast,
+  getRetentionCohorts,
 } from "@/lib/admin.functions";
 import { loadUser } from "@/lib/auth-state";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/insights")({
 
 type Overview = Awaited<ReturnType<typeof getAdminOverview>>;
 type UsersResp = Awaited<ReturnType<typeof getAdminUsers>>;
+type Retention = Awaited<ReturnType<typeof getRetentionCohorts>>;
 
 // ---------- Фильтры аудитории ----------
 type UserFilters = {
@@ -145,10 +147,12 @@ function InsightsPage() {
   const sleepingFn = useServerFn(getSleepingUsers);
   const csvFn = useServerFn(exportSleepingCsv);
   const broadcastFn = useServerFn(sendTelegramBroadcast);
+  const retentionFn = useServerFn(getRetentionCohorts);
 
   const [authChecked, setAuthChecked] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [users, setUsers] = useState<UsersResp | null>(null);
+  const [retention, setRetention] = useState<Retention | null>(null);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [onlySleeping, setOnlySleeping] = useState(false);
@@ -168,12 +172,14 @@ function InsightsPage() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [o, u] = await Promise.all([
+      const [o, u, ret] = await Promise.all([
         overviewFn({}),
         usersFn({ data: { page, pageSize: 50, search: search || undefined, onlySleeping, filters } }),
+        retentionFn({}),
       ]);
       setOverview(o);
       setUsers(u);
+      setRetention(ret);
     } catch (e: any) {
       toast.error(e?.message?.includes("FORBIDDEN") ? "Нет доступа" : "Ошибка загрузки");
       if (e?.message?.includes("FORBIDDEN")) navigate({ to: "/", search: { tab: "profile" } as never });
@@ -239,10 +245,20 @@ function InsightsPage() {
             <Kpi icon={<TrendingUp className="w-4 h-4" />} label="Эмиссия авансов" value={overview.economy.emission.toFixed(2)} />
             <Kpi icon={<Gift className="w-4 h-4" />} label="Подарков в ленте" value={overview.economy.availableGifts} />
             <Kpi icon={<Coins className="w-4 h-4" />} label="Ср. цена дара" value={overview.economy.avgGiftCost.toFixed(2)} />
-            <Kpi icon={<Users className="w-4 h-4" />} label="DAU" value={overview.activity.dau} />
-            <Kpi icon={<Users className="w-4 h-4" />} label="WAU" value={overview.activity.wau} />
+            <Kpi icon={<Users className="w-4 h-4" />} label="DAU" value={overview.activity.dau} prevValue={overview.activity.dauPrev} />
+            <Kpi icon={<Users className="w-4 h-4" />} label="WAU" value={overview.activity.wau} prevValue={overview.activity.wauPrev} />
             <Kpi icon={<TrendingUp className="w-4 h-4" />} label="Новые / 7д" value={overview.activity.newUsers7} />
             <Kpi icon={<TrendingUp className="w-4 h-4" />} label="Отменено / 7д" value={overview.economy.txCancelled7} />
+            <Kpi
+              icon={<Users className="w-4 h-4" />}
+              label="Виральность / 7д"
+              value={overview.virality.d7.coefficient}
+            />
+            <Kpi
+              icon={<Users className="w-4 h-4" />}
+              label="Виральность / 30д"
+              value={overview.virality.d30.coefficient}
+            />
           </section>
         )}
 
@@ -286,6 +302,17 @@ function InsightsPage() {
               <div className="text-xs text-zinc-400 mb-3">Новые регистрации (14 дней)</div>
               <Sparkline points={overview.activity.sparkline} />
             </div>
+          </section>
+        )}
+
+        {/* Retention: недельные когорты */}
+        {retention && retention.cohorts.length > 0 && (
+          <section className="ins-card p-4 mb-5 ins-fade">
+            <div className="text-xs text-zinc-400 mb-3">
+              Удержание по неделям регистрации — % от когорты, у кого было хоть
+              одно действие в сервисе на 0/1/2/3/4-й неделе после регистрации
+            </div>
+            <RetentionTable cohorts={retention.cohorts} />
           </section>
         )}
 
@@ -450,11 +477,54 @@ function InsightsPage() {
   );
 }
 
-function Kpi({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
+function Kpi({ icon, label, value, prevValue }: { icon: React.ReactNode; label: string; value: number | string; prevValue?: number }) {
+  const trend = prevValue != null && typeof value === "number" ? value - prevValue : null;
   return (
     <div className="ins-tile p-3">
       <div className="flex items-center gap-2 text-zinc-400 text-xs mb-1">{icon}{label}</div>
-      <div className="text-2xl font-semibold text-zinc-100 tabular-nums">{value}</div>
+      <div className="flex items-baseline gap-1.5">
+        <div className="text-2xl font-semibold text-zinc-100 tabular-nums">{value}</div>
+        {trend != null && trend !== 0 && (
+          <span className={`text-xs font-medium ${trend > 0 ? "text-emerald-400" : "text-red-400"}`}>{trend > 0 ? "▲" : "▼"} {Math.abs(trend)}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function retentionCellColor(pct: number | null): string {
+  if (pct == null) return "text-zinc-600";
+  if (pct >= 50) return "bg-emerald-500/25 text-emerald-200";
+  if (pct >= 25) return "bg-emerald-500/10 text-emerald-300";
+  if (pct >= 10) return "bg-amber-500/10 text-amber-300";
+  return "bg-red-500/10 text-red-300";
+}
+
+function RetentionTable({ cohorts }: { cohorts: { weekStart: string; size: number; retention: (number | null)[] }[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-zinc-500">
+            <th className="text-left font-normal pb-2 pr-3">Неделя</th>
+            <th className="text-left font-normal pb-2 pr-3">Людей</th>
+            {[0, 1, 2, 3, 4].map((w) => <th key={w} className="text-left font-normal pb-2 pr-3">Нед {w}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {cohorts.map((c) => (
+            <tr key={c.weekStart}>
+              <td className="py-1 pr-3 text-zinc-300 whitespace-nowrap">{c.weekStart}</td>
+              <td className="py-1 pr-3 text-zinc-400">{c.size}</td>
+              {c.retention.map((pct, i) => (
+                <td key={i} className="py-1 pr-3">
+                  <span className={`inline-block rounded px-1.5 py-0.5 tabular-nums ${retentionCellColor(pct)}`}>{pct == null ? "—" : `${pct}%`}</span>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
