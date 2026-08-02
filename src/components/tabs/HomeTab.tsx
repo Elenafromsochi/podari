@@ -23,6 +23,9 @@ import { WishesFeed } from "@/components/WishesFeed";
 import { LevelBadge } from "@/components/LevelBadge";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { GiftDetailModal, type ModalGift } from "@/components/GiftDetailModal";
+import { CityBadge } from "@/components/CityBadge";
+import { CityChips } from "@/components/CityChips";
+import { applyCityFilter } from "@/lib/city-filter";
 import type { GiftKind } from "@/lib/gift-kinds";
 import { getHomeStats, deleteGift } from "@/lib/cozy.functions";
 
@@ -46,6 +49,8 @@ type Gift = {
   owner_level?: number;
   gift_kind?: GiftKind;
   status?: string;
+  city?: string | null;
+  is_online?: boolean | null;
 };
 
 type FeedTab = "active" | "wishes" | "gifted";
@@ -84,6 +89,10 @@ export function HomeTab({
   // Карточка подарка «Уже подарено» — оверлей поверх ленты (как желание),
   // а не переход на отдельную страницу.
   const [detailGift, setDetailGift] = useState<ModalGift | null>(null);
+  // Фильтр по городу для ленты активных подарков — список городов строится
+  // из реально размещённых подарков (см. lib/city-filter.ts), онлайн-подарки
+  // видны при любом выбранном городе.
+  const [cityFilter, setCityFilter] = useState<string | null>(null);
   const statsFn = useServerFn(getHomeStats);
 
   const tagline = useMemo(() => pickRandom(HOME_TAGLINES), []);
@@ -108,7 +117,7 @@ export function HomeTab({
           .order("updated_at", { ascending: false })
           .limit(60);
       let res = await giftedQ(
-        "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at,gift_kind",
+        "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at,gift_kind,city,is_online",
       );
       if (res.error)
         res = await giftedQ(
@@ -153,7 +162,7 @@ export function HomeTab({
           .order("created_at", { ascending: false })
           .limit(60);
       let res = await giftQ(
-        "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at,quantity,quantity_remaining",
+        "id,title,description,category,image_url,image_urls,cost,condition,owner_id,created_at,quantity,quantity_remaining,city,is_online",
       );
       if (res.error)
         res = await giftQ(
@@ -209,6 +218,14 @@ export function HomeTab({
     return activeGifts.filter(matchGift);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeGifts, q]);
+  const {
+    cities: activeCities,
+    online: activeOnline,
+    pool: activeByCity,
+  } = useMemo(
+    () => applyCityFilter(filteredActive ?? [], cityFilter),
+    [filteredActive, cityFilter],
+  );
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-6 pt-5">
@@ -366,7 +383,7 @@ export function HomeTab({
           <div className="mb-3 flex items-end justify-between">
             <h2 className="text-lg font-semibold tracking-tight">Свежие подарки</h2>
             <span className="text-xs text-muted-foreground">
-              {filteredActive ? `${filteredActive.length}` : ""}
+              {filteredActive ? `${activeByCity.length}` : ""}
             </span>
           </div>
 
@@ -376,27 +393,39 @@ export function HomeTab({
               <Skeleton className="h-24 w-full rounded-2xl" />
               <Skeleton className="h-24 w-full rounded-2xl" />
             </div>
-          ) : filteredActive && filteredActive.length === 0 ? (
-            <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              {q
-                ? "Ничего не нашлось 🌿"
-                : "Пока нет активных подарков — будь первым, подари что-нибудь 🎁"}
-            </div>
           ) : (
-            <ul className="space-y-3">
-              {filteredActive?.map((g) => (
-                <ActiveGiftCard
-                  key={g.id}
-                  gift={g}
-                  onClaim={onPickGift}
-                  isMine={g.owner_id === meId}
-                  onOpenProfile={onOpenProfile}
-                  onDeleted={() =>
-                    setActiveGifts((prev) => (prev ?? []).filter((x) => x.id !== g.id))
-                  }
-                />
-              ))}
-            </ul>
+            <>
+              <CityChips
+                cities={activeCities}
+                online={activeOnline}
+                value={cityFilter}
+                onChange={setCityFilter}
+              />
+              {activeByCity.length === 0 ? (
+                <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
+                  {q
+                    ? "Ничего не нашлось 🌿"
+                    : cityFilter
+                      ? "В этом городе пока нет подарков 🌿"
+                      : "Пока нет активных подарков — будь первым, подари что-нибудь 🎁"}
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {activeByCity.map((g) => (
+                    <ActiveGiftCard
+                      key={g.id}
+                      gift={g}
+                      onClaim={onPickGift}
+                      isMine={g.owner_id === meId}
+                      onOpenProfile={onOpenProfile}
+                      onDeleted={() =>
+                        setActiveGifts((prev) => (prev ?? []).filter((x) => x.id !== g.id))
+                      }
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </section>
       ) : feedTab === "wishes" ? (
@@ -606,6 +635,7 @@ function ActiveGiftCard({
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {ownerLink}
             <LevelBadge level={gift.owner_level ?? 1} />
+            <CityBadge city={gift.city} isOnline={gift.is_online} />
           </div>
         </div>
       </div>
@@ -729,6 +759,7 @@ function GiftedCard({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void })
             {gift.owner_name}
           </Link>
           <LevelBadge level={gift.owner_level ?? 1} />
+          <CityBadge city={gift.city} isOnline={gift.is_online} />
 
           <span className="ml-auto inline-flex items-center rounded-full bg-mint/60 px-2 py-0.5 text-[10px] font-semibold text-mint-foreground">
             💝 подарено
