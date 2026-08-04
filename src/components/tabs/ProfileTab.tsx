@@ -82,7 +82,7 @@ type ChatMeta = {
   last_incoming: boolean;
   needs_review: boolean;
 };
-type TxRow = { id: string; status: string; gift: Gift | null } & Partial<ChatMeta>;
+type TxRow = { id: string; status: string; created_at: string; gift: Gift | null } & Partial<ChatMeta>;
 type BookedItem = {
   transaction_id: string;
   gift_id: string;
@@ -98,7 +98,7 @@ type IncomingItem = {
   gift_image: string | null;
   receiver_name: string;
 } & ChatMeta;
-type ActivityKey = "wishes" | "posted" | "gifted" | "received" | "booked";
+type ActivityKey = "wishes" | "posted" | "archive" | "booked";
 
 type BalanceEvent = {
   id: string;
@@ -481,15 +481,14 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
         <section>
           <div
             data-tour="profile-statustabs"
-            className="mb-3 grid grid-cols-5 gap-1 rounded-2xl border bg-muted/60 p-1"
+            className="mb-3 grid grid-cols-4 gap-1 rounded-2xl border bg-muted/60 p-1"
           >
             {(
               [
                 ["wishes", "Желания"],
-                ["posted", "Активные"],
+                ["posted", "Подарки"],
                 ["booked", "Брони"],
-                ["gifted", "Подаренные"],
-                ["received", "Полученные"],
+                ["archive", "Архив"],
               ] as const
             ).map(([k, label]) => {
               const active = activity === k;
@@ -503,40 +502,24 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
                     ? (posted ?? []).filter((g) => g.status !== "gifted").length
                     : k === "booked"
                       ? (incoming?.length ?? 0) + (booked?.length ?? 0)
-                      : k === "gifted"
-                        ? (gifted?.length ?? 0)
-                        : (received?.length ?? 0);
+                      : (gifted?.length ?? 0) + (received?.length ?? 0);
+              const txUnread = (t: TxRow) =>
+                !!t.id &&
+                isChatUnread(
+                  {
+                    transaction_id: t.id,
+                    last_message_at: t.last_message_at ?? null,
+                    last_incoming: !!t.last_incoming,
+                  },
+                  seenChats,
+                );
               const hasUnread =
                 k === "booked"
                   ? (incoming ?? []).some((it) => isChatUnread(it, seenChats)) ||
                     (booked ?? []).some((it) => isChatUnread(it, seenChats))
-                  : k === "gifted"
-                    ? (gifted ?? []).some(
-                        (t) =>
-                          t.id &&
-                          isChatUnread(
-                            {
-                              transaction_id: t.id,
-                              last_message_at: t.last_message_at ?? null,
-                              last_incoming: !!t.last_incoming,
-                            },
-                            seenChats,
-                          ),
-                      )
-                    : k === "received"
-                      ? (received ?? []).some(
-                          (t) =>
-                            t.id &&
-                            isChatUnread(
-                              {
-                                transaction_id: t.id,
-                                last_message_at: t.last_message_at ?? null,
-                                last_incoming: !!t.last_incoming,
-                              },
-                              seenChats,
-                            ),
-                        )
-                      : false;
+                  : k === "archive"
+                    ? (gifted ?? []).some(txUnread) || (received ?? []).some(txUnread)
+                    : false;
               return (
                 <button
                   key={k}
@@ -727,15 +710,16 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
                 )}
               </div>
             )
-          ) : activity === "gifted" || activity === "received" ? (
+          ) : activity === "archive" ? (
             (() => {
-              const txList = (activity === "gifted" ? gifted : received) ?? [];
+              const txList = [
+                ...(gifted ?? []).map((t) => ({ ...t, direction: "gifted" as const })),
+                ...(received ?? []).map((t) => ({ ...t, direction: "received" as const })),
+              ].sort((a, b) => b.created_at.localeCompare(a.created_at));
               if (txList.length === 0) {
                 return (
                   <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
-                    {activity === "gifted"
-                      ? "Пока никому не передали подарок"
-                      : "Вы пока ничего не получили"}
+                    Здесь появится история подаренных и полученных подарков 💚
                   </div>
                 );
               }
@@ -781,7 +765,9 @@ export function ProfileTab({ user, onCreateWish, onOpenWish, onGive, onReceive }
                               {g.title}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">
-                              {unread ? "● Новое сообщение" : g.category}
+                              {unread
+                                ? "● Новое сообщение"
+                                : `${t.direction === "gifted" ? "🎁 Подарили" : "💝 Получили"} · ${g.category}`}
                             </p>
                           </div>
                           {t.needs_review && (

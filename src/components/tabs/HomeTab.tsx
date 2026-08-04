@@ -341,7 +341,7 @@ export function HomeTab({
       >
         {(
           [
-            ["active", "🎁", "Активные", stats?.active_gifts],
+            ["active", "🎁", "Подарки", stats?.active_gifts],
             ["wishes", "✨", "Желания", stats?.wishes_open],
             ["gifted", "💝", "Подаренные", stats?.gifted_total],
           ] as const
