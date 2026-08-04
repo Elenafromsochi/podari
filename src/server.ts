@@ -2,6 +2,17 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { runSleepingNudgeSweep } from "./lib/reengagement.server";
+
+// Автоматическое напоминание «уснувшим» — только на self-hosted Node (systemd), где
+// процесс живёт постоянно. На Cloudflare Workers (если когда-нибудь снова
+// туда вернёмся) setInterval в изоляте не переживёт запрос — нужен будет
+// отдельный Cron Trigger, поэтому явно проверяем рантайм.
+if (typeof process !== "undefined" && process.versions?.node) {
+  const HOUR_MS = 60 * 60 * 1000;
+  setTimeout(() => void runSleepingNudgeSweep(), 60_000);
+  setInterval(() => void runSleepingNudgeSweep(), 6 * HOUR_MS);
+}
 
 // Прокси к Supabase через собственный домен: браузер пользователя обращается
 // только к 23podari.ru (у нас на Cloudflare — доступен без VPN), а уже сам

@@ -1615,6 +1615,16 @@ export const ACHIEVEMENT_META: Record<
   receiver_5:     { title: "Открытый миру",     description: "Получил 5 подарков",                      emoji: "🌸", xp: 20, group: "Получатель" },
   level_2:        { title: "Новый горизонт",    description: "Достиг 2 уровня",                         emoji: "✨", xp: 25, group: "Прогресс" },
   first_referral: { title: "Пригласил друга",   description: "За каждого друга по ссылке — +50 XP",     emoji: "👯", xp: 0, group: "Социальное" },
+  poster_10:      { title: "Постоянный даритель", description: "Разместил 10 подарков",                 emoji: "📦", xp: 30, group: "Даритель" },
+  giver_10:       { title: "Щедрая душа II",    description: "Передал 10 подарков",                     emoji: "💝", xp: 40, group: "Даритель" },
+  giver_20:       { title: "Легенда щедрости",  description: "Передал 20 подарков",                     emoji: "👑", xp: 60, group: "Даритель" },
+  receiver_10:    { title: "Любимец Вселенной", description: "Получил 10 подарков",                     emoji: "🌟", xp: 30, group: "Получатель" },
+  reviews_5:      { title: "Голос доверия",     description: "Оставил 5 отзывов",                       emoji: "💬", xp: 25, group: "Старт" },
+  referrals_3:    { title: "Собиратель друзей", description: "Пригласил 3 друзей",                      emoji: "🤗", xp: 0, group: "Социальное" },
+  referrals_10:   { title: "Амбассадор Подари", description: "Пригласил 10 друзей",                     emoji: "🎉", xp: 0, group: "Социальное" },
+  level_3:        { title: "Уровень 3",         description: "Достиг 3 уровня",                         emoji: "🚀", xp: 30, group: "Прогресс" },
+  level_4:        { title: "Уровень 4",         description: "Достиг 4 уровня",                         emoji: "🔥", xp: 35, group: "Прогресс" },
+  level_5:        { title: "Уровень 5",         description: "Достиг 5 уровня",                         emoji: "🏆", xp: 40, group: "Прогресс" },
 };
 
 export type AchievementRow = {
@@ -1691,6 +1701,16 @@ export const syncAndGetAchievements = createServerFn({ method: "POST" })
       receiver_5:     { value: receivedN,  target: 5 },
       level_2:        { value: levelN,     target: 2 },
       first_referral: { value: referralsN, target: 1 },
+      poster_10:      { value: postedN,    target: 10 },
+      giver_10:       { value: giftedN,    target: 10 },
+      giver_20:       { value: giftedN,    target: 20 },
+      receiver_10:    { value: receivedN,  target: 10 },
+      reviews_5:      { value: reviewsN,   target: 5 },
+      referrals_3:    { value: referralsN, target: 3 },
+      referrals_10:   { value: referralsN, target: 10 },
+      level_3:        { value: levelN,     target: 3 },
+      level_4:        { value: levelN,     target: 4 },
+      level_5:        { value: levelN,     target: 5 },
     };
 
     const items: AchievementRow[] = Object.keys(targets).map((code) => {
