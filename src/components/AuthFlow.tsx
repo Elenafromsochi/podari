@@ -537,7 +537,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
             <Gift className="h-8 w-8 text-peach-foreground" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            «Подари» — дари и получай 🎁
+            ПОДАРИ — сервис для тех, кто любит дарить и получать подарки 🎁
           </h1>
           <p className="text-balance text-sm text-muted-foreground">
             Выбирай подарки, загадывай желания и дари другим — бесплатно

@@ -13,6 +13,7 @@ import { GlobalNotifications } from "@/components/GlobalNotifications";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import { TourOverlay } from "@/components/tour/TourOverlay";
 import { TourExitReport } from "@/components/tour/TourExitReport";
+import { AssistantWidget } from "@/components/AssistantWidget";
 import { installTourToastGuard } from "@/lib/tour-toast-guard";
 import appCss from "../styles.css?url";
 
@@ -140,6 +141,7 @@ function RootComponent() {
       <LevelUpModal />
       <TourOverlay />
       <TourExitReport />
+      <AssistantWidget />
       <Toaster position="top-center" closeButton />
     </QueryClientProvider>
 

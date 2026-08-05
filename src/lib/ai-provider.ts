@@ -51,6 +51,44 @@ export function aiConfig(plan: AIPlan): AIConfig {
   return plan === "premium" ? globalConfig() : ruConfig();
 }
 
+// Защита от prompt injection: вырезаем управляющие конструкции,
+// нормализуем переносы и режем длину. Общая для всех AI-фич (подарки,
+// желания, помощник) — один источник правды.
+export function sanitizeUserText(raw: string, max = 1000): string {
+  return raw
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/```+/g, " ")
+    .replace(/<\|[^|]*\|>/g, " ")
+    .replace(/\b(system|assistant|user)\s*:/gi, " ")
+    .replace(/ignore (all |the )?(previous|above) (instructions|prompt)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+// Запрещённые паттерны в сгенерированном тексте.
+export function looksUnsafe(text: string): boolean {
+  return /(system\s*:|<\|[^|]*\|>|ignore (all |the )?(previous|above))/i.test(text);
+}
+
+// Единая точка вызова AI-шлюза (chat/completions), non-streaming.
+export async function callGateway(body: Record<string, unknown>, cfg: AIConfig) {
+  if (!cfg.apiKey) throw new Error("ИИ не подключён: добавь AI_API_KEY");
+  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cfg.apiKey}`,
+    },
+    body: JSON.stringify({ ...body, model: cfg.model }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`AI ошибка ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
 // Тариф пользователя: premium, пока premium_until в будущем; иначе free.
 // Колонка premium_until может ещё не существовать (миграция не накатана) —
 // в этом случае мягко считаем тариф бесплатным.
