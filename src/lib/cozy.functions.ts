@@ -1059,34 +1059,45 @@ export const getMyNetwork = createServerFn({ method: "GET" })
     }
 
     // Завершённые сделки по подаркам — кому дарил(а) / кто дарил(а) мне.
+    // По транзакции, не по человеку: если одному и тому же человеку дарили
+    // несколько раз, каждый подарок должен быть виден отдельной карточкой.
+    type Tx = {
+      id: string;
+      sender_id: string | null;
+      receiver_id: string | null;
+      created_at: string;
+      gift: { title: string; cost: number | null } | null;
+    };
     const { data: txs } = await supabase
       .from("transactions")
-      .select("sender_id, receiver_id, status")
+      .select("id, sender_id, receiver_id, created_at, gift:gifts(title, cost)")
       .eq("status", "completed")
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order("created_at", { ascending: false });
 
-    const gaveToIds = Array.from(
-      new Set(
-        ((txs ?? []) as Array<{ sender_id: string | null; receiver_id: string | null }>)
-          .filter((t) => t.sender_id === userId && t.receiver_id)
-          .map((t) => t.receiver_id as string),
-      ),
+    const gaveToTxs = ((txs ?? []) as unknown as Tx[]).filter(
+      (t) => t.sender_id === userId && t.receiver_id,
     );
-    const gotFromIds = Array.from(
-      new Set(
-        ((txs ?? []) as Array<{ sender_id: string | null; receiver_id: string | null }>)
-          .filter((t) => t.receiver_id === userId && t.sender_id)
-          .map((t) => t.sender_id as string),
-      ),
+    const gotFromTxs = ((txs ?? []) as unknown as Tx[]).filter(
+      (t) => t.receiver_id === userId && t.sender_id,
     );
+
+    const gaveToIds = Array.from(new Set(gaveToTxs.map((t) => t.receiver_id as string)));
+    const gotFromIds = Array.from(new Set(gotFromTxs.map((t) => t.sender_id as string)));
 
     const allIds = Array.from(new Set([...referredIds, ...gaveToIds, ...gotFromIds]));
     const profileMap = await profilesFor(allIds);
 
+    const withGift = (person: string, t: Tx) => ({
+      ...(toCards([person], profileMap)[0]),
+      transaction_id: t.id,
+      gift: t.gift ? { title: t.gift.title, cost: t.gift.cost ?? 1 } : null,
+    });
+
     return {
       referred: toCards(referredIds, profileMap),
-      gaveTo: toCards(gaveToIds, profileMap),
-      gotFrom: toCards(gotFromIds, profileMap),
+      gaveTo: gaveToTxs.map((t) => withGift(t.receiver_id as string, t)),
+      gotFrom: gotFromTxs.map((t) => withGift(t.sender_id as string, t)),
     };
   });
 
