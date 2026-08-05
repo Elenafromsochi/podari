@@ -14,8 +14,20 @@ export const Route = createFileRoute("/friends")({
   component: FriendsPage,
 });
 
-type PersonCard = { user_id: string; display_name: string; avatar_url: string | null; level: number };
+type GiftChip = { title: string; cost: number } | null;
+type PersonCard = {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  level: number;
+  transaction_id?: string;
+  gift?: GiftChip;
+};
 type Network = { referred: PersonCard[]; gaveTo: PersonCard[]; gotFrom: PersonCard[] };
+
+function costWord(n: number) {
+  return n === 1 ? "балл" : n < 5 ? "балла" : "баллов";
+}
 
 function PersonRow({ p }: { p: PersonCard }) {
   return (
@@ -33,6 +45,12 @@ function PersonRow({ p }: { p: PersonCard }) {
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{p.display_name}</p>
+        {p.gift && (
+          <span className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-lg bg-mint/70 px-2 py-0.5 text-[11px] font-medium text-mint-foreground">
+            🎁 <span className="truncate">{p.gift.title}</span> · {p.gift.cost}{" "}
+            {costWord(p.gift.cost)}
+          </span>
+        )}
       </div>
       <LevelBadge level={p.level} />
     </Link>
@@ -128,7 +146,7 @@ function FriendsPage() {
           ) : (
             <div className="space-y-2">
               {network.gaveTo.map((p) => (
-                <PersonRow key={p.user_id} p={p} />
+                <PersonRow key={p.transaction_id ?? p.user_id} p={p} />
               ))}
             </div>
           )}
@@ -147,7 +165,7 @@ function FriendsPage() {
           ) : (
             <div className="space-y-2">
               {network.gotFrom.map((p) => (
-                <PersonRow key={p.user_id} p={p} />
+                <PersonRow key={p.transaction_id ?? p.user_id} p={p} />
               ))}
             </div>
           )}
