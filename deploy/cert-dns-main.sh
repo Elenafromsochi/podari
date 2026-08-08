@@ -37,7 +37,7 @@ echo "==> Выпускаю сертификат для ${DOMAINS[*]} через 
 "$ACME" --set-default-ca --server letsencrypt >/dev/null 2>&1 || true
 DARGS=()
 for d in "${DOMAINS[@]}"; do DARGS+=(-d "$d"); done
-"$ACME" --issue --dns dns_timeweb "${DARGS[@]}" --dnssleep 60
+"$ACME" --issue --dns dns_timeweb "${DARGS[@]}" --dnssleep 180
 
 # ---- 4. Устанавливаем сертификат ----
 mkdir -p "$CERTDIR"
