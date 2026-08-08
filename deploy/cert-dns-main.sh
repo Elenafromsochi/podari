@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 #
 # Выпуск сертификата для 23podari.ru + www.23podari.ru + api.23podari.ru
-# через проверку по DNS (DNS-01, Timeweb Cloud DNS API + acme.sh) — в обход
+# через проверку по DNS (DNS-01, Cloudflare API + acme.sh) — в обход
 # HTTP-01/ZeroSSL EAB, у которых международная проверка до этого сервера
-# ненадёжна (см. scripts/cert-dns.sh — тот же приём, но только для api).
+# ненадёжна.
+#
+# ВАЖНО: DNS домена управляется через Cloudflare (nameservers у регистратора
+# указывают на Cloudflare, даже после переезда самого сайта на этот сервер) —
+# поэтому проверочную запись нужно добавлять именно через Cloudflare API,
+# а не через Timeweb (более ранняя версия скрипта пыталась через Timeweb DNS
+# API и никогда не могла сработать — Timeweb там просто не при чём).
 #
 # Запуск на сервере:
 #   cd /opt/podari && git pull && bash deploy/cert-dns-main.sh
@@ -14,16 +20,17 @@ EMAIL="visokihelenasochi@gmail.com"
 CERTDIR="/etc/caddy/certs"
 ACME="$HOME/.acme.sh/acme.sh"
 
-# ---- 1. Токен Timeweb Cloud ----
-if [ -z "${TW_Token:-}" ]; then
-  echo "Вставь свой Timeweb Cloud API-токен и нажми Enter."
-  echo "(Личный кабинет Timeweb Cloud -> Настройки -> API -> создать ключ)"
+# ---- 1. Токен Cloudflare (Zone:DNS:Edit) ----
+if [ -z "${CF_Token:-}" ]; then
+  echo "Вставь свой Cloudflare API-токен и нажми Enter."
+  echo "(dash.cloudflare.com -> My Profile -> API Tokens -> Create Token ->"
+  echo " шаблон 'Edit zone DNS', зона 23podari.ru)"
   echo "(он не будет виден на экране — это нормально)"
-  read -r -s TW_Token
+  read -r -s CF_Token
   echo
 fi
-[ -z "$TW_Token" ] && { echo "Токен пустой — прерываю."; exit 1; }
-export TW_Token
+[ -z "$CF_Token" ] && { echo "Токен пустой — прерываю."; exit 1; }
+export CF_Token
 
 # ---- 2. Устанавливаем acme.sh ----
 if [ ! -f "$ACME" ]; then
@@ -37,7 +44,7 @@ echo "==> Выпускаю сертификат для ${DOMAINS[*]} через 
 "$ACME" --set-default-ca --server letsencrypt >/dev/null 2>&1 || true
 DARGS=()
 for d in "${DOMAINS[@]}"; do DARGS+=(-d "$d"); done
-"$ACME" --issue --dns dns_timeweb "${DARGS[@]}" --dnssleep 180
+"$ACME" --issue --dns dns_cf "${DARGS[@]}" --dnssleep 30
 
 # ---- 4. Устанавливаем сертификат ----
 mkdir -p "$CERTDIR"
