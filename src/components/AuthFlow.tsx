@@ -83,6 +83,36 @@ function toTelegramAppScheme(httpsLink: string): string | null {
   }
 }
 
+// iOS Safari часто молча игнорирует `location.href = "кастомная-схема://"`,
+// если это НЕ прямой тап по настоящей <a href>, — поэтому здесь дёргаем
+// клик по временной ссылке (а не просто меняем location), это заметно
+// надёжнее заводит установленное приложение.
+function tapCustomSchemeLink(tgLink: string) {
+  if (typeof document === "undefined") return;
+  const a = document.createElement("a");
+  a.href = tgLink;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/** Если приложение не подхватило схему за ~1.2с (страница осталась видимой) —
+ * открываем обычную https-ссылку как раньше. */
+function scheduleTelegramFallback(httpsLink: string) {
+  if (typeof document === "undefined") return;
+  let settled = false;
+  const onVisibilityChange = () => {
+    if (document.hidden) settled = true; // ушли в приложение — фолбэк не нужен
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange, { once: true });
+  setTimeout(() => {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    if (settled || document.hidden) return;
+    window.open(httpsLink, "_blank", "noopener,noreferrer");
+  }, 1200);
+}
+
 function openTelegramLink(httpsLink: string) {
   if (typeof window === "undefined") return;
   const tgLink = toTelegramAppScheme(httpsLink);
@@ -90,17 +120,8 @@ function openTelegramLink(httpsLink: string) {
     window.open(httpsLink, "_blank", "noopener,noreferrer");
     return;
   }
-  let settled = false;
-  const onVisibilityChange = () => {
-    if (document.hidden) settled = true; // ушли в приложение — фолбэк не нужен
-  };
-  document.addEventListener("visibilitychange", onVisibilityChange, { once: true });
-  window.location.href = tgLink;
-  setTimeout(() => {
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    if (settled || document.hidden) return;
-    window.open(httpsLink, "_blank", "noopener,noreferrer");
-  }, 1200);
+  scheduleTelegramFallback(httpsLink);
+  tapCustomSchemeLink(tgLink);
 }
 
 function readPendingLogin(): { nonce: string; deepLink: string | null } | null {
@@ -479,15 +500,16 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     }
   };
 
-  // Пользователь тапнул по «настоящей» ссылке-кнопке: сами решаем, как
-  // открывать (сначала пробуем приложение напрямую через tg://, минуя
-  // сайт t.me — см. openTelegramLink), поэтому перехватываем переход
-  // по href вместо того чтобы отдавать его браузеру как есть.
-  const onTapBotLink = (e: { preventDefault: () => void }) => {
-    e.preventDefault();
+  // Пользователь тапнул по «настоящей» ссылке-кнопке: href у неё уже
+  // указывает на схему tg:// (см. JSX ниже) — это самый надёжный способ на
+  // iOS завести установленное приложение (настоящий тап по настоящей
+  // ссылке, а не JS-переход). preventDefault НЕ делаем — переход должен
+  // случиться сам, мы только параллельно ставим таймер-подстраховку:
+  // если за ~1.2с приложение не подхватило схему, откроется https-ссылка.
+  const onTapBotLink = () => {
     setPhase("waiting");
     setStatusText("Открой бота и нажми Start");
-    if (deepLink) openTelegramLink(deepLink);
+    if (deepLink) scheduleTelegramFallback(deepLink);
     if (nonce) {
       // запоминаем код входа, чтобы пережить перезагрузку вкладки после Telegram
       savePendingLogin(nonce, deepLink);
@@ -726,7 +748,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                       className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
                     >
                       <a
-                        href={deepLink}
+                        href={toTelegramAppScheme(deepLink) ?? deepLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={onTapBotLink}
@@ -765,7 +787,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                   <div className="grid w-full grid-cols-3 gap-2">
                     {deepLink ? (
                       <a
-                        href={deepLink}
+                        href={toTelegramAppScheme(deepLink) ?? deepLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={onTapBotLink}
