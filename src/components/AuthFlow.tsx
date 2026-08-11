@@ -63,6 +63,46 @@ function savePendingLogin(nonce: string, deepLink: string | null) {
   }
 }
 
+// Пытаемся открыть именно приложение Telegram через кастомную схему tg://
+// вместо https://t.me/… — это идёт напрямую в приложение через ОС, минуя
+// сеть и сайт t.me целиком (который может быть недоступен без VPN). Если
+// приложения нет — ничего не произойдёт молча, и через короткую паузу
+// откроется обычная https-ссылка как раньше (единственный способ узнать,
+// что схема не сработала, — страница осталась видимой, а не ушла в фон).
+function toTelegramAppScheme(httpsLink: string): string | null {
+  try {
+    const u = new URL(httpsLink);
+    const domain = u.pathname.replace(/^\//, "");
+    if (!domain) return null;
+    const start = u.searchParams.get("start");
+    return `tg://resolve?domain=${encodeURIComponent(domain)}${
+      start ? `&start=${encodeURIComponent(start)}` : ""
+    }`;
+  } catch {
+    return null;
+  }
+}
+
+function openTelegramLink(httpsLink: string) {
+  if (typeof window === "undefined") return;
+  const tgLink = toTelegramAppScheme(httpsLink);
+  if (!tgLink) {
+    window.open(httpsLink, "_blank", "noopener,noreferrer");
+    return;
+  }
+  let settled = false;
+  const onVisibilityChange = () => {
+    if (document.hidden) settled = true; // ушли в приложение — фолбэк не нужен
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange, { once: true });
+  window.location.href = tgLink;
+  setTimeout(() => {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    if (settled || document.hidden) return;
+    window.open(httpsLink, "_blank", "noopener,noreferrer");
+  }, 1200);
+}
+
 function readPendingLogin(): { nonce: string; deepLink: string | null } | null {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -439,11 +479,15 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     }
   };
 
-  // Пользователь тапнул по «настоящей» ссылке-кнопке: бот уже открывается сам,
-  // нам остаётся показать ожидание и слушать подтверждение.
-  const onTapBotLink = () => {
+  // Пользователь тапнул по «настоящей» ссылке-кнопке: сами решаем, как
+  // открывать (сначала пробуем приложение напрямую через tg://, минуя
+  // сайт t.me — см. openTelegramLink), поэтому перехватываем переход
+  // по href вместо того чтобы отдавать его браузеру как есть.
+  const onTapBotLink = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
     setPhase("waiting");
     setStatusText("Открой бота и нажми Start");
+    if (deepLink) openTelegramLink(deepLink);
     if (nonce) {
       // запоминаем код входа, чтобы пережить перезагрузку вкладки после Telegram
       savePendingLogin(nonce, deepLink);
@@ -464,7 +508,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setNonce(res.nonce);
       setDeepLink(res.deep_link);
       savePendingLogin(res.nonce, res.deep_link);
-      window.open(res.deep_link, "_blank", "noopener,noreferrer");
+      openTelegramLink(res.deep_link);
       setStatusText("Открой бота и нажми Start");
       startPolling(res.nonce);
     } catch (e) {
