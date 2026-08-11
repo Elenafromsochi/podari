@@ -8,7 +8,6 @@ import {
   startTelegramLogin,
   pollTelegramLogin,
   completeTelegramLogin,
-  loginWithTelegramWebApp,
 } from "@/lib/telegram-auth.functions";
 import {
   loginWithPassword,
@@ -30,48 +29,14 @@ interface Props {
   initialNonce?: string | null;
 }
 
-// SDK грузится с CDN по требованию (см. эффект ниже) — типизируем по месту
-// только то, что реально используем из window.Telegram.WebApp.
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        initData?: string;
-        ready?: () => void;
-      };
-    };
-    // Нативный мост, который клиент Telegram сам инжектит в WebView —
-    // используем только как признак «мы точно внутри Telegram», без
-    // самого API (см. диагностический тост во Mini-App-эффекте).
-    TelegramWebviewProxy?: unknown;
-  }
-}
-
-// Когда Telegram открывает страницу как Mini App (кнопка «Открыть
-// приложение», web_app-кнопки и т.п.), он сам добавляет подписанные данные
-// пользователя прямо в location.hash вида
-// "#tgWebAppData=query_id%3D...%26user%3D...%26hash%3D...&tgWebAppVersion=..."
-// — это не требует НИКАКОГО внешнего скрипта. Раньше вместо этого грузили
-// официальный telegram-web-app.js с telegram.org, но этот домен — тоже
-// часть инфраструктуры Telegram и может быть недоступен без VPN точно так
-// же, как t.me: если скрипт не подгружался, вход молча откатывался на
-// обычный экран. Разбор хэша своими руками не зависит вообще ни от какого
-// внешнего домена.
-function readTelegramWebAppInitDataFromHash(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const hash = window.location.hash.replace(/^#/, "");
-    const params = new URLSearchParams(hash);
-    return params.get("tgWebAppData");
-  } catch {
-    return null;
-  }
-}
-
-// Захватываем hash СРАЗУ при загрузке модуля — до того, как роутер успеет
-// нормализовать URL (history.replace и т.п.) и стереть фрагмент раньше,
-// чем эффект в компоненте вообще запустится.
-const EARLY_TG_WEBAPP_INIT_DATA = readTelegramWebAppInitDataFromHash();
+// Раньше здесь был отдельный путь входа через Telegram Mini App (кнопка
+// «Открыть приложение» в боте открывала сайт как встроенный WebView с
+// подписанными данными пользователя для мгновенного входа). Убрали —
+// оказалось ненадёжно на практике (initData не появлялась на части
+// устройств/клиентов), человек просто попадал на обычный экран логина без
+// объяснений. Кнопка в боте теперь обычная url-ссылка на сайт (см.
+// webhook.ts, sendLoginConfirmed) — вход дальше идёт как при любом обычном
+// заходе (Telegram/VK/Яндекс/пароль).
 
 type Phase = "idle" | "waiting" | "approved" | "signing_in";
 
@@ -183,7 +148,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
   const startFn = useServerFn(startTelegramLogin);
   const pollFn = useServerFn(pollTelegramLogin);
   const completeFn = useServerFn(completeTelegramLogin);
-  const webAppLoginFn = useServerFn(loginWithTelegramWebApp);
 
   const statsFn = useServerFn(getPlatformStats);
   const [stats, setStats] = useState<{ gifts: number; wishes: number } | null>(null);
@@ -314,80 +278,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Открыто как Telegram Web App (кнопка меню бота, ссылки со startapp и
-  // т.п.) — Telegram сам передаёт подписанные данные пользователя на
-  // странице. Не нужно ни диплинка на бота, ни ожидания подтверждения —
-  // входим сразу, автоматически, тем же человеком, что уже писал боту.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let cancelled = false;
-
-    const run = async () => {
-      // Сначала — то, что захватили ещё до рендера (см. EARLY_TG_WEBAPP_INIT_DATA),
-      // на случай если роутер уже подчистил hash к этому моменту. Если и
-      // тогда не было — пробуем распарсить ещё раз (вдруг эффект успел
-      // раньше роутера). Скрипт с telegram.org — необязательная доп.
-      // попытка, вход от него больше не зависит.
-      let initData = EARLY_TG_WEBAPP_INIT_DATA ?? readTelegramWebAppInitDataFromHash();
-      if (!initData && !window.Telegram?.WebApp) {
-        await new Promise<void>((resolve) => {
-          const script = document.createElement("script");
-          script.src = "https://telegram.org/js/telegram-web-app.js";
-          script.async = true;
-          script.onload = () => resolve();
-          script.onerror = () => resolve();
-          setTimeout(resolve, 1500); // не ждём вечно, если домен недоступен
-          document.head.appendChild(script);
-        });
-      }
-      if (cancelled) return;
-      const tg = window.Telegram?.WebApp;
-      initData = initData ?? tg?.initData ?? null;
-      tg?.ready?.();
-      if (!initData) {
-        // ВРЕМЕННО (снять после диагностики 2026-08-11): на iPad нет способа
-        // посмотреть консоль браузера, поэтому показываем coстояние прямо в
-        // тосте — иначе непонятно, на каком именно шаге срывается вход.
-        if (window.Telegram?.WebApp || window.TelegramWebviewProxy) {
-          toast.error(
-            `Debug: hash="${window.location.hash.slice(0, 80)}" webApp=${!!window.Telegram?.WebApp} early=${!!EARLY_TG_WEBAPP_INIT_DATA}`,
-            { duration: 15000 },
-          );
-        }
-        return;
-      }
-
-      setPhase("signing_in");
-      setStatusText("Входим…");
-      try {
-        const res = await webAppLoginFn({ data: { init_data: initData } });
-        await setTelegramSession(res.access_token, res.refresh_token);
-        const profile = await loadUser();
-        if (!profile) throw new Error("Профиль не загружен");
-        confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, scalar: 1.1 });
-        toast.success(
-          res.is_new
-            ? `Добро пожаловать, ${profile.display_name} 💚`
-            : `С возвращением, ${profile.display_name} 💚`,
-        );
-        onAuthed(profile, res.is_new);
-      } catch (e) {
-        // Тихий откат: человек ничего не нажимал, поэтому пугать ошибкой не
-        // нужно — просто показываем обычный экран входа как раньше.
-        console.error("[AuthFlow] TelegramWebApp auto-login failed:", e);
-        if (!cancelled) {
-          setPhase("idle");
-          setStatusText("");
-        }
-      }
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
