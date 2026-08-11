@@ -703,6 +703,15 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Нажми Start в боте — вернёшься сюда автоматически 💚
                   </p>
+                  {/* Telegram может быть недоступен без VPN — не оставляем
+                      человека в тупике на экране ожидания без пути назад. */}
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Telegram не открылся? Выбрать другой способ входа
+                  </button>
                 </>
               ) : (
                 <>
