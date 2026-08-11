@@ -43,6 +43,27 @@ declare global {
   }
 }
 
+// Когда Telegram открывает страницу как Mini App (кнопка «Открыть
+// приложение», web_app-кнопки и т.п.), он сам добавляет подписанные данные
+// пользователя прямо в location.hash вида
+// "#tgWebAppData=query_id%3D...%26user%3D...%26hash%3D...&tgWebAppVersion=..."
+// — это не требует НИКАКОГО внешнего скрипта. Раньше вместо этого грузили
+// официальный telegram-web-app.js с telegram.org, но этот домен — тоже
+// часть инфраструктуры Telegram и может быть недоступен без VPN точно так
+// же, как t.me: если скрипт не подгружался, вход молча откатывался на
+// обычный экран. Разбор хэша своими руками не зависит вообще ни от какого
+// внешнего домена.
+function readTelegramWebAppInitDataFromHash(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const hash = window.location.hash.replace(/^#/, "");
+    const params = new URLSearchParams(hash);
+    return params.get("tgWebAppData");
+  } catch {
+    return null;
+  }
+}
+
 type Phase = "idle" | "waiting" | "approved" | "signing_in";
 
 // Незавершённый вход храним локально: на iPad Safari часто перезагружает
@@ -293,19 +314,25 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     let cancelled = false;
 
     const run = async () => {
-      if (!window.Telegram?.WebApp) {
+      // Сначала — свой разбор location.hash, без всякой сети. Скрипт с
+      // telegram.org подтягиваем только как доп. попытку (например, чтобы
+      // отработал tg.ready() и скрыть системный лоадер Telegram) — но вход
+      // от него больше не зависит.
+      let initData = readTelegramWebAppInitDataFromHash();
+      if (!initData && !window.Telegram?.WebApp) {
         await new Promise<void>((resolve) => {
           const script = document.createElement("script");
           script.src = "https://telegram.org/js/telegram-web-app.js";
           script.async = true;
           script.onload = () => resolve();
           script.onerror = () => resolve();
+          setTimeout(resolve, 1500); // не ждём вечно, если домен недоступен
           document.head.appendChild(script);
         });
       }
       if (cancelled) return;
       const tg = window.Telegram?.WebApp;
-      const initData = tg?.initData;
+      initData = initData ?? tg?.initData ?? null;
       tg?.ready?.();
       if (!initData) return;
 
