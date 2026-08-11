@@ -1,6 +1,10 @@
 # Подари (23podari.ru)
 
-Сервис для дарения подарков и исполнения желаний. TanStack Start на Cloudflare Workers, Supabase (Postgres + Auth + Storage + Realtime).
+Сервис для дарения подарков и исполнения желаний. TanStack Start, self-hosted на Timeweb Cloud VPS (Node.js через systemd `podari.service`, Caddy как reverse proxy + TLS), self-hosted Supabase (Postgres + Auth + Storage + Realtime) на том же сервере. Cloudflare — только DNS/CDN перед сервером (не Workers — с них переехали 2026-08).
+
+## Важные факты (не забывать)
+
+- **Telegram сам по себе заблокирован в России и требует VPN у пользователя** — независимо от того, доступен ли сам сайт 23podari.ru. Это ограничение приложения Telegram (MTProto-протокол), не нашей конфигурации. Если пользователь жалуется, что вход через Telegram не работает даже при включённом VPN — скорее всего у него VPN настроен только на браузер/Safari, а не на всё устройство целиком (Telegram как приложение идёт отдельным трафиком). Обсуждали 2026-08-11.
 
 ## Бэклог / идеи на будущее
 
