@@ -749,8 +749,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                     >
                       <a
                         href={toTelegramAppScheme(deepLink) ?? deepLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         onClick={onTapBotLink}
                       >
                         Открыть Telegram ещё раз
@@ -788,8 +786,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                     {deepLink ? (
                       <a
                         href={toTelegramAppScheme(deepLink) ?? deepLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         onClick={onTapBotLink}
                         className="flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-[#229ED9] text-white shadow-sm transition active:scale-[0.98] hover:brightness-105"
                       >
