@@ -40,6 +40,10 @@ declare global {
         ready?: () => void;
       };
     };
+    // Нативный мост, который клиент Telegram сам инжектит в WebView —
+    // используем только как признак «мы точно внутри Telegram», без
+    // самого API (см. диагностический тост во Mini-App-эффекте).
+    TelegramWebviewProxy?: unknown;
   }
 }
 
@@ -63,6 +67,11 @@ function readTelegramWebAppInitDataFromHash(): string | null {
     return null;
   }
 }
+
+// Захватываем hash СРАЗУ при загрузке модуля — до того, как роутер успеет
+// нормализовать URL (history.replace и т.п.) и стереть фрагмент раньше,
+// чем эффект в компоненте вообще запустится.
+const EARLY_TG_WEBAPP_INIT_DATA = readTelegramWebAppInitDataFromHash();
 
 type Phase = "idle" | "waiting" | "approved" | "signing_in";
 
@@ -314,11 +323,12 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     let cancelled = false;
 
     const run = async () => {
-      // Сначала — свой разбор location.hash, без всякой сети. Скрипт с
-      // telegram.org подтягиваем только как доп. попытку (например, чтобы
-      // отработал tg.ready() и скрыть системный лоадер Telegram) — но вход
-      // от него больше не зависит.
-      let initData = readTelegramWebAppInitDataFromHash();
+      // Сначала — то, что захватили ещё до рендера (см. EARLY_TG_WEBAPP_INIT_DATA),
+      // на случай если роутер уже подчистил hash к этому моменту. Если и
+      // тогда не было — пробуем распарсить ещё раз (вдруг эффект успел
+      // раньше роутера). Скрипт с telegram.org — необязательная доп.
+      // попытка, вход от него больше не зависит.
+      let initData = EARLY_TG_WEBAPP_INIT_DATA ?? readTelegramWebAppInitDataFromHash();
       if (!initData && !window.Telegram?.WebApp) {
         await new Promise<void>((resolve) => {
           const script = document.createElement("script");
@@ -334,7 +344,18 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       const tg = window.Telegram?.WebApp;
       initData = initData ?? tg?.initData ?? null;
       tg?.ready?.();
-      if (!initData) return;
+      if (!initData) {
+        // ВРЕМЕННО (снять после диагностики 2026-08-11): на iPad нет способа
+        // посмотреть консоль браузера, поэтому показываем coстояние прямо в
+        // тосте — иначе непонятно, на каком именно шаге срывается вход.
+        if (window.Telegram?.WebApp || window.TelegramWebviewProxy) {
+          toast.error(
+            `Debug: hash="${window.location.hash.slice(0, 80)}" webApp=${!!window.Telegram?.WebApp} early=${!!EARLY_TG_WEBAPP_INIT_DATA}`,
+            { duration: 15000 },
+          );
+        }
+        return;
+      }
 
       setPhase("signing_in");
       setStatusText("Входим…");
