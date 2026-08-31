@@ -29,14 +29,12 @@ interface Props {
   initialNonce?: string | null;
 }
 
-// Раньше здесь был отдельный путь входа через Telegram Mini App (кнопка
-// «Открыть приложение» в боте открывала сайт как встроенный WebView с
-// подписанными данными пользователя для мгновенного входа). Убрали —
-// оказалось ненадёжно на практике (initData не появлялась на части
-// устройств/клиентов), человек просто попадал на обычный экран логина без
-// объяснений. Кнопка в боте теперь обычная url-ссылка на сайт (см.
-// webhook.ts, sendLoginConfirmed) — вход дальше идёт как при любом обычном
-// заходе (Telegram/VK/Яндекс/пароль).
+// Вход через Telegram Mini App (кнопка «Открыть приложение» открывала сайт
+// как встроенный WebView с подписанными данными пользователя для
+// мгновенного входа) убран 2026-08-11 — оказался ненадёжен на практике,
+// initData не приходила на части устройств/клиентов. Кнопка в боте теперь
+// обычная url-ссылка на сайт (см. webhook.ts, sendLoginConfirmed) — вход
+// дальше идёт как при любом обычном заходе.
 
 type Phase = "idle" | "waiting" | "approved" | "signing_in";
 
@@ -56,67 +54,6 @@ function savePendingLogin(nonce: string, deepLink: string | null) {
   } catch {
     /* noop */
   }
-}
-
-// Пытаемся открыть именно приложение Telegram через кастомную схему tg://
-// вместо https://t.me/… — это идёт напрямую в приложение через ОС, минуя
-// сеть и сайт t.me целиком (который может быть недоступен без VPN). Если
-// приложения нет — ничего не произойдёт молча, и через короткую паузу
-// откроется обычная https-ссылка как раньше (единственный способ узнать,
-// что схема не сработала, — страница осталась видимой, а не ушла в фон).
-function toTelegramAppScheme(httpsLink: string): string | null {
-  try {
-    const u = new URL(httpsLink);
-    const domain = u.pathname.replace(/^\//, "");
-    if (!domain) return null;
-    const start = u.searchParams.get("start");
-    return `tg://resolve?domain=${encodeURIComponent(domain)}${
-      start ? `&start=${encodeURIComponent(start)}` : ""
-    }`;
-  } catch {
-    return null;
-  }
-}
-
-// iOS Safari часто молча игнорирует `location.href = "кастомная-схема://"`,
-// если это НЕ прямой тап по настоящей <a href>, — поэтому здесь дёргаем
-// клик по временной ссылке (а не просто меняем location), это заметно
-// надёжнее заводит установленное приложение.
-function tapCustomSchemeLink(tgLink: string) {
-  if (typeof document === "undefined") return;
-  const a = document.createElement("a");
-  a.href = tgLink;
-  a.style.display = "none";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-/** Если приложение не подхватило схему за ~1.2с (страница осталась видимой) —
- * открываем обычную https-ссылку как раньше. */
-function scheduleTelegramFallback(httpsLink: string) {
-  if (typeof document === "undefined") return;
-  let settled = false;
-  const onVisibilityChange = () => {
-    if (document.hidden) settled = true; // ушли в приложение — фолбэк не нужен
-  };
-  document.addEventListener("visibilitychange", onVisibilityChange, { once: true });
-  setTimeout(() => {
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    if (settled || document.hidden) return;
-    window.open(httpsLink, "_blank", "noopener,noreferrer");
-  }, 1200);
-}
-
-function openTelegramLink(httpsLink: string) {
-  if (typeof window === "undefined") return;
-  const tgLink = toTelegramAppScheme(httpsLink);
-  if (!tgLink) {
-    window.open(httpsLink, "_blank", "noopener,noreferrer");
-    return;
-  }
-  scheduleTelegramFallback(httpsLink);
-  tapCustomSchemeLink(tgLink);
 }
 
 function readPendingLogin(): { nonce: string; deepLink: string | null } | null {
@@ -278,7 +215,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   const submitPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError(null);
@@ -438,16 +374,11 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
     }
   };
 
-  // Пользователь тапнул по «настоящей» ссылке-кнопке: href у неё уже
-  // указывает на схему tg:// (см. JSX ниже) — это самый надёжный способ на
-  // iOS завести установленное приложение (настоящий тап по настоящей
-  // ссылке, а не JS-переход). preventDefault НЕ делаем — переход должен
-  // случиться сам, мы только параллельно ставим таймер-подстраховку:
-  // если за ~1.2с приложение не подхватило схему, откроется https-ссылка.
+  // Пользователь тапнул по «настоящей» ссылке-кнопке: бот уже открывается сам,
+  // нам остаётся показать ожидание и слушать подтверждение.
   const onTapBotLink = () => {
     setPhase("waiting");
     setStatusText("Открой бота и нажми Start");
-    if (deepLink) scheduleTelegramFallback(deepLink);
     if (nonce) {
       // запоминаем код входа, чтобы пережить перезагрузку вкладки после Telegram
       savePendingLogin(nonce, deepLink);
@@ -468,7 +399,7 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
       setNonce(res.nonce);
       setDeepLink(res.deep_link);
       savePendingLogin(res.nonce, res.deep_link);
-      openTelegramLink(res.deep_link);
+      window.open(res.deep_link, "_blank", "noopener,noreferrer");
       setStatusText("Открой бота и нажми Start");
       startPolling(res.nonce);
     } catch (e) {
@@ -686,7 +617,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                       className="w-full rounded-xl bg-[#229ED9] text-white shadow hover:bg-[#1b8ec2]"
                     >
                       <a
-                        href={toTelegramAppScheme(deepLink) ?? deepLink}
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         onClick={onTapBotLink}
                       >
                         Открыть Telegram ещё раз
@@ -705,15 +638,6 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Нажми Start в боте — вернёшься сюда автоматически 💚
                   </p>
-                  {/* Telegram может быть недоступен без VPN — не оставляем
-                      человека в тупике на экране ожидания без пути назад. */}
-                  <button
-                    type="button"
-                    onClick={reset}
-                    className="text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    Telegram не открылся? Выбрать другой способ входа
-                  </button>
                 </>
               ) : (
                 <>
@@ -723,7 +647,9 @@ export function AuthFlow({ onAuthed, initialNonce }: Props) {
                   <div className="grid w-full grid-cols-3 gap-2">
                     {deepLink ? (
                       <a
-                        href={toTelegramAppScheme(deepLink) ?? deepLink}
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         onClick={onTapBotLink}
                         className="flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl bg-[#229ED9] text-white shadow-sm transition active:scale-[0.98] hover:brightness-105"
                       >
