@@ -3,7 +3,10 @@ import { timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { tgApiSafe } from "@/lib/telegram-api";
 import { notifyAdmins } from "@/lib/notify.server";
-import { telegramLoginUrl } from "@/lib/telegram-login-link";
+import {
+  telegramLoginUrl,
+  telegramLoginWebhookReply,
+} from "@/lib/telegram-login-link";
 
 const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
 
@@ -25,7 +28,7 @@ async function sendTgMessage(chatId: number, text: string) {
 async function sendFreshLoginLink(
   chatId: number,
   from: { id: number; username?: string; first_name?: string },
-): Promise<void> {
+): Promise<Response> {
   const { randomBytes } = await import("crypto");
   const nonce = randomBytes(9).toString("base64url");
   const { error } = await supabaseAdmin.from("auth_nonces").insert({
@@ -37,21 +40,28 @@ async function sendFreshLoginLink(
     approved_at: new Date().toISOString(),
   });
   if (error) {
-    await sendTgMessage(
-      chatId,
-      `Не получилось выпустить новую ссылку входа. Попробуй открыть ${APP_URL}/ ещё раз.`,
-    );
-    return;
+    return Response.json({
+      method: "sendMessage",
+      chat_id: chatId,
+      text: `Не получилось выпустить новую ссылку входа. Попробуй открыть ${APP_URL}/ ещё раз.`,
+    });
   }
   const loginUrl = telegramLoginUrl(APP_URL, nonce);
-  await sendTgMessage(
-    chatId,
-    `Прежняя ссылка входа устарела — вот новая, ты уже вошёл:\n${loginUrl}`,
+  return Response.json(
+    telegramLoginWebhookReply(
+      APP_URL,
+      nonce,
+      chatId,
+      `Прежняя ссылка входа устарела — вот новая, ты уже вошёл:\n${loginUrl}`,
+    ),
   );
-  await sendLoginConfirmed(chatId, nonce);
 }
 
-async function sendLoginConfirmed(chatId: number, nonce: string) {
+function sendLoginConfirmed(
+  chatId: number,
+  nonce: string,
+  text = "✅ Вход подтверждён 💚",
+) {
   // Раньше тут был просто текст «возвращайся в приложение» — человеку
   // приходилось самому догадываться, что это значит переключиться обратно
   // в браузер. Кнопка открывает сайт с тем же одноразовым кодом: это сохраняет
@@ -62,18 +72,12 @@ async function sendLoginConfirmed(chatId: number, nonce: string) {
   // приходила на части устройств/клиентов, человек просто попадал на
   // обычный экран логина без объяснений). Обычная https-ссылка открывает сайт
   // без зависимости от initData.
-  await tgApiSafe("sendMessage", {
-    chat_id: chatId,
-    text: "✅ Вход подтверждён 💚",
-    reply_markup: {
-      inline_keyboard: [[
-        {
-          text: "Открыть приложение «Подари»",
-          url: telegramLoginUrl(APP_URL, nonce),
-        },
-      ]],
-    },
-  });
+  // Telegram сам выполняет sendMessage из ответа на входящий webhook. Серверу
+  // не нужно исходящее соединение с api.telegram.org, которое может быть
+  // недоступно у российского хостинга.
+  return Response.json(
+    telegramLoginWebhookReply(APP_URL, nonce, chatId, text),
+  );
 }
 
 // Оплата звёздами (Telegram Stars): начисляем/продлеваем Global-подписку.
@@ -204,28 +208,27 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 });
               if (!nErr) {
                 const loginUrl = telegramLoginUrl(APP_URL, nonce);
-                await sendTgMessage(
+                return sendLoginConfirmed(
                   chatId,
+                  nonce,
                   `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку, ты уже вошёл:\n${loginUrl}\n\nТебе зачислится +1 балл, а пригласившему +50 опыта.`,
                 );
-                await sendLoginConfirmed(chatId, nonce);
-                return Response.json({ ok: true });
               }
 
             }
-            await sendTgMessage(
-              chatId,
-              `Привет! 💚\nТебя пригласили в «Подари». Открой ${APP_URL}/ и нажми «Войти через Telegram».`,
-            );
-            return Response.json({ ok: true });
+            return Response.json({
+              method: "sendMessage",
+              chat_id: chatId,
+              text: `Привет! 💚\nТебя пригласили в «Подари». Открой ${APP_URL}/ и нажми «Войти через Telegram».`,
+            });
           }
 
           if (!param) {
-            await sendTgMessage(
-              chatId,
-              `Привет! Чтобы войти в Подари, открой ссылку входа из приложения 💚`,
-            );
-            return Response.json({ ok: true });
+            return Response.json({
+              method: "sendMessage",
+              chat_id: chatId,
+              text: "Привет! Чтобы войти в Подари, открой ссылку входа из приложения 💚",
+            });
           }
 
           const nonce = param;
@@ -242,8 +245,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             row.rejected_at ||
             new Date(row.expires_at).getTime() < Date.now()
           ) {
-            await sendFreshLoginLink(chatId, from);
-            return Response.json({ ok: true });
+            return await sendFreshLoginLink(chatId, from);
           }
 
           await supabaseAdmin
@@ -256,8 +258,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             })
             .eq("nonce", nonce);
 
-          await sendLoginConfirmed(chatId, nonce);
-          return Response.json({ ok: true });
+          return sendLoginConfirmed(chatId, nonce);
         }
 
 
