@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyUser } from "@/lib/notify.server";
 import { tgApi } from "@/lib/telegram-api";
 import { toProxiedStorageUrl } from "@/lib/proxied-storage-url.server";
+import { ensureAuthProfile } from "@/lib/ensure-auth-profile.server";
 
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? "Podari_podarki_bot";
 const NONCE_TTL_MS = 5 * 60 * 1000;
@@ -159,14 +160,12 @@ async function findOrCreateTelegramSession(params: {
     session = r.data.session;
   }
 
-  await supabaseAdmin
-    .from("profiles")
-    .update({
-      telegram_id: tgId,
-      telegram_username: telegramUsername,
-      display_name: displayName,
-    })
-    .eq("user_id", session.user.id);
+  await ensureAuthProfile({
+    userId: session.user.id,
+    displayName,
+    telegramId: tgId,
+    telegramUsername,
+  });
 
   // Фото профиля подтягиваем в фоне — не задерживаем вход. Только если у
   // человека ещё нет своего (не перетираем то, что он сам загрузил/поменял).

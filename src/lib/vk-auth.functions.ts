@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
+import { ensureAuthProfile } from "@/lib/ensure-auth-profile.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -152,10 +153,10 @@ export const loginWithVk = createServerFn({ method: "POST" })
       session = r.data.session;
     }
 
-    await supabaseAdmin
-      .from("profiles")
-      .update({ display_name: displayName })
-      .eq("user_id", session.user.id);
+    await ensureAuthProfile({
+      userId: session.user.id,
+      displayName,
+    });
 
     if (isNewUser && referredBy && referredBy !== session.user.id) {
       // Бонус пригласившему/новичку начисляет триггер БД при проставлении referred_by.
