@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { tgApiSafe } from "@/lib/telegram-api";
 import { notifyAdmins } from "@/lib/notify.server";
+import { telegramLoginUrl } from "@/lib/telegram-login-link";
 
 const APP_URL = process.env.APP_URL ?? "https://23podari.ru";
 
@@ -42,29 +43,35 @@ async function sendFreshLoginLink(
     );
     return;
   }
+  const loginUrl = telegramLoginUrl(APP_URL, nonce);
   await sendTgMessage(
     chatId,
-    `Прежняя ссылка входа устарела — вот новая, ты уже вошёл:\n${APP_URL}/?login=${nonce}`,
+    `Прежняя ссылка входа устарела — вот новая, ты уже вошёл:\n${loginUrl}`,
   );
-  await sendLoginConfirmed(chatId);
+  await sendLoginConfirmed(chatId, nonce);
 }
 
-async function sendLoginConfirmed(chatId: number) {
+async function sendLoginConfirmed(chatId: number, nonce: string) {
   // Раньше тут был просто текст «возвращайся в приложение» — человеку
   // приходилось самому догадываться, что это значит переключиться обратно
-  // в браузер. Теперь кнопка сразу открывает сайт — это и есть «приложение».
+  // в браузер. Кнопка открывает сайт с тем же одноразовым кодом: это сохраняет
+  // вход, даже если Telegram вернул пользователя в новую вкладку браузера.
   //
   // Было web_app (открывает как Telegram Mini App во встроенном WebView) —
   // убрано 2026-08-11, оказалось ненадёжно на практике (initData не
   // приходила на части устройств/клиентов, человек просто попадал на
-  // обычный экран логина без объяснений). Обычная url-кнопка открывает
-  // сайт как всегда — вход дальше идёт тем же способом (Telegram/VK/
-  // Яндекс/пароль), что и при обычном заходе на сайт.
+  // обычный экран логина без объяснений). Обычная https-ссылка открывает сайт
+  // без зависимости от initData.
   await tgApiSafe("sendMessage", {
     chat_id: chatId,
     text: "✅ Вход подтверждён 💚",
     reply_markup: {
-      inline_keyboard: [[{ text: "Открыть приложение «Подари»", url: APP_URL }]],
+      inline_keyboard: [[
+        {
+          text: "Открыть приложение «Подари»",
+          url: telegramLoginUrl(APP_URL, nonce),
+        },
+      ]],
     },
   });
 }
@@ -196,11 +203,12 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                   approved_at: new Date().toISOString(),
                 });
               if (!nErr) {
+                const loginUrl = telegramLoginUrl(APP_URL, nonce);
                 await sendTgMessage(
                   chatId,
-                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку, ты уже вошёл:\n${APP_URL}/?login=${nonce}\n\nТебе зачислится +1 балл, а пригласившему +50 опыта.`,
+                  `Привет! 💚 Тебя пригласили в «Подари».\n\nОткрой ссылку, ты уже вошёл:\n${loginUrl}\n\nТебе зачислится +1 балл, а пригласившему +50 опыта.`,
                 );
-                await sendLoginConfirmed(chatId);
+                await sendLoginConfirmed(chatId, nonce);
                 return Response.json({ ok: true });
               }
 
@@ -248,7 +256,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             })
             .eq("nonce", nonce);
 
-          await sendLoginConfirmed(chatId);
+          await sendLoginConfirmed(chatId, nonce);
           return Response.json({ ok: true });
         }
 

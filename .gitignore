@@ -19,6 +19,8 @@ dist-ssr
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+.diagnostics/
+.playwright-mcp/
 
 # Editor directories and files
 .vscode/*
