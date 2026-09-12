@@ -9,7 +9,10 @@ import { runSleepingNudgeSweep } from "./lib/reengagement.server";
 // процесс живёт постоянно. На Cloudflare Workers (если когда-нибудь снова
 // туда вернёмся) setInterval в изоляте не переживёт запрос — нужен будет
 // отдельный Cron Trigger, поэтому явно проверяем рантайм.
-if (typeof process !== "undefined" && process.versions?.node) {
+const backgroundJobsDisabled =
+  typeof process !== "undefined" && process.env.DISABLE_BACKGROUND_JOBS === "1";
+
+if (typeof process !== "undefined" && process.versions?.node && !backgroundJobsDisabled) {
   const HOUR_MS = 60 * 60 * 1000;
   setTimeout(() => void runSleepingNudgeSweep(), 60_000);
   setInterval(() => void runSleepingNudgeSweep(), 6 * HOUR_MS);
@@ -24,7 +27,7 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => ((m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry)),
+      (m) => (m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry),
     );
   }
   return serverEntryPromise;
@@ -103,9 +106,7 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return withFreshHtmlHeaders(
-        await normalizeCatastrophicSsrResponse(response),
-      );
+      return withFreshHtmlHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
       return brandedErrorResponse();

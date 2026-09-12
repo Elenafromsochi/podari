@@ -1,0 +1,38 @@
+name: Публикация staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: podari-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Подключить ключ публикации
+        shell: bash
+        env:
+          STAGING_SSH_KEY: ${{ secrets.PODARI_STAGING_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$STAGING_SSH_KEY" > ~/.ssh/podari_staging
+          chmod 600 ~/.ssh/podari_staging
+          cat > ~/.ssh/known_hosts <<'EOF'
+          31.130.151.178 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOZ4PxYLfByHa3gOSD1rox4Te+Z2kcrP3a1Q1dHaLmIG
+          EOF
+      - name: Опубликовать staging
+        run: >-
+          ssh -i ~/.ssh/podari_staging
+          -o BatchMode=yes
+          -o IdentitiesOnly=yes
+          -o StrictHostKeyChecking=yes
+          podari-deploy@31.130.151.178 deploy
+

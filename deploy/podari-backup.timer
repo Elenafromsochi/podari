@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily verified backup of Podari production
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 UTC
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

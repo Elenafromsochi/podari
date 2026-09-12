@@ -17,10 +17,11 @@ import { AssistantWidget } from "@/components/AssistantWidget";
 import { installTourToastGuard } from "@/lib/tour-toast-guard";
 import appCss from "../styles.css?url";
 
+const isStaging = import.meta.env.VITE_APP_ENV === "staging";
+
 if (typeof window !== "undefined") {
   installTourToastGuard();
 }
-
 
 function NotFoundComponent() {
   return (
@@ -84,16 +85,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      ...(isStaging ? [{ name: "robots", content: "noindex, nofollow" }] : []),
       { title: "Подари — сервис добрых подарков" },
-      { name: "description", content: "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram." },
+      {
+        name: "description",
+        content:
+          "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram.",
+      },
       { property: "og:title", content: "Подари — сервис добрых подарков" },
-      { property: "og:description", content: "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram." },
+      {
+        property: "og:description",
+        content:
+          "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Подари — сервис добрых подарков" },
-      { name: "twitter:description", content: "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/13393fc9-4e60-4336-9b01-e334914d190b/id-preview-851278b3--bd25f75c-2201-409b-aa60-d7c459f781a6.lovable.app-1779714519302.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/13393fc9-4e60-4336-9b01-e334914d190b/id-preview-851278b3--bd25f75c-2201-409b-aa60-d7c459f781a6.lovable.app-1779714519302.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Подари — сервис, где люди дарят друг другу время, вещи и заботу. Вход через Telegram.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/13393fc9-4e60-4336-9b01-e334914d190b/id-preview-851278b3--bd25f75c-2201-409b-aa60-d7c459f781a6.lovable.app-1779714519302.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/13393fc9-4e60-4336-9b01-e334914d190b/id-preview-851278b3--bd25f75c-2201-409b-aa60-d7c459f781a6.lovable.app-1779714519302.png",
+      },
       // Иконка приложения на экране «Домой» (PWA)
       { name: "theme-color", content: "#FFD2B0" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -124,6 +146,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        {isStaging ? (
+          <div className="fixed inset-x-0 top-0 z-[9999] bg-amber-400 px-3 py-1 text-center text-xs font-semibold text-black shadow-sm">
+            Тестовая версия · данные не переносятся на основной сайт
+          </div>
+        ) : null}
         {children}
         <Scripts />
       </body>
@@ -144,6 +171,5 @@ function RootComponent() {
       <AssistantWidget />
       <Toaster position="top-center" closeButton />
     </QueryClientProvider>
-
   );
 }

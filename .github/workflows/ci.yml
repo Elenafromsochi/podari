@@ -1,0 +1,38 @@
+name: Проверка проекта
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_APP_ENV: test
+      VITE_SUPABASE_URL: http://127.0.0.1:8100
+      VITE_SUPABASE_PUBLISHABLE_KEY: test-anon-key
+      SUPABASE_URL: http://127.0.0.1:8100
+      SUPABASE_PUBLISHABLE_KEY: test-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+      APP_URL: http://127.0.0.1:3100
+      DISABLE_BACKGROUND_JOBS: "1"
+      NITRO_PRESET: node-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Установить зависимости
+        run: npm install --no-audit --no-fund
+      - name: Проверить Supabase proxy
+        run: npm run test:proxy
+      - name: Проверить авторизацию
+        run: npm run test:auth
+      - name: Собрать Node.js-приложение
+        run: npm run build
+

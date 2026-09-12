@@ -1,0 +1,26 @@
+[Unit]
+Description=Podari Staging (TanStack Start, Node server)
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/podari-staging/current
+EnvironmentFile=/etc/podari/staging.env
+Environment=PORT=3100
+Environment=HOST=127.0.0.1
+Environment=VITE_APP_ENV=staging
+Environment=DISABLE_BACKGROUND_JOBS=1
+ExecStart=/usr/bin/node /opt/podari-staging/current/dist/server/index.mjs
+Restart=always
+RestartSec=3
+User=podari-deploy
+Group=podari-deploy
+TimeoutStopSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
