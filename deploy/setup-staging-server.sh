@@ -33,6 +33,9 @@ if [ ! -d "$stage_dir/source/.git" ]; then
   git clone --branch "$bootstrap_branch" "$repo_url" "$stage_dir/source"
 fi
 chown -R podari-deploy:podari-deploy "$stage_dir"
+sudo -u podari-deploy git -C "$stage_dir/source" fetch --prune origin "$bootstrap_branch"
+sudo -u podari-deploy git -C "$stage_dir/source" checkout -B "$bootstrap_branch" \
+  "origin/$bootstrap_branch"
 
 install -m 0755 -o root -g root \
   "$stage_dir/source/deploy/deploy-staging.sh" /usr/local/sbin/podari-staging-deploy
