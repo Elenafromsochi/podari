@@ -202,7 +202,7 @@ systemctl start podari-backup.timer
 sudo -u podari-deploy env PODARI_DEPLOY_BRANCH="$bootstrap_branch" \
   /usr/local/sbin/podari-staging-deploy
 
-curl -fsS http://127.0.0.1:8100/auth/v1/health >/dev/null
+curl -fsS -H "apikey: $anon_key" http://127.0.0.1:8100/auth/v1/health >/dev/null
 curl -fsS http://127.0.0.1:3100/ >/dev/null
 systemctl is-active --quiet podari caddy podari-staging
 

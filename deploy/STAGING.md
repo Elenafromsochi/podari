@@ -26,7 +26,8 @@ Staging использует собственные ключи, Postgres, Auth �
 ```bash
 systemctl is-active podari-staging
 curl -fsSI https://stage.23podari.ru/
-curl -fsS https://api-stage.23podari.ru/auth/v1/health
+anon_key="$(sed -n 's/^ANON_KEY=//p' /opt/supabase-staging/.env | head -1)"
+curl -fsS -H "apikey: $anon_key" https://api-stage.23podari.ru/auth/v1/health
 docker ps --filter name=podari-staging
 ```
 
@@ -42,4 +43,3 @@ docker ps --filter name=podari-staging
 Серверные переменные staging находятся в `/etc/podari/staging.env` с правами
 `0640`. Ключ публикации хранится в GitHub Actions Secret
 `PODARI_STAGING_SSH_KEY`. Значения секретов не добавляются в репозиторий.
-
