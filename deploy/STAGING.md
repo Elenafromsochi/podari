@@ -34,9 +34,9 @@ docker ps --filter name=podari-staging
 ## Откат staging
 
 Каждая публикация создаёт отдельный каталог в `/opt/podari-staging/releases`.
-Чтобы откатить приложение, переключите симлинк `/opt/podari-staging/current` на
-предыдущий каталог и перезапустите `podari-staging`. Production при этом не
-изменяется.
+Автоматически сохраняются три последних релиза. Чтобы откатить приложение,
+переключите симлинк `/opt/podari-staging/current` на предыдущий каталог и
+перезапустите `podari-staging`. Production при этом не изменяется.
 
 ## Секреты
 

@@ -9,6 +9,7 @@ lock_file="$base_dir/deploy.lock"
 
 exec 9>"$lock_file"
 flock -n 9 || { echo "Staging deployment is already running"; exit 1; }
+cd "$base_dir"
 
 test -r "$env_file"
 deploy_branch="${PODARI_DEPLOY_BRANCH:-staging}"
@@ -60,6 +61,18 @@ fi
 
 for attempt in $(seq 1 20); do
   if curl -fsS http://127.0.0.1:3100/ >/dev/null; then
+    mapfile -t old_releases < <(
+      find "$releases_dir" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+        | sort -nr | cut -d' ' -f2- | tail -n +4
+    )
+    for candidate in "${old_releases[@]}"; do
+      release_name="${candidate##*/}"
+      if [[ "$release_name" =~ ^[0-9a-f]{40}$ ]] \
+        && [ "$candidate" != "$release_dir" ] \
+        && [ "$candidate" != "$previous_target" ]; then
+        rm -rf -- "$candidate"
+      fi
+    done
     echo "STAGING_DEPLOYED=$revision"
     exit 0
   fi
