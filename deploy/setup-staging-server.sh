@@ -150,6 +150,16 @@ for attempt in $(seq 1 60); do
 done
 docker inspect --format '{{.State.Health.Status}}' podari-staging-db | grep -qx healthy
 
+for attempt in $(seq 1 60); do
+  if docker exec podari-staging-db psql -U postgres -d postgres -Atqc \
+    "select to_regclass('realtime.messages') is not null" | grep -qx t; then
+    break
+  fi
+  sleep 2
+done
+docker exec podari-staging-db psql -U postgres -d postgres -Atqc \
+  "select to_regclass('realtime.messages') is not null" | grep -qx t
+
 if ! docker exec podari-staging-db psql -U postgres -d postgres -Atqc \
   "select to_regclass('public.profiles') is not null" | grep -qx t; then
   docker exec -i podari-staging-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
