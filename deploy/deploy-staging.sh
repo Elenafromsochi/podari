@@ -12,8 +12,26 @@ flock -n 9 || { echo "Staging deployment is already running"; exit 1; }
 
 test -r "$env_file"
 deploy_branch="${PODARI_DEPLOY_BRANCH:-staging}"
+requested_revision="${PODARI_DEPLOY_REVISION:-}"
+
+if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+  if [[ "$SSH_ORIGINAL_COMMAND" =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
+    requested_revision="${BASH_REMATCH[1]}"
+  else
+    echo "Unsupported deployment command" >&2
+    exit 1
+  fi
+fi
+
 git -C "$source_dir" fetch --prune origin "$deploy_branch"
-revision="$(git -C "$source_dir" rev-parse "origin/$deploy_branch")"
+if [ -n "$requested_revision" ]; then
+  git -C "$source_dir" cat-file -e "${requested_revision}^{commit}"
+  git -C "$source_dir" merge-base --is-ancestor \
+    "$requested_revision" "origin/$deploy_branch"
+  revision="$requested_revision"
+else
+  revision="$(git -C "$source_dir" rev-parse "origin/$deploy_branch")"
+fi
 release_dir="$releases_dir/$revision"
 previous_target="$(readlink -f "$base_dir/current" 2>/dev/null || true)"
 
