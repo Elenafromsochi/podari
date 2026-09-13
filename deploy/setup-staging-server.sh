@@ -165,7 +165,7 @@ docker exec podari-staging-db psql -U postgres -d postgres -Atqc \
 
 if ! docker exec podari-staging-db psql -U postgres -d postgres -Atqc \
   "select to_regclass('public.profiles') is not null" | grep -qx t; then
-  docker exec -i podari-staging-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+  docker exec -i podari-staging-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
     < "$stage_dir/source/supabase/full_schema.sql"
 fi
 
