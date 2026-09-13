@@ -7,7 +7,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 repo_url="${PODARI_REPO_URL:-https://github.com/Elenafromsochi/podari.git}"
-bootstrap_branch="${PODARI_BOOTSTRAP_BRANCH:-codex/staging-infrastructure}"
+bootstrap_branch="${PODARI_BOOTSTRAP_BRANCH:-staging}"
 public_key_file="${PODARI_DEPLOY_PUBLIC_KEY_FILE:-/tmp/podari_staging_ci.pub}"
 stage_dir=/opt/podari-staging
 supabase_dir=/opt/supabase-staging
