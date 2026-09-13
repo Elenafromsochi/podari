@@ -199,8 +199,8 @@ systemctl daemon-reload
 systemctl enable podari-staging podari-backup.timer
 systemctl start podari-backup.timer
 
-PODARI_DEPLOY_BRANCH="$bootstrap_branch" \
-  sudo -u podari-deploy /usr/local/sbin/podari-staging-deploy
+sudo -u podari-deploy env PODARI_DEPLOY_BRANCH="$bootstrap_branch" \
+  /usr/local/sbin/podari-staging-deploy
 
 curl -fsS http://127.0.0.1:8100/auth/v1/health >/dev/null
 curl -fsS http://127.0.0.1:3100/ >/dev/null
